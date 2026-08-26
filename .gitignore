@@ -27,6 +27,10 @@ src/_dbg_*.py
 src/_diff_*.py
 src/_single_*.py
 
+# 文档产物(论文/综述)与报告模板, 不入库
+thesis/
+_tpl/
+
 # GPU 版：大规模数据集 / 临时样本不提交 (可重新生成)
 gpu/data/*.npz
 gpu/data/pr_*.png

@@ -147,4 +147,25 @@ __declspec(dllexport) void nsf5_embed(
     }
 }
 
+// ---- nsf5_permute: 确定性伪随机置换 (splitmix64 + 反向 Fisher-Yates) ----
+// 与 Python 侧 ns5_core.permute_index 的 fallback 实现保持逐元素一致,
+// 使"嵌入/解码"两端无论如何都能还原。数学与实现均不可变, 否则破坏可逆性。
+static inline uint64_t splitmix64(uint64_t* x) {
+    uint64_t z = (*x += 0x9E3779B97F4A7C15ULL);
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    return z ^ (z >> 31);
+}
+
+__declspec(dllexport) void nsf5_permute(long long total, unsigned long long seed, long long* out) {
+    if (total <= 0) return;
+    for (long long i = 0; i < total; ++i) out[i] = i;
+    uint64_t state = seed;
+    for (long long i = total - 1; i > 0; --i) {
+        unsigned long long r = splitmix64(&state);
+        long long j = (long long)(r % (unsigned long long)(i + 1));
+        long long tmp = out[i]; out[i] = out[j]; out[j] = tmp;
+    }
+}
+
 } // extern "C"

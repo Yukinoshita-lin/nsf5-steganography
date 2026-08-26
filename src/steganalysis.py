@@ -24,6 +24,8 @@ import numpy as np
 
 # ---------------- 正则化不完全伽马(自实现) ----------------
 def _gser(a, x, itmax=200, eps=3e-14):
+    if a <= 0:
+        return 1.0
     if x <= 0:
         return 0.0
     ap, s, del_ = a, 1.0 / a, 1.0 / a
@@ -37,6 +39,8 @@ def _gser(a, x, itmax=200, eps=3e-14):
 
 
 def _gcf(a, x, itmax=200, eps=3e-14, fpmin=1e-300):
+    if a <= 0:
+        return 0.0
     b = x + 1.0 - a
     c, d, h = 1.0 / fpmin, 1.0 / b, 1.0 / b
     for i in range(1, itmax + 1):
@@ -87,6 +91,9 @@ def chi2_stats(counts: np.ndarray):
     n = int(mask.sum())
     if n == 0:
         return 0.0, 0.0, 0
+    if n <= 1:
+        # 仅 1 个有效灰度对(如强二值图), 自由度不足, p 取中性值避免 lgamma(0)。
+        return float(np.sum((even[mask] - odd[mask]) ** 2 / sums[mask])), 1.0, 0
     stat = float(np.sum((even[mask] - odd[mask]) ** 2 / sums[mask]))
     return stat, float(chi2_sf(stat, n - 1)), n - 1
 

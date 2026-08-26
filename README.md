@@ -9,8 +9,9 @@
 nsF5 隐写算法，并附带**盲隐写分析**、**图像哈希键控**与**码族/嵌入效率可视化**。
 
 项目位于 `F:\Steganography`，核心为纯 Python（依赖 `numpy`/`Pillow`，GUI 使用标准库 `tkinter`）；
-另提供 **C++ 加速库**（`cpp/fsfeatures.dll` 特征提取、`cpp/nsf5embed.dll` 嵌入热路径，
-MinGW 编译，跨语言校验与 Python 一致性一致）。
+另提供 **C++ 加速库**（`cpp/fsfeatures.dll` 特征提取、`cpp/nsf5embed.dll` 嵌入热路径 + 确定性置乱
+`nsf5_permute`，MinGW 编译，跨语言校验与 Python 一致性一致；置乱在 DLL 缺失时自动回退到
+Python 同算法，嵌入/解码两端序列恒定可逆）。
 
 ---
 

@@ -61,13 +61,59 @@ def derive_seed(image_bytes: bytes, password: str = "") -> int:
     return int(base, 16)
 
 
+_perm_fn = None
+_perm_checked = False
+
+
+def _load_cpp_permute():
+    """惰性加载 cpp/nsf5embed.dll 的 nsf5_permute(仅一次)。缺失/失败返回 None。"""
+    global _perm_fn, _perm_checked
+    if not _perm_checked:
+        _perm_checked = True
+        try:
+            import ctypes
+            import os
+            dll = os.path.join(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))), "cpp", "nsf5embed.dll")
+            fn = ctypes.CDLL(dll).nsf5_permute
+            fn.argtypes = [ctypes.c_longlong, ctypes.c_ulonglong,
+                           ctypes.POINTER(ctypes.c_longlong)]
+            fn.restype = None
+            _perm_fn = fn
+        except Exception:
+            _perm_fn = None
+    return _perm_fn
+
+
 def permute_index(total: int, seed: int) -> np.ndarray:
-    rng = np.random.default_rng(seed)
-    idx = np.arange(total, dtype=np.int64)
+    """确定性伪随机置换。
+
+    - 优先走 C++ nsf5_permute(splitmix64 + Fisher-Yates), 超大图显著快;
+    - DLL 缺失时用下方同算法的 Python fallback, 保证两路径序列一致,
+      从而"嵌入/解码"无论有无 DLL 都能还原。
+    该置换必须是"保持同一算法"的稳定映射; 改了会破坏可逆性。
+    """
+    fn = _load_cpp_permute()
+    if fn is not None:
+        import ctypes
+        out = np.empty(total, dtype=np.int64)
+        ptr = out.ctypes.data_as(ctypes.POINTER(ctypes.c_longlong))
+        fn(int(total), int(seed) & ((1 << 64) - 1), ptr)
+        return out
+    mask = (1 << 64) - 1
+    a = np.arange(total, dtype=np.int64)
+    x = int(seed) & mask
     for i in range(total - 1, 0, -1):
-        j = int(rng.integers(0, i + 1))
-        idx[i], idx[j] = idx[j], idx[i]
-    return idx
+        x = (x + 0x9E3779B97F4A7C15) & mask
+        z = x
+        z = (z ^ (z >> 30)) & mask
+        z = (z * 0xBF58476D1CE4E5B9) & mask
+        z = (z ^ (z >> 27)) & mask
+        z = (z * 0x94D049BB133111EB) & mask
+        r = (z ^ (z >> 31)) & mask
+        j = int(r % (i + 1))
+        a[i], a[j] = a[j], a[i]
+    return a
 
 
 # --------------------------------------------------------------------------- #
