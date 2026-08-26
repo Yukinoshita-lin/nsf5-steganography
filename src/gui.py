@@ -279,20 +279,29 @@ class App:
 
     def _plot(self):
         def work():
-            path = plot_code_family_and_efficiency(p_max=6)
-            return path
+            # plot_code_family_and_efficiency 返回计算行(list), 图片写至 save_path
+            out = os.path.join(PROJECT_DIR, "output", "efficiency.png")
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            plot_code_family_and_efficiency(p_max=6, save_path=out)
+            return out
         def done(path):
             try:
-                im = Image.open(path)
-                im.thumbnail((520, 400))
+                im = Image.open(path).convert("RGB")
+                scr_w = self.root.winfo_screenwidth()
+                scr_h = self.root.winfo_screenheight()
+                resample = getattr(Image, "Resampling", Image).LANCZOS
+                # 预览尽量接近原始分辨率(大图基本 1:1), 文字清晰; 仅在超出屏幕时按比例缩放
+                im.thumbnail((int(scr_w * 0.9), int(scr_h * 0.78)), resample)
                 ph = ImageTk.PhotoImage(im)
-                top = tk.Toplevel(self.root); top.title("码族与嵌入效率")
-                lab = ttk.Label(top, image=ph); lab.image = ph; lab.pack()
-                ttk.Label(top, text=f"已保存: {path}").pack()
+                top = tk.Toplevel(self.root)
+                top.title(f"码族与嵌入效率 ({im.width}×{im.height})")
+                lab = ttk.Label(top, image=ph); lab.image = ph
+                lab.pack(padx=8, pady=8)
+                ttk.Label(top, text=f"已保存: {path}").pack(padx=8, pady=(0, 8))
             except Exception as e:
                 self._log(f"绘图预览失败: {e}")
             self._wait("绘图已生成")
-            self._log("码族与效率图已生成: " + path)
+            self._log("码族与嵌入效率图已生成: " + path)
         self._busy(work, done)
 
 
