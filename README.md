@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yushitayuri/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.1.0-blue)
+![version](https://img.shields.io/badge/version-1.2.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 
@@ -92,7 +92,12 @@ F:\Steganography
 │   ├── nsf5embed.cpp     # C++ nsF5/matrix 嵌入热路径源
 │   └── nsf5embed.dll     # 编译产物 (MinGW)
 ├── data/dataset.csv      # 有监督训练数据集 (clean+stego 特征)
-├── models                # 训练出的分类器 stego_classifier.joblib
+├── gpu
+│   ├── make_imageset.py  # GPU版数据集生成 (完整512, 1干净+4含密变体/照片)
+│   ├── featurize_gpu.py  # GPU批量向量化 11 维统计特征 (与 CPU 参考 bit 级一致)
+│   ├── train_ml_gpu.py   # GPU特征提取 + 按照片分组训练分类器
+│   └── predict_gpu.py    # 单图像 GPU 隐写检测
+├── models                # 训练出的分类器 stego_classifier.joblib / steg_classifier_gpu.joblib
 └── src
     ├── ns5_core.py       # nsF5 核心：汉明码、湿纸求解、哈希键控、嵌入/解码
     ├── cppembed.py       # C++ 嵌入封装 (自校验与 Python 像素级一致)
@@ -207,6 +212,48 @@ print(get_predictor().predict(a))"
 
 ---
 
+## GPU 版 (v1.2)：PyTorch 批量向量化的统计特征分析
+
+`gpu/` 子目录提供一套 **GPU(CUDA) 加速**的隐写检测管线，复刻已验证的
+**11 维统计特征**（RS、卡方、差分熵、LSB 熵、前缀中位 p，与 `src/fsfeatures.py`
+参考实现 **bit 级一致**），把原来逐图 Python 循环（RS 逐组、20 段前缀卡方）
+改写为 PyTorch 张量化算子，在 CUDA 上一批并行算完。
+
+> **为什么是"特征法"而不是裸像素 CNN？** 实测表明：在 414 张校园照片上，
+> 从头训练的整图深度卷积网络（多架构/输入/正则组合）均无法跨照片泛化
+> （验证 AUC≤0.50）——有效独立样本只有照片数，弱 LSB 信号需数千张源图才能学稳。
+> 统计特征法在相同数据上验证 AUC≈**0.79**，且特征提取可被 GPU 并行化，
+> 因此 GPU 版选择**加速这条真正管用的路径**，而非裸 CNN。
+
+### 管线
+
+```bash
+# 1) 生成数据集 (每张照片 1 干净 + 4 档含密变体, 完整 512x512, 不裁剪以保留统计)
+python gpu\make_imageset.py  [照片目录] [张数]
+
+# 2) GPU 批量提取特征 + 按照片分组训练 + 评估
+python gpu\train_ml_gpu.py            # 输出 models\steg_classifier_gpu.joblib
+
+# 3) 单张图像 GPU 检测
+python gpu\predict_gpu.py <图像> [<图像>...]
+```
+
+### 实测 (RTX 4060 Laptop / 2070 样本)
+
+- **特征提取**：2070 张 512² 灰度 约 **5s（≈410 img/s）**，GPU 利用率峰值 **99% / 平均 75%**。
+- **检测性能**：验证 **AUC≈0.79**；按档检出率（Youden 阈值）——
+  `matrix p3`≈99%、`nsF5 p2`(强)≈89–93%、弱 `nsF5 p3`≈64%、干净误报可控。
+- **一致性**：`python gpu\featurize_gpu.py` 自检，GPU 与 CPU 参考特征逐项一致
+  （RS 到 bit 级、浮点 ~1e-7）。
+
+> 依赖：`torch`(CUDA)、`numpy`、`Pillow`、`scipy`、`scikit-learn`、`joblib`、
+> `nvidia-ml-py`(可选，用于上报 GPU 利用率)。样本数据 `gpu/data/*.npz` 较大，不入库，可重生成。
+
+> 同 CPU 版一样，GPU 检测器输出的是**统计含密概率**，弱密度嵌入应结合启发式判读
+> 交叉印证。GPU 特征提取亦可作为大批量图片的批量分析入口复用。
+
+---
+
 ## 持续集成 & 发版
 
 - **CI**（`.github/workflows/ci.yml`）：任何对 `main` 的推送 / PR 都会自动运行
@@ -223,6 +270,11 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
+- **v1.2.0**
+  - 新增 **GPU 版**（`gpu/`）：PyTorch 批量向量化复刻 11 维统计特征（RS/卡方/熵/前缀 p，
+    与 CPU 参考实现 bit 级一致），GPU 提取 2070 张特征 ≈5s、利用率峰值 99%。
+  - 新增 GPU 训练/推理管线 `train_ml_gpu.py`、`predict_gpu.py`；验证 **AUC≈0.79**。
+  - 实测与文档说明了"裸像素深度 CNN 需海量独立源图、局部特征法更适合小样本隐写检测"。
 - **v1.1.0**
   - 新增 **C++ 嵌入加速** `cpp/nsf5embed.dll`（修复汉明缓存越界；与 Python 像素级一致并经回环校验）。
   - 监督学习升级：数据集扩展为 **6 档密度变体**、构建提速约 8→**90 倍**，

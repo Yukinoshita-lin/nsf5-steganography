@@ -26,3 +26,8 @@ src/_t_*.py
 src/_dbg_*.py
 src/_diff_*.py
 src/_single_*.py
+
+# GPU 版：大规模数据集 / 临时样本不提交 (可重新生成)
+gpu/data/*.npz
+gpu/data/pr_*.png
+gpu/data/_*.py
