@@ -18,4 +18,11 @@ Thumbs.db
 
 # 打包产物
 *.whl
-*.tar.gzimg/_smoke.png
+*.tar.gz
+
+# 冒烟/调试临时产物
+img/_smoke.png
+src/_t_*.py
+src/_dbg_*.py
+src/_diff_*.py
+src/_single_*.py

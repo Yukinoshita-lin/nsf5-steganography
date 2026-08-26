@@ -91,6 +91,22 @@ def chi2_stats(counts: np.ndarray):
     return stat, float(chi2_sf(stat, n - 1)), n - 1
 
 
+# ---------------- 内容本底随机度(差分熵) ----------------
+def diff_entropy(image, axis_bins=256):
+    """相邻像素绝对差值的香农熵(比特/样本), 0~log2(256)=8。
+    平滑/结构化图低(≈1~3), 高噪声/抖动图接近 8 → 估图像天然 LSB 随机基线。
+    """
+    ch = _channel(image).astype(np.int16)
+    d = np.concatenate([
+        np.abs(np.diff(ch, axis=1)).ravel(),
+        np.abs(np.diff(ch, axis=0)).ravel(),
+    ])
+    hist = np.bincount(np.clip(d, 0, axis_bins - 1), minlength=axis_bins).astype(np.float64)
+    hist = hist / hist.sum()
+    nz = hist[hist > 0]
+    return float(-np.sum(nz * np.log2(nz)))
+
+
 # ---------------- RS 分析 ----------------
 def rs_metrics(image, mask=np.array([0, 1, 1, 0])):
     ch = _channel(image)
@@ -112,8 +128,31 @@ def rs_metrics(image, mask=np.array([0, 1, 1, 0])):
             "Gr": (Rm - Sm) / n, "Gn": (Rn - Sn) / n}
 
 
+def lsb_diff_entropy(image):
+    """LSB 位平面的相邻差分熵 (0~1)。1 → LSB 已完全随机(天然噪声/抖动或已嵌入);
+    <~0.7 → LSB 明显有结构(自然平滑图)。用于认定"LSB 随机是否本底固有"。
+    """
+    lsb = _channel(image).astype(np.int16) & 1
+    d = np.concatenate([np.abs(np.diff(lsb, axis=1)).ravel(),
+                        np.abs(np.diff(lsb, axis=0)).ravel()])
+    hist = np.bincount(d, minlength=2).astype(np.float64)
+    hist = hist / hist.sum()
+    nz = hist[hist > 0]
+    return float(-np.sum(nz * np.log2(nz)))
+
+
 # ---------------- 综合分析 ----------------
-def analyze(image):
+# 灵敏度: 判定阈值 (可能阈值, 高度可能阈值) 与 概率牵引系数
+#   严格: 需更高概率才判含密 → 降低干净误报
+#   宽松: 阈值下调 + 概率外推 → 提高弱嵌入检出
+_SENS = {
+    "严格 (低误报)": ((0.50, 0.80), 0.85),
+    "均衡":           ((0.40, 0.70), 1.00),
+    "宽松 (高检出)": ((0.30, 0.60), 1.18),
+}
+
+
+def analyze(image, base_gn=0.62, sensitivity="均衡"):
     cnt = _gray_counts(image)
     chi_stat, chi_p, df = chi2_stats(cnt)
     rs = rs_metrics(image)
@@ -130,30 +169,75 @@ def analyze(image):
     ps = np.asarray(ps)
     median_p = float(np.median(ps)) if ps.size else 0.0
 
-    # 嵌入率/倾向得分: 主信号 = RS 负掩码缺口 Gn 的塌缩(LSB 随机化压低 Gn)
+    # ---- 内容本底随机度(以灰度差分熵为准) ----
+    h = diff_entropy(image)
+    lg = lsb_diff_entropy(image)
+    # 灰度差分熵: 平滑(≈1) → 0; 纯随机(≈7.7) → 1。高 -> 天然照片/噪声, 无法可靠判嵌入
+    tex = float(np.clip((h - 1.2) / (7.0 - 1.2), 0.0, 1.0))
+
     Gn = rs["Gn"]; Gr = rs["Gr"]
-    est_rate = float(np.clip(0.55 * max(0.0, (0.62 - Gn) / 0.62) +
-                             0.45 * max(0.0, (0.72 - Gr) / 0.72), 0.0, 1.0))
-    # sigmoid: Gn 越低→分越高; 中心与陡度按典型均衡值标定
+
+    # 干净基线: 图像本底越"结构化"期待 Gn 越高; 本底越随机期待 Gn 越低。
+    # 用同样的差分熵信息把"天然随机"的图从"疑似隐写"里区分出来。
+    gn_floor = 0.06 * tex          # 随机本底图 Gn 天然压到很低
+    baseline = base_gn * (1.0 - 0.8 * tex) + gn_floor
+
+    # RS 塌缩信号: 干净基线 G_LSB = base_gn*(1-0.8*tex)。结构化封面(base_gn高)若
+    # Gn 跌破基线 → 强嵌入证据; 天然噪声图(tex高)基线下调, 塌缩不再强判。
+    drop = max(0.0, (baseline - Gn) / max(baseline, 1e-3))
     def _sig(z):
         return 1.0 / (1.0 + math.exp(-z))
-    s_rs = float(_sig((0.47 - Gn) / 0.07))
-    s_chi = float(np.clip((median_p - 0.3) / 0.6, 0, 1))  # 卡方越强分越高
-    prob = float(np.clip(0.05 + 0.95 * max(s_rs, s_chi), 0, 1))
-    # 干净图镇定: 缺口很高且卡方无信号 → 强烈压低(此时 @gn>0.56 视为干净)
-    if Gn > 0.56 and median_p < 0.05:
-        prob = min(prob, 0.18)
+    # 缺口头寸: drop 超过阈值才成信号; 阈值随 tex 微调, 但结构封面(tex低)对塌缩很敏感
+    center = 0.34 + 0.20 * tex
+    s_rs = _sig((drop - center) / 0.12)
 
-    verdict = ("高度可能被隐写" if prob >= 0.7 else
-               "可能被隐写" if prob >= 0.4 else
-               "不太可能被隐写")
+    # 卡方: 仅对本底结构化图有意义(干净高结构图灰度对不应均衡);
+    # 本底随机图 p 天然高, 不应当作嵌入证据。
+    struct = 1.0 - tex
+    s_chi = np.clip((median_p - 0.35) / 0.5, 0, 1) * pow(struct, 2)
+
+    # 嵌入率估计(参考语义弱化)
+    est_rate = float(np.clip((0.55 * max(0.0, (0.62 - Gn) / 0.62) +
+                              0.45 * max(0.0, (0.72 - Gr) / 0.72)), 0.0, 1.0))
+
+    raw = max(s_rs, s_chi)
+
+    # ---- 可判性：仅当 LSB 位平面仍有结构(lg 低)时, Gn 塌缩/卡方才是可靠证据 ----
+    # 若 lg 高(→0.9): 天然照片/噪声/抖动 与 嵌入 在 LSB 统计上不可分, 诚实 abstain。
+    lsb_rand = float(np.clip((lg - 0.90) / 0.08, 0.0, 1.0))
+    # 灵敏度: 取判定阈值与概率牵引系数
+    (thr_poss, thr_high), pull = _SENS.get(sensitivity, _SENS["均衡"])
+
+    if tex >= 0.55:
+        prob = float(np.clip(0.5 + 0.10 * raw, 0.5, 0.62))
+        _abstain = "图像本底噪声高"
+    elif lsb_rand > 0.0:
+        prob = float(np.clip(0.5 + 0.12 * lsb_rand * raw, 0.5, 0.62))
+        _abstain = "LSB 位平面已随机化"
+    else:
+        prob = float(np.clip(0.04 + 0.96 * raw, 0.0, 1.0))
+        _abstain = None
+        # 干净镇定点: 强结构 + Gn 仍高 + 卡方无信号 -> 强烈压低
+        if tex < 0.35 and (Gn / max(base_gn, 1e-3)) > 0.82 and median_p < 0.1:
+            prob = min(prob, 0.15)
+
+    # 概率牵引(围绕 0.5): 严格→更接近 0.5 不轻易判含密; 宽松→外推增强检出
+    prob_pull = float(np.clip(0.5 + (prob - 0.5) * pull, 0.0, 1.0))
+    if _abstain is not None:
+        verdict = f"无法可靠判定({_abstain})"
+    else:
+        verdict = ("高度可能被隐写" if prob >= thr_high else
+                   "可能被隐写" if prob >= thr_poss else
+                   "不太可能被隐写")
 
     return {
         "chi2_stat": chi_stat, "chi2_pvalue": chi_p,
         "median_prefix_p": median_p,
+        "diff_entropy": h, "lsb_diff_entropy": lg, "texture_noise": tex,
         "RS_Gr": Gr, "RS_Gn": Gn,
         "est_rate": est_rate,
-        "stego_probability": prob,
+        "stego_probability": prob_pull,
         "verdict": verdict,
+        "sensitivity": sensitivity,
         "prefix_ps": [float(x) for x in ps],
     }

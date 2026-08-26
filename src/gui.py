@@ -20,6 +20,7 @@ from ns5_core import embed_string, extract_string, get_image_hash
 import steganalysis as SA
 import image_io as IO
 from efficiency import plot_code_family_and_efficiency, OUTPUT_DIR
+from ml_predict import get_predictor
 
 
 def _rgb(img: np.ndarray):
@@ -77,34 +78,43 @@ class App:
         self.var_pwd = tk.StringVar(value="")
         ttk.Entry(f, textvariable=self.var_pwd, show="*").grid(row=2, column=1, sticky="ew", pady=2)
 
+        # 分析灵敏度
+        ttk.Label(f, text="判定灵敏度:").grid(row=3, column=0, sticky="w", pady=2)
+        self.var_sens = tk.StringVar(value="均衡")
+        sbox = ttk.Combobox(f, textvariable=self.var_sens, state="readonly", width=18,
+                            values=["严格 (低误报)", "均衡", "宽松 (高检出)"])
+        sbox.grid(row=3, column=1, sticky="ew", pady=2)
+        ttk.Label(f, text="  严格→少误报干净图; 宽松→更易检出弱嵌入",
+                  foreground="#666").grid(row=3, column=1, sticky="w", pady=2, padx=(150, 0))
+
         # 载入
-        bf = ttk.Frame(f); bf.grid(row=3, column=0, columnspan=2, sticky="ew", pady=4)
+        bf = ttk.Frame(f); bf.grid(row=4, column=0, columnspan=2, sticky="ew", pady=4)
         ttk.Button(bf, text="载入原始图 / 含密图", command=self._load).pack(side="left", fill="x", expand=True)
 
         # 待嵌入字符串
-        ttk.Label(f, text="待嵌入字符串(ASCII):").grid(row=4, column=0, sticky="nw", pady=2)
+        ttk.Label(f, text="待嵌入字符串(ASCII):").grid(row=5, column=0, sticky="nw", pady=2)
         self.var_msg = tk.Text(f, height=6, width=40)
-        self.var_msg.grid(row=4, column=1, sticky="nsew", pady=2)
+        self.var_msg.grid(row=5, column=1, sticky="nsew", pady=2)
         self.var_msg.insert("1.0", "Hello, nsF5 steganography!")
 
         # 动作
-        af = ttk.Frame(f); af.grid(row=5, column=0, columnspan=2, sticky="ew", pady=6)
+        af = ttk.Frame(f); af.grid(row=6, column=0, columnspan=2, sticky="ew", pady=6)
         ttk.Button(af, text="1 嵌入并保存", command=self._embed).pack(side="left", fill="x", expand=True, padx=2)
         ttk.Button(af, text="2 解码提取", command=self._decode).pack(side="left", fill="x", expand=True, padx=2)
         ttk.Button(af, text="3 分析", command=self._analyze).pack(side="left", fill="x", expand=True, padx=2)
 
         # 绘图
-        gf = ttk.Frame(f); gf.grid(row=6, column=0, columnspan=2, sticky="ew", pady=4)
+        gf = ttk.Frame(f); gf.grid(row=7, column=0, columnspan=2, sticky="ew", pady=4)
         ttk.Button(gf, text="生成码族与效率图", command=self._plot).pack(fill="x")
 
         # 状态
         self.status = ttk.Label(f, text="状态: 就绪", foreground="#1a73e8")
-        self.status.grid(row=7, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        self.status.grid(row=8, column=0, columnspan=2, sticky="w", pady=(6, 0))
 
         # 日志
-        ttk.Label(f, text="日志:").grid(row=8, column=0, sticky="nw", pady=(6, 0))
+        ttk.Label(f, text="日志:").grid(row=9, column=0, sticky="nw", pady=(6, 0))
         self.log = tk.Text(f, height=9, state="disabled", wrap="word")
-        self.log.grid(row=9, column=0, columnspan=2, sticky="nsew", pady=2)
+        self.log.grid(row=10, column=0, columnspan=2, sticky="nsew", pady=2)
         return f
 
     def _build_right(self, parent):
@@ -243,19 +253,27 @@ class App:
         if self.stego is None and self.cover_img is None:
             messagebox.showwarning("提示", "请先载入图片"); return
         image = self.cover_img
+        sens = self.var_sens.get()
         def work():
-            return SA.analyze(image), get_image_hash(image)
+            return (SA.analyze(image, sensitivity=sens), get_image_hash(image),
+                    get_predictor(sensitivity=sens).predict(image))
         def done(res):
-            r, h = res
+            r, h, ml = res
+            ml_line = (f"ML 分类含密概率: {ml['probability']*100:.1f}%  (阈值 {ml['threshold']:.3f}, {ml['verdict']})\n"
+                       if ml["probability"] is not None else
+                       "ML 分类: 模型未加载(请先运行 train_model.py)\n")
             self._set_out(
                 f"图像 SHA256: {h}\n"
+                f"判定灵敏度: {r['sensitivity']}\n"
                 f"卡方统计量 χ²={r['chi2_stat']:.2f}  (df={'-'})\n"
                 f"卡方 p 值: {r['chi2_pvalue']:.4f}\n"
                 f"前缀中位 p: {r['median_prefix_p']:.4f}\n"
+                f"内容本底噪声: 灰度熵 {r['diff_entropy']:.2f}  LSB熵 {r['lsb_diff_entropy']:.3f}\n"
                 f"RS 掩码缺口 Gr={r['RS_Gr']:.3f}  Gn={r['RS_Gn']:.3f}\n"
                 f"估计嵌入率: {r['est_rate']*100:.1f}%\n"
                 f"\n隐写概率: {r['stego_probability']*100:.1f}%\n"
-                f"判读: {r['verdict']}\n")
+                f"判读: {r['verdict']}\n"
+                f"{ml_line}\n")
             self._wait("分析完成")
         self._busy(work, done)
 
