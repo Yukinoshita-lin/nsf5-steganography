@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# 运行输出 / 生成物
+output/
+src/*.pyc
+
+# IDE / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 打包产物
+*.whl
+*.tar.gzimg/_smoke.png
