@@ -21,6 +21,8 @@ import steganalysis as SA
 import image_io as IO
 from efficiency import plot_code_family_and_efficiency, OUTPUT_DIR
 from ml_predict import get_predictor
+import matrix_demo as MD
+import scan_panel as SP
 
 
 def _rgb(img: np.ndarray):
@@ -106,15 +108,20 @@ class App:
         # 绘图
         gf = ttk.Frame(f); gf.grid(row=7, column=0, columnspan=2, sticky="ew", pady=4)
         ttk.Button(gf, text="生成码族与效率图", command=self._plot).pack(fill="x")
+        gf2 = ttk.Frame(f); gf2.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(0, 2))
+        ttk.Button(gf2, text="矩阵编码演示", command=self._demo_matrix
+                   ).pack(side="left", fill="x", expand=True, padx=(0, 2))
+        ttk.Button(gf2, text="隐写分析扫描", command=self._scan_panel
+                   ).pack(side="left", fill="x", expand=True)
 
         # 状态
         self.status = ttk.Label(f, text="状态: 就绪", foreground="#1a73e8")
-        self.status.grid(row=8, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        self.status.grid(row=9, column=0, columnspan=2, sticky="w", pady=(6, 0))
 
         # 日志
-        ttk.Label(f, text="日志:").grid(row=9, column=0, sticky="nw", pady=(6, 0))
+        ttk.Label(f, text="日志:").grid(row=10, column=0, sticky="nw", pady=(6, 0))
         self.log = tk.Text(f, height=9, state="disabled", wrap="word")
-        self.log.grid(row=10, column=0, columnspan=2, sticky="nsew", pady=2)
+        self.log.grid(row=11, column=0, columnspan=2, sticky="nsew", pady=2)
         return f
 
     def _build_right(self, parent):
@@ -303,6 +310,150 @@ class App:
             self._wait("绘图已生成")
             self._log("码族与嵌入效率图已生成: " + path)
         self._busy(work, done)
+
+    # ------------------------------------------------------- 增强面板 1: 矩阵编码演示
+    def _demo_matrix(self):
+        top = tk.Toplevel(self.root)
+        top.title("伴随式矩阵编码演示 (syndrome 查找与系数翻转)")
+        pv, tv = tk.StringVar(value="3"), tk.StringVar(value="110")
+        top._md_pvar, top._md_tvar, top._md_x = pv, tv, MD.random_block(3)
+        top._md_cv, top._md_cell, top._md_n = None, 30, 7
+
+        bar = ttk.Frame(top, padding=6); bar.pack(fill="x")
+        ttk.Label(bar, text="参数 p:").pack(side="left")
+        cbbp = ttk.Combobox(bar, textvariable=pv, state="readonly", width=4,
+                            values=[str(i) for i in range(1, 5)])
+        cbbp.pack(side="left", padx=(2, 8))
+        cbbp.bind("<<ComboboxSelected>>", lambda *_: self._md_render(top))
+        ttk.Label(bar, text="目标伴随式 m:").pack(side="left")
+        ttk.Entry(bar, textvariable=tv, width=9).pack(side="left", padx=2)
+        ttk.Button(bar, text="随机块", command=lambda: self._md_random(top)
+                   ).pack(side="left", padx=6)
+        ttk.Button(bar, text="执行修改", command=lambda: self._md_flip(top)
+                   ).pack(side="left", padx=2)
+        ttk.Label(top, text=" (点击像素格可手动翻转 0/1)", foreground="#888").pack(padx=8, pady=(0, 2))
+        top._md_info = ttk.Label(top, text="", justify="left", foreground="#1a73e8", padding=(8, 2))
+        top._md_info.pack(fill="x", padx=4)
+        self._md_render(top)
+        _ = pv, tv
+        return top
+
+    def _md_random(self, top):
+        p = int(top._md_pvar.get())
+        top._md_x = MD.random_block(p)
+        self._md_render(top)
+
+    def _md_flip(self, top):
+        try:
+            r = MD.demo_step(int(top._md_pvar.get()), top._md_x, top._md_tvar.get().strip())
+        except Exception as e:
+            top._md_info.configure(text="参数错误: " + str(e)); return
+        if r["modified"] and r["valid_col"]:
+            top._md_x[r["col"]] ^= 1
+        self._md_render(top)
+
+    def _md_click(self, top, ev):
+        i = (int(ev.x) - 4) // top._md_cell
+        if 0 <= i < top._md_n:
+            top._md_x[i] ^= 1
+            self._md_render(top)
+
+    def _md_render(self, top):
+        p, tv = int(top._md_pvar.get()), top._md_tvar.get().strip()
+        m = tv.zfill(p)[-p:] if tv else "0" * p
+        top._md_tvar.set(m)
+        try:
+            r = MD.demo_step(p, top._md_x, m)
+        except Exception as e:
+            top._md_info.configure(text="参数错误: " + str(e)); return
+        n, cell = r["n"], top._md_cell
+        top._md_n = n
+        cv = top._md_cv
+        if cv is None:
+            cv = tk.Canvas(top, width=n * cell + 8, height=98, bg="#fafafa",
+                           highlightthickness=1)
+            cv.pack(padx=8, pady=4)
+            cv.bind("<Button-1>", lambda e: self._md_click(top, e))
+            top._md_cv = cv
+        else:
+            cv.configure(width=n * cell + 8)
+        cv.delete("all")
+        hcol = r["col"] if (r["modified"] and r["valid_col"]) else None
+        for i in range(n):
+            x = i * cell + 4
+            val = int(r["x"][i])
+            fill = "#ffd54f" if i == hcol else ("#2e7d32" if val else "#eceff1")
+            tex_col = "#ffffff" if (i == hcol or val) else "#37474f"
+            cv.create_rectangle(x, 10, x + cell, 10 + cell - 6,
+                                fill=fill, outline=("#c62828" if i == hcol else "#90a4ae"),
+                                width=(3 if i == hcol else 1))
+            cv.create_text(x + cell / 2, 10 + (cell - 6) / 2, text=str(val),
+                           font=("Arial", 14, "bold"), fill=tex_col)
+            cv.create_text(x + cell / 2, 10 + cell + 2, text=str(i + 1),
+                           font=("Arial", 8), fill="#78909c")
+        if r["modified"] and r["valid_col"]:
+            info = (f"块 LSB: 当前 syndrome  s={r['s_bin']}({r['s_val']})   目标 m={r['m_bin']}({r['m_val']})\n"
+                    f"差值 d = s⊕m = {r['d_bin']} → 校验矩阵 H 命中的列 ⇒ 应翻转{r['flip_label']} "
+                    f"({r['flip_from']}→{r['flip_to']}), 图中黄格/红边框即为该系数。\n"
+                    f"点击「执行修改」翻转后 H·x 将恰好等于目标 m。")
+        else:
+            info = (f"块 LSB 当前 syndrome  s={r['s_bin']}({r['s_val']}) 已等于目标 m={r['m_bin']}({r['m_val']}), "
+                    f"该块无需任何像素改动 ✓")
+        top._md_info.configure(text=info)
+
+    # ------------------------------------------------------- 增强面板 2: 隐写分析扫描
+    def _scan_panel(self):
+        if self.cover_img is None:
+            messagebox.showwarning("提示", "请先载入一张图片再扫描"); return
+        top = tk.Toplevel(self.root)
+        top.title("隐写分析随载荷扫描")
+        bar = ttk.Frame(top, padding=6); bar.pack(fill="x")
+        ttk.Label(bar, text="最大 payload(嵌入密度):").pack(side="left")
+        maxv = tk.DoubleVar(value=0.30)
+        sc = tk.Scale(bar, from_=0.0, to=0.4, resolution=0.01, orient="horizontal",
+                      variable=maxv, length=260)
+        sc.pack(side="left", padx=6)
+        lbl = ttk.Label(bar, text="0.30"); lbl.pack(side="left")
+        ttk.Label(bar, text="  越深越容易显现隐写痕迹", foreground="#888").pack(side="left", padx=6)
+        ph_host = ttk.Label(top, text="(等待计算…)")
+        ph_host.pack(padx=8, pady=8)
+        ttk.Label(top, text="AUC 需整组正/负样本集合判定, 单张图无法给出真值; "
+                            "此处以 ML 含密概率曲线作为区分能力趋势示意。",
+                  foreground="#666").pack(pady=(0, 6))
+        pending = {"id": None}
+
+        def run(val):
+            method, p, pwd = self._params()
+            dens = np.linspace(0, val, 7)
+            ph_host.configure(text=f"计算中… 载荷 {val:.2f}({method} p={p})")
+            top.update_idletasks()
+            try:
+                res = SP.scan_curves(self.cover_img, method=method, p=p,
+                                     password=pwd, densities=dens)
+                path = os.path.join(PROJECT_DIR, "output", "scan_curves.png")
+                SP.plot_scan(res, path)
+            except Exception as e:
+                ph_host.configure(text="扫描失败: " + str(e)); return
+            try:
+                im = Image.open(path).convert("RGB")
+                im.thumbnail((int(self.root.winfo_screenwidth() * 0.92),
+                              int(self.root.winfo_screenheight() * 0.5)))
+                ph = ImageTk.PhotoImage(im)
+                ph_host.configure(image=ph, text="")
+                ph_host.image = ph
+            except Exception as e:
+                ph_host.configure(text="绘图失败: " + str(e))
+
+        def refresh(*_a):
+            val = round(maxv.get(), 2)
+            lbl.configure(text=f"{val:.2f}")
+            if pending["id"] is not None:
+                top.after_cancel(pending["id"])
+            pending["id"] = top.after(350, lambda: run(val))
+
+        sc.configure(command=refresh)
+        refresh()
+        return top
 
 
 def main():

@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yushitayuri/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.2.2-blue)
+![version](https://img.shields.io/badge/version-1.3.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 
@@ -277,6 +277,13 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
+- **v1.3.0**
+  - 新增**矩阵编码演示**面板（GUI）：随机/可点击块 LSB，实时计算伴随式 `s`
+    与目标 `m` 的差值 `d`，在汉明校验矩阵 `H` 中定位命中的列并**高亮被改系数**，
+    执行修改后校验 `H·x==m`。核心逻辑独立于 `src/matrix_demo.py`。
+  - 新增**隐写分析随载荷扫描**面板：`payload` 滑条 0→0.4，逐档重新嵌入并实时刷新
+    卡方 p 值 / RS 估计嵌入率 / ML 含密概率三曲线
+    （单图无真 AUC，以 ML 概率作区分趋势示意）。逻辑位于 `src/scan_panel.py`。
 - **v1.2.2**
   - GPU 数据集支持 **jpg/tif 等多格式混合**（`gpu/make_imageset.py`），去掉默认 150 张上限、默认全量；
     用加入 DIP4E tif 后的 **682 张 / 3410 样本** 重训。
