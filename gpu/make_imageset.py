@@ -42,11 +42,15 @@ def center_crop(a: np.ndarray, size: int) -> np.ndarray:
     return a[..., y0:y0 + size, x0:x0 + size]
 
 
-def main(photo_dir: str = PHOTO_DIR, n_photos: int = 150):
-    photos = sorted(glob.glob(os.path.join(photo_dir, "*.jpg")))[:n_photos]
+def main(photo_dir: str = PHOTO_DIR, n_photos: int = 0):
+    exts = ("*.jpg", "*.jpeg", "*.png", "*.bmp", "*.tif", "*.tiff")
+    photos = sorted({os.path.normcase(p) for ext in exts
+                     for p in glob.glob(os.path.join(photo_dir, ext))})
+    if n_photos > 0:
+        photos = photos[:n_photos]
     if not photos:
-        print(f"未在 {photo_dir} 找到 jpg"); return
-    print(f"{len(photos)} 张照片, 嵌入尺寸 {FULL}x{FULL}, 裁剪 {IMG}x{IMG}")
+        print(f"未在 {photo_dir} 找到图像"); return
+    print(f"{len(photos)} 张照片(含 jpg/tif 等), 嵌入尺寸 {FULL}x{FULL}, 裁剪 {IMG}x{IMG}")
 
     xs, ys, ids, metas = [], [], [], []
     t0 = time.perf_counter()
@@ -86,5 +90,5 @@ def main(photo_dir: str = PHOTO_DIR, n_photos: int = 150):
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:]]
     d = args[0] if len(args) > 0 else PHOTO_DIR
-    n = int(args[1]) if len(args) > 1 else 150
+    n = int(args[1]) if len(args) > 1 else 0
     main(d, n)

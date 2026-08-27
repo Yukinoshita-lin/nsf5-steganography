@@ -35,3 +35,7 @@ _tpl/
 gpu/data/*.npz
 gpu/data/pr_*.png
 gpu/data/_*.py
+
+# 训练模型产物 (二进制, 可重新训练)
+models/*.joblib
+*.joblib

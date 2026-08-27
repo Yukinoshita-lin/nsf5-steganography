@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nsf5stego"
-version = "1.2.1"
+version = "1.2.2"
 description = "nsF5 steganography tool: syndrome matrix coding (Hamming) + wet-paper coding + image-hash keying + blind steganalysis + GUI"
 readme = "README.md"
 requires-python = ">=3.9"

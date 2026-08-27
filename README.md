@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yushitayuri/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.2.0-blue)
+![version](https://img.shields.io/badge/version-1.2.2-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 
@@ -239,11 +239,17 @@ python gpu\train_ml_gpu.py            # 输出 models\steg_classifier_gpu.joblib
 python gpu\predict_gpu.py <图像> [<图像>...]
 ```
 
-### 实测 (RTX 4060 Laptop / 2070 样本)
+### 实测 (RTX 4060 Laptop, 按数据集区分)
 
-- **特征提取**：2070 张 512² 灰度 约 **5s（≈410 img/s）**，GPU 利用率峰值 **99% / 平均 75%**。
-- **检测性能**：验证 **AUC≈0.79**；按档检出率（Youden 阈值）——
-  `matrix p3`≈99%、`nsF5 p2`(强)≈89–93%、弱 `nsF5 p3`≈64%、干净误报可控。
+AUC 随源图像**泛化难度**不同，故分数据集报告：
+
+- **数据集 A — 自然校园照片（414 张 jpg / 2070 样本）**：特征 2070 张 512² 灰度
+  约 **5s（≈410 img/s）**，GPU 利用率峰值 **99% / 平均 75%**；验证 **AUC≈0.79**，
+  按档检出率（Youden 阈值）——`matrix p3`≈99%、`nsF5 p2`(强)≈89–93%、弱 `nsF5 p3`≈64%、干净误报可控。
+- **数据集 B — 混合图像（414 jpg + 268 tif = 682 张 / 3410 样本）**：加入 DIP4E
+  教材字母/图表等**非照片** tif 后跨界泛化难度上升，特征 3410 张约 **10s（≈327 img/s）**，
+  验证 **AUC≈0.767**；`matrix p3 d0.50` 检出≈78%、`nsF5 p2`（d0.50/d0.95）≈74–77%、
+  弱 `nsF5 p3 d0.30`≈48%、干净误报≈29%。
 - **一致性**：`python gpu\featurize_gpu.py` 自检，GPU 与 CPU 参考特征逐项一致
   （RS 到 bit 级、浮点 ~1e-7）。
 
@@ -271,6 +277,16 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
+- **v1.2.2**
+  - GPU 数据集支持 **jpg/tif 等多格式混合**（`gpu/make_imageset.py`），去掉默认 150 张上限、默认全量；
+    用加入 DIP4E tif 后的 **682 张 / 3410 样本** 重训。
+  - README 检测指标**按数据集区分**（自然照片 A：AUC≈0.79 / 含 tif 混合 B：AUC≈0.767）；
+    模型为二进制、不入库，与 PyPI 上 ver1.2.1 明确区分。
+- **v1.2.1**
+  - 修复仅 1 个有效灰度对的强二值图（`letterA/B/T.tif`）隐写分析 `lgamma(0)` 崩溃，返回中性 p 值。
+  - 新增 C++ `nsf5_permute` 确定性置乱加速：4096² 置乱 524ms→210ms、整体嵌入约 540→281ms；
+    DLL 缺失自动回退同算法 Python，编码/解码两端序列恒定可逆。
+  - GUI 绘图预览崩溃修复，并按屏幕尺寸 1:1 高质量展示。
 - **v1.2.0**
   - 新增 **GPU 版**（`gpu/`）：PyTorch 批量向量化复刻 11 维统计特征（RS/卡方/熵/前缀 p，
     与 CPU 参考实现 bit 级一致），GPU 提取 2070 张特征 ≈5s、利用率峰值 99%。
