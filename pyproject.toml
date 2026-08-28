@@ -28,4 +28,5 @@ nsf5stego = "gui:main"
 [tool.setuptools]
 package-dir = { "" = "src" }
 py-modules = ["ns5_core", "steganalysis", "efficiency", "image_io", "gui",
-              "cppembed", "fsfeatures", "ml_predict", "make_dataset", "train_model"]
+              "cppembed", "fsfeatures", "ml_predict", "make_dataset", "train_model",
+              "matrix_demo", "scan_panel"]
