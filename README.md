@@ -1,6 +1,6 @@
 # nsF5 图像隐写工具 (Steganography)
 
-![CI](https://github.com/Yushitayuri/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
 ![version](https://img.shields.io/badge/version-1.3.0-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
