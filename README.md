@@ -1,9 +1,10 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.3.0-blue)
+![version](https://img.shields.io/badge/version-1.5.0-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14851234.svg)](https://doi.org/10.5281/zenodo.14851234)
 
 针对 **8bit 灰度/彩色图像** 的隐写研究工具，实现了基于**伴随式矩阵编码（二元汉明码）** 的
 nsF5 隐写算法，并附带**盲隐写分析**、**图像哈希键控**与**码族/嵌入效率可视化**。
@@ -27,6 +28,15 @@ Python 同算法，嵌入/解码两端序列恒定可逆）。
 | **ML 隐写分类器(双版本)** | 143d 稳健版(默认) + 53d 可解释版,详见下文"双版本部署策略" |
 | **绘图** | 绘制码族(嵌入率 α vs 载荷)理论曲线 与 实测嵌入效率对比 |
 | **GUI** | 载入图 → 嵌入/解码 → 分析 → 绘图 一体化界面 |
+
+## 学习手册
+
+项目提供**中英文双语学习手册 (PDF)**，从零基础开始，12 周学完整个项目:
+
+- 🇨🇳 [`docs/学习手册-从零读懂nsF5隐写项目.pdf`](docs/学习手册-从零读懂nsF5隐写项目.pdf) — 中文版, 94 页
+- 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 80 pages
+
+涵盖: 数字图像基础 → Python 入门 → LSB 隐写 → 卡方/RS 分析 → 汉明矩阵编码 → F5/nsF5 → 湿纸编码 → 哈希键控 → 机器学习基础 → v1/v2 特征工程 → SRM 滤波 → 143d/53d 双版本模型 → C++/GPU 加速 → 综合实验。每章配有"动手做"实验与"想一想"思考题, 适合本科毕设自学。
 
 ### 模型双版本(2026-09-06)
 
@@ -607,7 +617,15 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.4.0 (待发布) — 双版本 ML 模型**
+- **v1.5.0 (当前) — 学习手册发布 + Zenodo DOI**
+  - 发布中英文学习手册(PDF)至 `docs/`:
+    - `docs/学习手册-从零读懂nsF5隐写项目.pdf` (中文, 12 周学习路线, 94 页)
+    - `docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf` (英文, 12 周 roadmap, 80 页)
+  - 涵盖 v1.4.0 全部新特性: 143d/53d 双版本 ML 模型、SRM 高通滤波、特征可解释性分析
+  - 零基础: 从"像素与二进制"到"LGB 分类器超参调优"的完整学习路径
+  - 新增 Zenodo 存档 DOI 徽章
+
+- **v1.4.0 — 双版本 ML 模型**
   - **143d 默认版**(`stego_classifier.joblib`) — LGB tuned
     (`num_leaves=31, n_estimators=800, learning_rate=0.03, min_child_samples=10`)
     - Held-out AUC **0.8946**,8 split 平均 **0.9085**
