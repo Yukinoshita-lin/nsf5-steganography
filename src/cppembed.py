@@ -52,6 +52,57 @@ def _is_matrix(method: str) -> bool:
     return isinstance(method, str) and method.lower().startswith("matrix")
 
 
+def _is_lsb(method: str) -> bool:
+    return isinstance(method, str) and method.lower() in ("lsb", "lsb_direct", "lsb-replace")
+
+
+def _embed_lsb_direct(image: np.ndarray, bits: np.ndarray) -> tuple[np.ndarray, int]:
+    """直接 LSB 替换: 把 image 的 LSB 写成 bits 序列 (uint8 0/1)。
+    与 nsF5 共享"头部 + 正文 + 16位长度头" 的比特流结构, 但不需要 cover_hash 同步.
+    返回 (stego, changed_px_count).
+    """
+    img0 = np.ascontiguousarray(image).astype(np.uint8)
+    stego = img0.copy()
+    if stego.ndim == 3:
+        ch = stego[..., 0].reshape(-1)
+    else:
+        ch = stego.reshape(-1)
+    n = min(bits.size, ch.size)
+    # 旧 LSB
+    old = ch[:n] & 1
+    flip = bits[:n].astype(np.uint8) ^ old
+    ch[:n] = (ch[:n] & 0xFE) | bits[:n].astype(np.uint8)
+    return stego, int(flip.sum())
+
+
+def _lsb_extract_bits(image: np.ndarray, offset: int, nbits: int) -> np.ndarray:
+    """从 image[offset:offset+nbits] 的 LSB 位平面抽出 nbits 个 0/1 (MSB-first in output).
+    注意: 我们存的是"每像素一个 bit"流, 不是字节流, 所以不能用 unpackbits 字节展开.
+    """
+    img0 = np.ascontiguousarray(image).astype(np.uint8)
+    if img0.ndim == 3:
+        ch = img0[..., 0].reshape(-1)
+    else:
+        ch = img0.reshape(-1)
+    bits = (ch[offset:offset + nbits] & 1).astype(np.uint8)
+    return bits
+
+
+def _extract_lsb_direct(image: np.ndarray, _body_bytes_ignored: int = 0):
+    """读出正文 (依赖 16 位长度头)."""
+    if image.ndim == 3:
+        ch = image[..., 0].reshape(-1)
+    else:
+        ch = image.reshape(-1)
+    head_bits = _lsb_extract_bits(image, 0, 16)
+    n_bytes = int(head_bits.dot(1 << np.arange(15, -1, -1)))
+    body_bits = _lsb_extract_bits(image, 16, n_bytes * 8)
+    out = bytearray()
+    for i in range(0, n_bytes * 8, 8):
+        out.append(int(body_bits[i:i + 8].dot(1 << np.arange(7, -1, -1))))
+    return bytes(out)
+
+
 def _fast_perm(total: int, seed: int) -> np.ndarray:
     """向量化置换 (numpy C 实现, ~87x 快于 Python Fisher-Yates)。
     仅用于数据集批量化: 置换顺序不同, 但嵌入仍自洽(无需解码), 生成真实 stego 图。"""
@@ -82,6 +133,27 @@ def embed_string(image, text: str, method: str = "nsF5", p: int = 3,
     img_bytes = img0.tobytes()
     cover_hash = hashlib.sha256(img_bytes).digest()[:COVER_HASH_BYTES]
     head_arr = np.unpackbits(np.frombuffer(cover_hash, np.uint8))
+
+    if _is_lsb(method):
+        # 直接 LSB 替换: 无块结构, 无 cover_hash 同步.
+        # 16 位长度头 + 实际正文 (text 的 ASCII 字节, 8 bit/字节, 末尾 pad 到 8).
+        N_h = 16
+        if total <= N_h + 8:
+            raise ValueError("图像太小, 无法容纳头部+正文")
+        # 正文 = text.encode 的 unpackbits (不带 16 位长头)
+        body_bits_raw = np.unpackbits(np.frombuffer(text.encode("ascii"), dtype=np.uint8))
+        n_body_bytes = body_bits_raw.size // 8 if body_bits_raw.size % 8 == 0 else body_bits_raw.size // 8 + 1
+        body_full = np.pad(body_bits_raw, (0, (-body_bits_raw.size) % 8))
+        head_full = np.array([(n_body_bytes >> (15 - k)) & 1 for k in range(16)], dtype=np.uint8)
+        full_bits = np.concatenate([head_full, body_full])
+        stego, _changed = _embed_lsb_direct(stego, full_bits)
+        changed = int(np.sum(stego != img0))
+        if check:
+            body_back = _extract_lsb_direct(stego, 0)
+            if body_back.decode("ascii", errors="replace") != text:
+                raise RuntimeError(f"LSB 嵌入回环校验失败: decode != text")
+        report = dict(cover_hash=cover_hash.hex(), head_bits=N_h, cover_changed=changed)
+        return stego, report, int(body_bits_raw.size)
 
     hdr_blocks = max(2, int(np.ceil((COVER_HASH_BYTES * 8) / p)))
     N_h = hdr_blocks * n

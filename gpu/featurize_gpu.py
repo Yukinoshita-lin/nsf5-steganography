@@ -17,6 +17,10 @@ from __future__ import annotations
 import os, sys
 import numpy as np
 
+SRM_SRC = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
+if SRM_SRC not in sys.path:
+    sys.path.insert(0, SRM_SRC)
+
 FEAT_NAMES = ["Rm", "Sm", "Rn", "Sn", "RS_Gr", "RS_Gn",
               "chi2_pvalue", "diff_entropy", "lsb_diff_entropy",
               "median_prefix_p", "chi2_stat"]
@@ -129,8 +133,13 @@ def _features_batch(xt):
     return cols
 
 
-def extract_features_gpu(x_u8, chunk: int = 128, device: str = "auto"):
-    """x_u8: (N,H,W) uint8 灰度。返回 (N,11) float64 特征。"""
+def extract_features_gpu(x_u8, chunk: int = 128, device: str = "auto", use_srm: bool = True,
+                         srm_chunk: int = 64):
+    """x_u8: (N,H,W) uint8 灰度。返回 (N,11) float64 特征。
+
+    use_srm=True → 先做 SRM 高通滤波预处理(合成单通道增强图), 再提特征。
+    srm_chunk    → SRM 预处理的子批大小(30 核 conv 内存敏感)。
+    """
     import torch
     dev = pick_gpu() if device == "auto" else device
     if x_u8.ndim == 3 and x_u8.shape[-1] in (3, 4):
@@ -139,7 +148,11 @@ def extract_features_gpu(x_u8, chunk: int = 128, device: str = "auto"):
     N = x_u8.shape[0]
     cols = [[] for _ in FEAT_NAMES]
     for s in range(0, N, chunk):
-        xt = torch.from_numpy(x_u8[s:s + chunk].astype(np.int64)).to(dev)
+        sub = x_u8[s:s + chunk]
+        if use_srm:
+            from srm_filter import preprocess_batch_torch
+            sub = preprocess_batch_torch(sub, device=dev)   # (b,H,W) uint8
+        xt = torch.from_numpy(sub.astype(np.int64)).to(dev)
         c = _features_batch(xt)
         for j in range(len(cols)):
             cols[j].append(np.asarray(c[j]))
@@ -151,7 +164,7 @@ def check_vs_cpu(x_u8, tol: float = 1e-5):
     """抽取一张对照: GPU 特征 vs src/steganalysis 的 RS/熵, fsfeatures 接口同名。"""
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
     import steganalysis as SA
-    g = extract_features_gpu(x_u8[:1], chunk=1)[0]
+    g = extract_features_gpu(x_u8[:1], chunk=1, use_srm=False)[0]
     img = x_u8[0]
     rs = SA.rs_metrics(img)
     h = SA.diff_entropy(img)
@@ -185,4 +198,8 @@ if __name__ == "__main__":
     rng = np.random.default_rng(0)
     im = rng.integers(0, 256, (256, 256), dtype=np.uint8)
     ok = check_vs_cpu(im[None])
+    # SRM 路径冒烟: CPU 设备上也应能生成 11 维特征
+    g_srm = extract_features_gpu(np.stack([im, im]), chunk=1, device="cpu", use_srm=True)
+    print("  [SRM] use_srm=True 产出 shape:", g_srm.shape,
+          "行非全零:", np.isfinite(g_srm).all())
     sys.exit(0 if ok else 1)
