@@ -17,7 +17,10 @@ Colab 中直接打开即可运行，也可以在本机 Jupyter/JupyterLab 中打
 | 第 4 章 矩阵嵌入与 F5 | `notebooks/04_matrix_embedding.ipynb` | [Open in Colab](https://colab.research.google.com/github/Yukinoshita-lin/nsf5-steganography/blob/main/notebooks/04_matrix_embedding.ipynb) |
 | 第 5 章 nsF5 与湿纸 | `notebooks/05_nsf5_wet_paper.ipynb` | [Open in Colab](https://colab.research.google.com/github/Yukinoshita-lin/nsf5-steganography/blob/main/notebooks/05_nsf5_wet_paper.ipynb) |
 | 第 6 章 哈希键控 | `notebooks/06_hash_keying.ipynb` | [Open in Colab](https://colab.research.google.com/github/Yukinoshita-lin/nsf5-steganography/blob/main/notebooks/06_hash_keying.ipynb) |
+| 第 7 章 ML 基础 | `notebooks/07_ml_foundations.ipynb` | [Open in Colab](https://colab.research.google.com/github/Yukinoshita-lin/nsf5-steganography/blob/main/notebooks/07_ml_foundations.ipynb) |
 | 第 8 章 ML 隐写检测 | `notebooks/08_ml_steganalysis.ipynb` | [Open in Colab](https://colab.research.google.com/github/Yukinoshita-lin/nsf5-steganography/blob/main/notebooks/08_ml_steganalysis.ipynb) |
+| 第 9 章 工程化 | `notebooks/09_engineering.ipynb` | [Open in Colab](https://colab.research.google.com/github/Yukinoshita-lin/nsf5-steganography/blob/main/notebooks/09_engineering.ipynb) |
+| 第 10 章 综合实战 | `notebooks/10_capstone.ipynb` | [Open in Colab](https://colab.research.google.com/github/Yukinoshita-lin/nsf5-steganography/blob/main/notebooks/10_capstone.ipynb) |
 
 本地重新生成：
 

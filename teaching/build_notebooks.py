@@ -320,6 +320,147 @@ def chapter08():
     return nb(md, code)
 
 
+def chapter07():
+    md = [
+        "# 第 7 章 · 机器学习基础（二分类、交叉验证、AUC）\n\n"
+        "对应学习手册第 7 章。本章以隐写检测为例讲清四个概念：样本/特征/标签、"
+        "逻辑回归与损失、GroupKFold 防泄漏、ROC/AUC 与阈值。",
+        "## 7.1 玩具二分类\n\n"
+        "用合成簇演示：模型学到的本质是“把两类分开的决策边界”。",
+        "## 7.2 为什么同源分组重要\n\n"
+        "同一张照片的 clean/stego 变体高度相似；随机切分会让验证集“泄题”。"
+        "这里用虚构组做随机切分与分组切分对比。",
+        "## 7.3 ROC / AUC\n\n"
+        "曲线与阈值无关地衡量排序能力；Youden 阈值再把它变成 0/1 判定。",
+    ]
+    code = [
+        SETUP_CODE,
+        "from sklearn.datasets import make_classification\n"
+        "from sklearn.linear_model import LogisticRegression\n"
+        "from sklearn.model_selection import cross_val_score\n"
+        "from sklearn.metrics import roc_auc_score, roc_curve\n"
+        "import numpy as np\n"
+        "\n"
+        "X, y = make_classification(n_samples=600, n_features=8, n_informative=5,\n"
+        "                           n_redundant=2, random_state=0)\n"
+        "clf = LogisticRegression(max_iter=2000)\n"
+        "aucs = cross_val_score(clf, X, y, cv=5, scoring='roc_auc')\n"
+        "print('5-fold AUC: %.3f +/- %.3f' % (aucs.mean(), aucs.std()))",
+        "# 演示：随机切分 vs 按组切分（虚构 photo_id）\n"
+        "rng = np.random.default_rng(0)\n"
+        "photo_id = np.repeat(np.arange(150), 4)          # 每张照片 4 个相似样本\n"
+        "X2, y2 = make_classification(n_samples=600, n_features=8, random_state=1)\n"
+        "# 让同一 photo 的样本互相复制特征 -> 同源泄漏时指标会虚高\n"
+        "X2 = X2.copy()\n"
+        "for pid in range(150):\n"
+        "    mask = photo_id == pid\n"
+        "    X2[mask] += rng.normal(0, 0.05, size=X2[mask].shape)  # 同源接近\n"
+        "from sklearn.model_selection import GroupKFold, KFold\n"
+        "print('random split AUC: %.3f' % np.mean(cross_val_score(clf, X2, y2, cv=KFold(5), scoring='roc_auc')))\n"
+        "print('grouped  AUC: %.3f' % np.mean(cross_val_score(clf, X2, y2, cv=GroupKFold(5), groups=photo_id, scoring='roc_auc')))",
+        "proba = clf.fit(X, y).predict_proba(X)[:, 1]\n"
+        "fpr, tpr, th = roc_curve(y, proba)\n"
+        "j = tpr - fpr\n"
+        "best = th[np.argmax(j)]\n"
+        "print('AUC=%.3f Youden threshold=%.3f' % (roc_auc_score(y, proba), best))\n"
+        "print('随机切分指标虚高是典型的数据泄漏信号——真实实验必须按 photo_id 分组。')",
+    ]
+    return nb(md, code)
+
+
+def chapter09():
+    md = [
+        "# 第 9 章 · 工程化：跨平台加速、自校验与数据管线\n\n"
+        "对应学习手册第 9 章。本 Notebook 不依赖 Windows DLL："
+        "纯 Python 特征回退保证在 Colab/Linux 可运行。",
+        "## 9.1 确定性置换\n\n"
+        "同种子同排列；Python 与 C++ 实现必须一致，否则嵌入/解码不可逆。",
+        "## 9.2 纯 Python 特征与 v2 143 维\n\n"
+        "缺少 DLL 时自动回退 `py_features`，可继续提取特征与调用双版本模型。",
+        "## 9.3 数据管线认知\n\n"
+        "数据集生成是多进程/多源流水线；此处用接口与文档快速核对。",
+    ]
+    code = [
+        SETUP_CODE,
+        "import time\n"
+        "from ns5_core import permute_index\n"
+        "import numpy as np\n"
+        "p1 = permute_index(100_000, seed=7)\n"
+        "p2 = permute_index(100_000, seed=7)\n"
+        "print('deterministic:', np.array_equal(p1, p2))\n"
+        "t0 = time.time(); permute_index(1_000_000, seed=1); print('1M permute %.3fs' % (time.time() - t0))",
+        "import numpy as np\n"
+        "from py_features import features\n"
+        "from featurize_v2 import featurize_v2\n"
+        "img = np.random.default_rng(0).integers(0, 256, (256, 256), dtype=np.uint8)\n"
+        "f11 = features(img)\n"
+        "v143 = featurize_v2(img)\n"
+        "print('11-D:', len(f11), '143-D:', v143.shape)",
+        "import subprocess, sys\n"
+        "r = subprocess.run([sys.executable, 'src/test_steg.py'], capture_output=True, text=True)\n"
+        "print(r.stdout[-800:])",
+        "# 工程清单自查（阅读手册第 9 章后逐条核对）\n"
+        "checks = {\n"
+        "    'run_e2e 端到端': True,\n"
+        "    'test_core / test_steg': True,\n"
+        "    'permute 同种子同排列': True,\n"
+        "    'py_features 回退可用': True,\n"
+        "    'GPU 自检（有 CUDA 时）': False,\n"
+        "}\n"
+        "print(checks)",
+    ]
+    return nb(md, code)
+
+
+def chapter10():
+    md = [
+        "# 第 10 章 · 综合实战：从“读懂”到“做出来”\n\n"
+        "对应学习手册第 10 章。这是一个工作台 Notebook：建议你把它当作实验记录本，"
+        "选一个方向（复现/功能扩展/教学演示），边做边填。",
+        "## 10.1 起点：确认往返链路\n\n"
+        "先跑通“嵌入 → 解码 → 分析”，作为一切改动的回归基线。",
+        "## 10.2 三个可选方向\n\n"
+        "A. 复现并批判验证；B. 功能扩展（UTF-8、彩色通道、新特征）；"
+        "C. 把矩阵演示包装成小测验/动画。",
+        "## 10.3 实验记录模板\n\n"
+        "记录环境、命令、参数、原始输出与结论——这是最终报告的一半。",
+    ]
+    code = [
+        SETUP_CODE,
+        "import image_io as IO\n"
+        "from ns5_core import embed_string, extract_string\n"
+        "import steganalysis as SA\n"
+        "img = IO.load_as_gray('img/cover.png')\n"
+        "stego, report, _ = embed_string(img, 'capstone baseline', method='nsF5', p=3)\n"
+        "assert extract_string(stego, method='nsF5', p=3) == 'capstone baseline'\n"
+        "print('baseline round trip OK; changed', report['cover_changed'], 'pixels')",
+        "# 实验记录模板 —— 请在每个实验前复制一块并填写\n"
+        "log = {\n"
+        "    'date': '2026-09-07',\n"
+        "    'goal': '',\n"
+        "    'method': 'nsF5',\n"
+        "    'params': {'p': 3, 'density': None},\n"
+        "    'command': '',\n"
+        "    'raw_output': '',\n"
+        "    'conclusion': '',\n"
+        "}\n"
+        "print('log template ready:', log)",
+        "# 方向 B 出发点：了解现有 ASCII 编码结构（UTF-8 扩展从这里改）\n"
+        "import inspect\n"
+        "from ns5_core import encode_string\n"
+        "print(inspect.getsource(encode_string))",
+        "# 方向 A 出发点：复现码族/效率图（Matplotlib 版本可用时）\n"
+        "import subprocess, sys\n"
+        "cmd = [sys.executable, '-c',\n"
+        "       \"import sys; sys.path.insert(0,'src'); \"\n"
+        "       \"from efficiency import plot_code_family_and_efficiency; \"\n"
+        "       \"print(plot_code_family_and_efficiency(p_max=6, save_path='capstone_efficiency.png'))\"]\n"
+        "r = subprocess.run(cmd, capture_output=True, text=True)\n"
+        "print(r.stdout[-400:] or r.stderr[-400:])",
+    ]
+    return nb(md, code)
+
+
 NOTEBOOKS = {
     "01_bits_and_pixels.ipynb": chapter01,
     "02_python_toolchain.ipynb": chapter02,
@@ -327,7 +468,10 @@ NOTEBOOKS = {
     "04_matrix_embedding.ipynb": chapter04,
     "05_nsf5_wet_paper.ipynb": chapter05,
     "06_hash_keying.ipynb": chapter06,
+    "07_ml_foundations.ipynb": chapter07,
     "08_ml_steganalysis.ipynb": chapter08,
+    "09_engineering.ipynb": chapter09,
+    "10_capstone.ipynb": chapter10,
 }
 
 

@@ -12,14 +12,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   verify) with speed control and stop; GUI smoke test covers the animation.
 - Per-chapter Colab/Jupyter notebooks (`notebooks/`): bits & pixels, Python
   toolchain, LSB + steganalysis, matrix embedding, nsF5 + wet paper, hash
-  keying, ML steganalysis. Each notebook self-clones the repo and auto-installs
-  dependencies.
+  keying, ML foundations, ML steganalysis, engineering, capstone. Each notebook
+  self-clones the repo and auto-installs dependencies.
 - `src/py_features.py` - pure-Python 11-D feature extractor; `featurize_v2.py`
   and `ml_predict.py` fall back to it when the Windows C++ DLL is unavailable,
   so Colab/Linux/Docker can run feature extraction and trained-model inference.
 - `scripts/download_datasets.py` - one-click BOSSbase 1.01 downloader.
 - `docker/Dockerfile` + `docker-compose.yml` - JupyterLab teaching image
   (Linux; algorithm self-tests pass during build).
+- `.github/workflows/docker.yml` - CI that builds the teaching image and smoke-
+  tests algorithm tests plus the pure-Python feature fallback inside it.
 - `teaching/web/` - bilingual Jupyter Book scaffolding (zh/en) with a
   DOCX->Markdown converter (`teaching/web/docx2md.py`) and GitHub Pages
   workflow building both books into one site.

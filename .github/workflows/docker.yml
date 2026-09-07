@@ -1,0 +1,37 @@
+name: Docker teaching image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docker/**"
+      - "docker-compose.yml"
+      - "src/**"
+      - "teaching/**"
+      - "notebooks/**"
+  workflow_dispatch:
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false
+          tags: nsf5stego-teaching:test
+      - name: Algorithm tests inside the image
+        run: |
+          docker run --rm nsf5stego-teaching:test python src/test_core.py
+          docker run --rm nsf5stego-teaching:test python src/test_steg.py
+      - name: Pure-Python feature fallback smoke inside the image
+        run: |
+          docker run --rm nsf5stego-teaching:test python -c \
+            "import sys, numpy as np; sys.path.insert(0,'src'); \
+             from py_features import features; from featurize_v2 import featurize_v2; \
+             a=np.random.default_rng(0).integers(0,256,(128,128),dtype=np.uint8); \
+             assert len(features(a)) == 11; assert featurize_v2(a).shape == (143,); \
+             print('docker teaching smoke OK')"
