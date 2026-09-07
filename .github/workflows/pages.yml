@@ -60,4 +60,4 @@ jobs:
     needs: build
     if: ${{ always() && needs.build.result == 'success' }}
     steps:
-      - run: echo "Handbook site deployed: ${{ needs.build.outputs.page_url }}"
+      - run: 'echo "Handbook site deployed: ${{ needs.build.outputs.page_url }}"'
