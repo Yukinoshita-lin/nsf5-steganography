@@ -9,10 +9,11 @@
 针对 **8bit 灰度/彩色图像** 的隐写研究工具，实现了基于**伴随式矩阵编码（二元汉明码）** 的
 nsF5 隐写算法，并附带**盲隐写分析**、**图像哈希键控**与**码族/嵌入效率可视化**。
 
-项目位于 `F:\Steganography`，核心为纯 Python（依赖 `numpy`/`Pillow`，GUI 使用标准库 `tkinter`）；
-另提供 **C++ 加速库**（`cpp/fsfeatures.dll` 特征提取、`cpp/nsf5embed.dll` 嵌入热路径 + 确定性置乱
-`nsf5_permute`，MinGW 编译，跨语言校验与 Python 一致性一致；置乱在 DLL 缺失时自动回退到
-Python 同算法，嵌入/解码两端序列恒定可逆）。
+项目核心为纯 Python（依赖 `numpy`/`Pillow`，GUI 使用标准库 `tkinter`），可在
+**Windows / Linux / macOS / Colab** 直接运行。另提供 **Windows C++ 加速库**
+（`cpp/fsfeatures.dll` 特征提取、`cpp/nsf5embed.dll` 嵌入热路径 + 确定性置乱
+`nsf5_permute`）；DLL 缺失时（如 Linux/macOS）自动回退到同算法纯 Python 实现：
+嵌入/解码仍可逆、11-D/143-D 特征与双版本 ML 模型均可使用。
 
 ---
 
@@ -68,16 +69,22 @@ r = pred.predict(image)
 
 ## 安装与运行
 
-### 方式 A：从源码运行
+### 方式 A：从源码运行（Windows / Linux / macOS 通用）
 
 ```bash
-cd F:\Steganography
-pip install numpy pillow
-python src\gui.py
+git clone https://github.com/Yukinoshita-lin/nsf5-steganography.git
+cd nsf5-steganography
+python3 -m venv .venv
+source .venv/bin/activate          # Linux / macOS
+# Windows: .venv\Scripts\activate
+python -m pip install -e .         # 或只装 numpy pillow
+python src/gui.py                  # 图形界面（需要 tkinter）
 ```
 
-> 若系统默认 `python` 未带 tkinter，可用带 tkinter 的解释器（如 `C:\Python314\python.exe`）：
-> `C:\Python314\python.exe src\gui.py`
+> **跨平台说明**：Linux/macOS 无需任何 Windows DLL——`fsfeatures`、`cppembed`、
+> `featurize_v2` 与 `ml_predict` 在检测不到 `cpp/*.dll` 时自动使用纯 Python
+> 实现；仅 GUI 需要系统自带 tkinter（Ubuntu/Debian：`sudo apt install python3-tk`）。
+> 也可用仓库根目录的 `Makefile`：`make test`、`make e2e`、`make notebooks`。
 
 ### 方式 B：安装打包的模块（wheel）
 
@@ -88,19 +95,19 @@ python src\gui.py
 python -m build
 
 # 安装 wheel（核心模块：ns5_core / steganalysis / gui 等）
-pip install dist\nsf5stego-1.1.0-py3-none-any.whl
+pip install dist/nsf5stego-1.5.0-py3-none-any.whl
 ```
 
-> 注意：wheel 仅含纯 Python 核心；`cpp/` 下的 Windows DLL（特征提取/嵌入加速）随仓库源码发布，
-> 运行 GUI/离线使用仍需项目源码目录内的 `cpp/`。
+> 注意：wheel 仅含纯 Python 核心；`cpp/` 下的 Windows DLL 仅作可选加速，缺失时
+> 自动回退纯 Python（Linux/macOS 同理）。
 
 ### 运行测试
 
 ```bash
-python src\test_core.py    # 核心算法自测（嵌入/解码 + 汉明矩阵 + 湿纸 + 口令）
-python src\test_steg.py    # 盲隐写分析自测（区分 干净/含密 图）
-python src\run_e2e.py      # 端到端验证（嵌入→保存→解码→分析→绘图）
-python src\test_gui.py     # GUI 冒烟测试（构建窗口/载入/预览）
+python src/test_core.py    # 核心算法自测（嵌入/解码 + 汉明矩阵 + 湿纸 + 口令）
+python src/test_steg.py    # 盲隐写分析自测（区分 干净/含密 图）
+python src/run_e2e.py      # 端到端验证（嵌入→保存→解码→分析→绘图）
+python src/test_gui.py     # GUI 冒烟测试（构建窗口/载入/预览）
 ```
 
 ---

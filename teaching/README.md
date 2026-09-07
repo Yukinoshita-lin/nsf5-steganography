@@ -1,8 +1,27 @@
 # nsF5 Steganography - Teaching Project
 
-让 F:\Steganography 从“研究工具”变成可开箱即用的**教学项目**：
+让 nsf5-steganography 从“研究工具”变成可开箱即用的**教学项目**：
 GUI 教学面板带自动动画、按章节提供 Colab/Jupyter Notebook、数据集一键下载、
 Docker 教学镜像，网页版双语手册（Jupyter Book + GitHub Pages）正在建设中。
+
+## 0) 跨平台快速开始（Linux / macOS / Windows）
+
+项目核心算法、特征提取与双版本 ML 模型均为纯 Python 回退实现，**不依赖 Windows
+DLL**，Linux/macOS/Colab 可直接运行：
+
+```bash
+git clone https://github.com/Yukinoshita-lin/nsf5-steganography.git
+cd nsf5-steganography
+python3 -m venv .venv && source .venv/bin/activate
+python -m pip install -e .
+make test        # 核心 + 隐写分析 + 误报 + 纯 Python 特征
+make e2e         # 端到端演示
+make notebooks   # 重新生成 10 个章节 Notebook
+```
+
+Windows 使用 `.venv\Scripts\activate`；GUI 需要系统 tkinter（Ubuntu/Debian：
+`sudo apt install python3-tk`）。三个平台的算法与特征回退由
+`.github/workflows/cross-platform.yml` 持续验证。
 
 ## 1) 按章节 Notebook（Colab 一键运行）
 

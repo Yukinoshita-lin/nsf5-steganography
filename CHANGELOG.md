@@ -7,6 +7,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Cross-platform (Linux/macOS/Windows) support:
+  - `fsfeatures.get_lib()` falls back to pure-Python 11-D features when the
+    Windows DLL is missing;
+  - `cppembed.embed_string()` falls back to the pure-Python embedder when
+    `cpp/nsf5embed.dll` is unavailable;
+  - root `Makefile` with `install/test/e2e/notebooks/dataset/web` targets;
+  - `.github/workflows/cross-platform.yml` CI matrix (Ubuntu/macOS/Windows)
+    runs algorithm tests and both feature/embedding fallbacks.
 - GUI teaching animation: "matrix coding demo" panel now supports
   **auto-play** (random block -> highlight matched syndrome column -> flip ->
   verify) with speed control and stop; GUI smoke test covers the animation.

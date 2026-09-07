@@ -49,7 +49,13 @@ _lib = None
 def get_lib():
     global _lib
     if _lib is None:
-        _lib = FSFeatures()
+        try:
+            _lib = FSFeatures()
+        except Exception:
+            # Windows DLL is unavailable (Linux/macOS/Colab): use the pure-Python
+            # feature extractor, which exposes the same dict interface.
+            from py_features import features as _py_features
+            _lib = type("PyFeatures", (), {"features": staticmethod(_py_features)})()
     return _lib
 
 

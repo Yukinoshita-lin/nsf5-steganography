@@ -19,6 +19,8 @@ DLL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
                         "cpp", "nsf5embed.dll")
 
 _lib = None
+_cpp_available = None
+
 def _get_lib():
     global _lib
     if _lib is None:
@@ -33,6 +35,18 @@ def _get_lib():
         ]
         fn.restype = None
     return _lib
+
+
+def _cpp_ok() -> bool:
+    """Whether the C++ embedding DLL can be loaded (checked once)."""
+    global _cpp_available
+    if _cpp_available is None:
+        try:
+            _get_lib()
+            _cpp_available = True
+        except Exception:
+            _cpp_available = False
+    return _cpp_available
 
 
 def _run(c_flat: np.ndarray, blocks, bits: np.ndarray, n: int, p: int, method_flag: int):
@@ -113,6 +127,11 @@ def embed_string(image, text: str, method: str = "nsF5", p: int = 3,
                  password: str = "", check: bool = True, fast_permute: bool = False):
     """以 C++ 嵌入, 返回 (stego, report, nbits)。nbits=正文比特数(含16位头)。
     fast_permute=True 用向量化置换加速(见 _fast_perm), 仅供批量生成, 配合 check=False。"""
+    if not _is_lsb(method) and not _cpp_ok():
+        # DLL 缺失 (Linux/macOS/Colab): 自动回退到同算法纯 Python 实现。
+        from ns5_core import embed_string as _py_embed
+        return _py_embed(np.ascontiguousarray(image).astype(np.uint8), text,
+                         method=method, p=p, password=password)
     if fast_permute:
         permute = _fast_perm
     else:
