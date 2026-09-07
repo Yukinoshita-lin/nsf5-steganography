@@ -122,15 +122,20 @@ def chapter02():
     code = [
         SETUP_CODE,
         "import subprocess, sys\n"
-        "print(subprocess.run([sys.executable, 'src/test_core.py'], capture_output=True, text=True).stdout)",
-        "print(subprocess.run([sys.executable, 'src/test_steg.py'], capture_output=True, text=True).stdout)",
+        "r = subprocess.run([sys.executable, 'src/test_core.py'], capture_output=True,\n"
+        "                   text=True, encoding='utf-8', errors='replace')\n"
+        "print((r.stdout or '')[-1500:])",
+        "r = subprocess.run([sys.executable, 'src/test_steg.py'], capture_output=True,\n"
+        "                   text=True, encoding='utf-8', errors='replace')\n"
+        "print((r.stdout or '')[-1500:])",
         "import image_io as IO\n"
         "img = IO.load_as_gray('img/cover.png')\n"
         "print('cover:', img.shape, img.dtype, float(img.mean()))\n"
         "IO.save_image(img, 'my_copy.png')",
         "import subprocess, sys\n"
-        "r = subprocess.run([sys.executable, 'src/run_e2e.py'], capture_output=True, text=True)\n"
-        "print(r.stdout[-2000:])",
+        "r = subprocess.run([sys.executable, 'src/run_e2e.py'], capture_output=True,\n"
+        "                   text=True, encoding='utf-8', errors='replace')\n"
+        "print((r.stdout or r.stderr or '')[-2000:])",
     ]
     return nb(md, code)
 
@@ -255,7 +260,11 @@ def chapter06():
         "tampered = stego.copy()\n"
         "tampered[0, 0] ^= 1\n"
         "print('hash changed:', get_image_hash(stego)[:16] != get_image_hash(tampered)[:16])\n"
-        "print('decode after tamper:', repr(extract_string(tampered, method='nsF5', p=3, password='A')))",
+        "try:\n"
+        "    print('decode after tamper:', repr(\n"
+        "        extract_string(tampered, method='nsF5', p=3, password='A')))\n"
+        "except Exception as e:\n"
+        "    print('decode after tamper failed (expected):', type(e).__name__, str(e)[:80])",
     ]
     return nb(md, code)
 
@@ -315,7 +324,9 @@ def chapter08():
         "    model_path='models/stego_classifier_v2_jpeg_lgb_51d.joblib',\n"
         "    clip_outliers=False)\n"
         "if pred_53.available:\n"
-        "    print('53d stego prob: %.3f' % pred_53.predict(stego[0])['probability'])",
+        "    r53 = pred_53.predict(stego[0])\n"
+        "    print('53d available:', True, 'stego prob:', r53['probability'])\n"
+        "    print('53d verdict:', r53['verdict'])",
     ]
     return nb(md, code)
 
@@ -397,8 +408,9 @@ def chapter09():
         "v143 = featurize_v2(img)\n"
         "print('11-D:', len(f11), '143-D:', v143.shape)",
         "import subprocess, sys\n"
-        "r = subprocess.run([sys.executable, 'src/test_steg.py'], capture_output=True, text=True)\n"
-        "print(r.stdout[-800:])",
+        "r = subprocess.run([sys.executable, 'src/test_steg.py'], capture_output=True,\n"
+        "                   text=True, encoding='utf-8', errors='replace')\n"
+        "print((r.stdout or '')[-800:])",
         "# 工程清单自查（阅读手册第 9 章后逐条核对）\n"
         "checks = {\n"
         "    'run_e2e 端到端': True,\n"
@@ -455,8 +467,9 @@ def chapter10():
         "       \"import sys; sys.path.insert(0,'src'); \"\n"
         "       \"from efficiency import plot_code_family_and_efficiency; \"\n"
         "       \"print(plot_code_family_and_efficiency(p_max=6, save_path='capstone_efficiency.png'))\"]\n"
-        "r = subprocess.run(cmd, capture_output=True, text=True)\n"
-        "print(r.stdout[-400:] or r.stderr[-400:])",
+        "r = subprocess.run(cmd, capture_output=True, text=True,\n"
+        "                   encoding='utf-8', errors='replace')\n"
+        "print((r.stdout or r.stderr or '')[-400:])",
     ]
     return nb(md, code)
 

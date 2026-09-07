@@ -13,7 +13,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Per-chapter Colab/Jupyter notebooks (`notebooks/`): bits & pixels, Python
   toolchain, LSB + steganalysis, matrix embedding, nsF5 + wet paper, hash
   keying, ML foundations, ML steganalysis, engineering, capstone. Each notebook
-  self-clones the repo and auto-installs dependencies.
+  self-clones the repo and auto-installs dependencies. All ten notebooks are
+  executed end-to-end in a local kernel (10/10 pass).
+- `src/ml_predict.py` - 53-D interpretable model inference support (selects the
+  53 feature columns from the 143-D extractor).
 - `src/py_features.py` - pure-Python 11-D feature extractor; `featurize_v2.py`
   and `ml_predict.py` fall back to it when the Windows C++ DLL is unavailable,
   so Colab/Linux/Docker can run feature extraction and trained-model inference.

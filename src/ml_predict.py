@@ -110,6 +110,17 @@ class MLPredictor:
         elif len(feats_model) == 143:
             from featurize_v2 import featurize_v2
             x = featurize_v2(a).reshape(1, -1)
+        elif len(feats_model) == 53:
+            # 53-D interpretable model = 143-D minus the 90 SRM statistics.
+            import featurize_v2 as F2
+            x143 = F2.featurize_v2(a).reshape(1, -1)
+            names = F2.ALL_FEATURE_NAMES
+            idx = [names.index(name) for name in feats_model if name in names]
+            if len(idx) != len(feats_model):
+                return {"probability": None,
+                        "verdict": f"53d 模型特征名与 v2 特征集不匹配 ({len(idx)}/{len(feats_model)})",
+                        "threshold": None}
+            x = x143[:, idx]
         else:
             return {"probability": None, "verdict": f"模型特征数 {len(feats_model)} 暂不支持", "threshold": None}
         if self.clip_outliers and self._clip_stats is not None and len(feats_model) > 11:
