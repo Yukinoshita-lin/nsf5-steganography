@@ -1,7 +1,9 @@
 # Introduction - How to Use This Handbook
 
 <!-- lang-switch -->
-> [🌐 中文版](../../zh/content/intro.md)
+> [🌐 中文版](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html)
+
+
 
 
 **This is a handbook that teaches through code.** It does not replace a textbook or the project thesis. Instead, it arranges the information-hiding and machine-learning ideas behind F:\Steganography in an order a beginner can actually follow: intuition and examples first, then the project implementation, then hands-on experiments.

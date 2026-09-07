@@ -1,7 +1,9 @@
 # 附录 E · 推荐资源
 
 <!-- lang-switch -->
-> [🌐 English version](../../en/content/appE.md)
+> [🌐 English version](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/appE.html)
+
+
 
 
 ## 书籍（中文先入门）

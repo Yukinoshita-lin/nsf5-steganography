@@ -1,7 +1,9 @@
 # Appendix E - Recommended Resources
 
 <!-- lang-switch -->
-> [🌐 中文版](../../zh/content/appE.md)
+> [🌐 中文版](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/appE.html)
+
+
 
 
 ## Books

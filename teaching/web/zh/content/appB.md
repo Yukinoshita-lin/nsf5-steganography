@@ -1,7 +1,9 @@
 # 附录 B · 常用命令速查
 
 <!-- lang-switch -->
-> [🌐 English version](../../en/content/appB.md)
+> [🌐 English version](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/appB.html)
+
+
 
 
 以下命令均在项目根目录 F:\Steganography 下执行。

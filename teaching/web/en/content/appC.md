@@ -1,7 +1,9 @@
 # Appendix C - 12-Week Checklist
 
 <!-- lang-switch -->
-> [🌐 中文版](../../zh/content/appC.md)
+> [🌐 中文版](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/appC.html)
+
+
 
 
 | **Week** | **Topic** | **Required action** | **Date** |

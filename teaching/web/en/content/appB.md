@@ -1,7 +1,9 @@
 # Appendix B - Command Cheat Sheet
 
 <!-- lang-switch -->
-> [🌐 中文版](../../zh/content/appB.md)
+> [🌐 中文版](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/appB.html)
+
+
 
 
 Run from the project root F:\Steganography.

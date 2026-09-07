@@ -1,7 +1,9 @@
 # 附录 C · 12 周打卡检查表
 
 <!-- lang-switch -->
-> [🌐 English version](../../en/content/appC.md)
+> [🌐 English version](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/appC.html)
+
+
 
 
 每完成一项就在日期列写下当天日期。两周内完成一章不丢人，跳过动手实验才丢。

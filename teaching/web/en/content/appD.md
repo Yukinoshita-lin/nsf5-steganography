@@ -1,7 +1,9 @@
 # Appendix D - Concept-to-Code Map
 
 <!-- lang-switch -->
-> [🌐 中文版](../../zh/content/appD.md)
+> [🌐 中文版](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/appD.html)
+
+
 
 
 | **Concept** | **File** | **Read first** |

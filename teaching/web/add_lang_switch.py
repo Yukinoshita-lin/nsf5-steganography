@@ -1,8 +1,8 @@
 """Inject a cross-language switch link into every generated handbook page.
 
-Pages live at ``/zh/content/*.html`` and ``/en/content/*.html``; from any page
-the relative link ``../../<other-lang>/content/<same-name>.html`` switches to
-the same page (chapter/appendix/intro) in the other language.
+MyST renders bare ``.md`` relative links to files outside the current book as
+an unresolved xref (a plain span), so we use absolute GitHub Pages URLs, which
+Jupyter Book reliably emits as real anchors.
 """
 
 from __future__ import annotations
@@ -13,20 +13,21 @@ ROOT = pathlib.Path(__file__).resolve().parent
 PAIRS = [("zh", "en"), ("en", "zh")]
 LABELS = {"zh": "🌐 English version", "en": "🌐 中文版"}
 MARK = "<!-- lang-switch -->"
+BASE = "https://yukinoshita-lin.github.io/nsf5-steganography"
 
 
 def inject(content_dir: pathlib.Path, other: str, label: str) -> int:
     changed = 0
     for p in sorted(content_dir.glob("*.md")):
-        text = p.read_text(encoding="utf-8")
-        if MARK in text:
-            continue
-        lines = text.splitlines(keepends=True)
+        lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
+        # drop any previous injected switch block
+        lines = [ln for ln in lines
+                 if MARK not in ln and not ln.lstrip().startswith("> [🌐")]
         for i, line in enumerate(lines):
             if line.startswith("# "):
-                link = f"../../{other}/content/{p.name}"
+                target = f"{other}/content/{p.name[:-3]}.html"
                 block = (
-                    f"\n{MARK}\n> [{label}]({link})\n\n"
+                    f"\n{MARK}\n> [{label}]({BASE}/{target})\n\n"
                 )
                 lines.insert(i + 1, block)
                 p.write_text("".join(lines), encoding="utf-8")

@@ -1,7 +1,9 @@
 # 附录 D · 概念 → 代码定位表
 
 <!-- lang-switch -->
-> [🌐 English version](../../en/content/appD.md)
+> [🌐 English version](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/appD.html)
+
+
 
 
 学习后期“忘了某概念在哪个文件”，查这张表最快。

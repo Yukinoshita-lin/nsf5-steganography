@@ -1,7 +1,9 @@
 # 附录 A · 术语中英对照
 
 <!-- lang-switch -->
-> [🌐 English version](../../en/content/appA.md)
+> [🌐 English version](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/appA.html)
+
+
 
 
 按出现顺序整理，方便随时查阅。掌握粗体项即可覆盖本手册绝大部分内容。

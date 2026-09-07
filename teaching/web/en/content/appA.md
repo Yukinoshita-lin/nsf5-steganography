@@ -1,7 +1,9 @@
 # Appendix A - Glossary
 
 <!-- lang-switch -->
-> [🌐 中文版](../../zh/content/appA.md)
+> [🌐 中文版](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/appA.html)
+
+
 
 
 Arranged roughly in reading order. Mastering the bold-faced terms covers almost everything in this handbook.

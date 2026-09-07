@@ -1,7 +1,9 @@
 # 导读 · 这本手册怎么用
 
 <!-- lang-switch -->
-> [🌐 English version](../../en/content/intro.md)
+> [🌐 English version](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
+
+
 
 
 **这是一份“跟着代码学”的手册。** 它不代替教科书，也不代替论文，而是把 F:\Steganography 项目背后的信息隐藏与机器学习知识，按零基础本科生可以 接受的顺序拆开：先用直觉和例子讲清楚“为什么”，再带你看项目里“怎么实现”， 最后让你亲手跑实验、改代码。
