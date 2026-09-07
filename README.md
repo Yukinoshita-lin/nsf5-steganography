@@ -6,6 +6,77 @@
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543629.svg)](https://doi.org/10.5281/zenodo.22543629)
 
+## English Overview
+
+**nsF5 Steganography** is an open-source teaching and research toolkit for image
+steganography and steganalysis. It implements the classic nsF5 algorithm -
+Hamming syndrome-matrix coding combined with wet paper coding - plus blind
+steganalysis (chi-square and RS), SHA-256 content keying, and supervised
+machine-learning detection with two deployable LightGBM models.
+
+The project is pure Python at its core and runs on **Windows, Linux, macOS, and
+Colab**. Optional Windows C++ DLLs accelerate feature extraction, embedding,
+and shuffling; when they are absent the code automatically falls back to
+bit-compatible pure-Python implementations, so notebooks, Docker, and cloud
+environments work out of the box.
+
+### Highlights
+
+- **Embedding / decoding** - ASCII messages hidden in 8-bit grayscale or color
+  images with password keying and self-synchronizing SHA-256 content hashing;
+- **nsF5 core** - binary Hamming codes `[n=2^p-1, k, 3]` with syndrome matrix
+  embedding, F5-style magnitude decrease, and wet paper coding (no shrinkage,
+  no retries);
+- **Blind steganalysis** - Westfeld chi-square and Fridrich RS analysis with a
+  content-aware verdict and three sensitivity modes;
+- **ML steganalysis** - 11-D statistical features (v1) and 143-D v2 features
+  (SRM residuals + prefix chi-square statistics), trained with photo-grouped
+  cross-validation; ships both a **143-D robust model** and a **53-D
+  interpretable model**;
+- **Cross-platform** - pure-Python fallbacks for features, embedding, and
+  model inference; CI verifies Ubuntu, macOS, and Windows on every change;
+- **Teaching-first** - GUI matrix-coding animation, one-click Colab/Jupyter
+  notebooks per chapter, dataset downloader, Docker/JupyterLab image, and a
+  bilingual web handbook.
+
+### Quick Start (Linux / macOS / Windows)
+
+```bash
+git clone https://github.com/Yukinoshita-lin/nsf5-steganography.git
+cd nsf5-steganography
+python3 -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+python -m pip install -e .
+
+python src/test_core.py              # algorithm self-tests
+python src/test_steg.py              # steganalysis self-tests
+python src/run_e2e.py                # full embed -> decode -> analyze demo
+python src/gui.py                    # GUI (requires tkinter)
+```
+
+Or use the bundled `Makefile`: `make install`, `make test`, `make e2e`,
+`make notebooks`, `make dataset`, `make docker`.
+
+### Learning Resources
+
+- English handbook (PDF):
+  [Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf)
+- Chinese handbook (PDF):
+  [学习手册-从零读懂nsF5隐写项目.pdf](docs/学习手册-从零读懂nsF5隐写项目.pdf)
+- Online bilingual handbook:
+  [zh](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html) ·
+  [en](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
+- Per-chapter Colab/Jupyter notebooks and Docker instructions:
+  [teaching/README.md](teaching/README.md)
+- Dataset downloader (BOSSbase 1.01):
+  `python scripts/download_datasets.py --out data/BOSSbase_1.01`
+
+### License
+
+Apache-2.0 - see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+---
+
 针对 **8bit 灰度/彩色图像** 的隐写研究工具，实现了基于**伴随式矩阵编码（二元汉明码）** 的
 nsF5 隐写算法，并附带**盲隐写分析**、**图像哈希键控**与**码族/嵌入效率可视化**。
 
