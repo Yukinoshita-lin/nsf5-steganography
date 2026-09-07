@@ -41,10 +41,10 @@ jobs:
           cat > site/index.html <<'EOF'
           <!doctype html>
           <meta charset="utf-8">
-          <meta http-equiv="refresh" content="0;url=zh/intro.html">
+          <meta http-equiv="refresh" content="0;url=zh/content/intro.html">
           <title>nsF5 Steganography - Handbook</title>
-          <p>Redirecting to the <a href="zh/intro.html">Chinese handbook</a> or the
-          <a href="en/intro.html">English handbook</a>.</p>
+          <p>Redirecting to the <a href="zh/content/intro.html">Chinese handbook</a>
+          or the <a href="en/content/intro.html">English handbook</a>.</p>
           EOF
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

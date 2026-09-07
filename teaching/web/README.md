@@ -41,10 +41,15 @@ Site structure:
 
 ```text
 site/
-├── index.html        # redirect to /zh/intro.html
+├── index.html        # redirect to /zh/content/intro.html
 ├── zh/               # Chinese handbook
 └── en/               # English handbook
 ```
+
+Live URLs after deployment:
+
+- Chinese: `https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html`
+- English: `https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html`
 
 Deployment note: this workflow is triggered whenever `teaching/web/**` changes.
 Enable GitHub Pages with **Source: GitHub Actions** in the repository settings.
