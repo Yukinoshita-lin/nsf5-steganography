@@ -179,7 +179,7 @@ def extract_image(doc_part, run, asset_dir, idx):
 
 def slugify(text: str, idx: int, lang: str, is_appendix=False):
     if is_appendix:
-        m = re.search(r"([A-E])", text)
+        m = re.search(r"(?:附录|Appendix)\s*([A-E])", text)
         return f"app{m.group(1)}" if m else f"app{idx}"
     m = re.search(r"(?:第\s*)?(?:Chapter\s*)?(\d+)", text)
     return f"ch{int(m.group(1)):02d}" if m else f"part{idx:02d}"
