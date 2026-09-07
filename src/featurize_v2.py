@@ -73,9 +73,9 @@ def _prefix20_p(img_u8: np.ndarray) -> np.ndarray:
         if df <= 0:
             out[k - 1] = 0.0
             continue
-        # 用同款不完全伽马
-        from scipy.stats import chi2
-        out[k - 1] = float(chi2.sf(stat, df))
+        # 复用 steganalysis 自实现的不完全伽马（避免 scipy 依赖）
+        from steganalysis import chi2_sf
+        out[k - 1] = float(chi2_sf(stat, df))
     return out
 
 
@@ -107,11 +107,19 @@ def _srm_stats(x_u8: np.ndarray, T: float = 4.0) -> np.ndarray:
     return np.concatenate([mu, am, sd]).astype(np.float32)
 
 
+def _base11(img_u8: np.ndarray) -> dict:
+    """v1 base features with a pure-Python fallback (no Windows DLL needed)."""
+    try:
+        return get_lib().features(img_u8)
+    except Exception:
+        from py_features import features as py_features_fn
+        return py_features_fn(img_u8)
+
+
 # ---- 单图主入口 ----
 def featurize_v2(img_u8: np.ndarray, T: float = 4.0) -> np.ndarray:
     """单张图 (H,W) uint8 -> (143,) 特征向量。"""
-    lib = get_lib()
-    base = lib.features(img_u8)
+    base = _base11(img_u8)
     base_v = np.array([base[k] for k in BASE_11], dtype=np.float64)
     srm_v = _srm_stats(img_u8, T).astype(np.float64)
     pf_v = _prefix20_p(img_u8).astype(np.float64)

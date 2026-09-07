@@ -318,6 +318,8 @@ class App:
         pv, tv = tk.StringVar(value="3"), tk.StringVar(value="110")
         top._md_pvar, top._md_tvar, top._md_x = pv, tv, MD.random_block(3)
         top._md_cv, top._md_cell, top._md_n = None, 30, 7
+        top._md_play = {"id": None, "stop": False, "phase": "show",
+                        "delay": 1200, "step": 0}
 
         bar = ttk.Frame(top, padding=6); bar.pack(fill="x")
         ttk.Label(bar, text="参数 p:").pack(side="left")
@@ -331,12 +333,84 @@ class App:
                    ).pack(side="left", padx=6)
         ttk.Button(bar, text="执行修改", command=lambda: self._md_flip(top)
                    ).pack(side="left", padx=2)
+        # ---- auto-play animation controls (teaching mode) ----
+        anim = ttk.Frame(top); anim.pack(fill="x", padx=6)
+        ttk.Button(anim, text="\u25b6 自动演示",
+                   command=lambda: self._md_anim_play(top)
+                   ).pack(side="left")
+        ttk.Button(anim, text="\u25a0 停止",
+                   command=lambda: self._md_anim_stop(top)
+                   ).pack(side="left", padx=4)
+        ttk.Label(anim, text="速度:").pack(side="left", padx=(6, 0))
+        spd = ttk.Combobox(anim, state="readonly", width=7,
+                           values=["0.6 s", "1.2 s", "2.0 s", "3.0 s"])
+        spd.set("1.2 s")
+        spd.pack(side="left", padx=(2, 6))
+        top._md_speed = spd
+        top._md_anim_lbl = ttk.Label(anim, text="自动演示：每轮随机块 → 观察 s/m/d 与命中列 → 自动执行修改",
+                                     foreground="#1a73e8")
+        top._md_anim_lbl.pack(side="left", padx=8)
         ttk.Label(top, text=" (点击像素格可手动翻转 0/1)", foreground="#888").pack(padx=8, pady=(0, 2))
         top._md_info = ttk.Label(top, text="", justify="left", foreground="#1a73e8", padding=(8, 2))
         top._md_info.pack(fill="x", padx=4)
         self._md_render(top)
+        top.bind("<Destroy>", lambda e: self._md_anim_stop(top, destroy=True))
         _ = pv, tv
         return top
+
+    def _md_anim_delay(self, top):
+        try:
+            return int(float(str(top._md_speed.get()).split()[0]) * 1000)
+        except Exception:
+            return 1200
+
+    def _md_anim_play(self, top):
+        self._md_anim_stop(top)
+        top._md_play = {"id": None, "stop": False, "phase": "show",
+                        "delay": self._md_anim_delay(top), "step": 0}
+        self._md_anim_step(top)
+
+    def _md_anim_stop(self, top, destroy=False):
+        st = getattr(top, "_md_play", None)
+        if st and st["id"] is not None:
+            try:
+                top.after_cancel(st["id"])
+            except Exception:
+                pass
+        if st is not None:
+            st["stop"] = True
+            st["id"] = None
+        if not destroy and hasattr(top, "_md_anim_lbl"):
+            top._md_anim_lbl.configure(text="自动演示已停止（点 ▶ 继续）")
+
+    def _md_anim_step(self, top):
+        st = top._md_play
+        if st is None or st["stop"]:
+            return
+        st["delay"] = self._md_anim_delay(top)
+        if st["phase"] == "show":
+            p = int(top._md_pvar.get())
+            top._md_x = MD.random_block(p, seed=int(np.random.randint(0, 1 << 30)))
+            m = ""
+            for _ in range(8):
+                m = "".join(str(int(np.random.randint(0, 2))) for _ in range(p))
+                try:
+                    if MD.demo_step(p, top._md_x, m)["s_val"] != int(m, 2):
+                        break
+                except Exception:
+                    break
+            top._md_tvar.set(m)
+            st["step"] += 1
+            top._md_anim_lbl.configure(
+                text=f"第 {st['step']} 轮：观察当前 syndrome s 与目标 m，注意黄色高亮列")
+            self._md_render(top)
+            st["phase"] = "apply"
+            st["id"] = top.after(st["delay"], lambda: self._md_anim_step(top))
+        else:
+            self._md_flip(top)
+            top._md_anim_lbl.configure(text="已自动执行修改：H·x 与目标 m 匹配 ✓")
+            st["phase"] = "show"
+            st["id"] = top.after(st["delay"], lambda: self._md_anim_step(top))
 
     def _md_random(self, top):
         p = int(top._md_pvar.get())

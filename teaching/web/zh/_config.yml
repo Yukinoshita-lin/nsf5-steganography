@@ -1,0 +1,17 @@
+title: "从零读懂 nsF5 隐写项目"
+author: nsf5stego
+description: >-
+  信息隐藏 x 机器学习 x 工程实践：项目双语学习手册（中文版）
+execute:
+  execute_notebooks: off
+only_build_toc_files: true
+html:
+  home_page_in_navbar: false
+  use_repository_button: true
+  use_edit_page_button: false
+  comments:
+    hypothesis: false
+launch_buttons:
+  notebook_interface: jupyterlab
+repository:
+  url: https://github.com/Yukinoshita-lin/nsf5-steganography

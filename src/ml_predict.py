@@ -100,8 +100,12 @@ class MLPredictor:
         # 自动按模型 features 列数选择特征集
         feats_model = self._pkg.get("features", V1_FEAT_KEYS)
         if len(feats_model) == 11:
-            from fsfeatures import get_lib
-            feats = get_lib().features(a)
+            try:
+                from fsfeatures import get_lib
+                feats = get_lib().features(a)
+            except Exception:
+                from py_features import features as py_features_fn
+                feats = py_features_fn(a)
             x = np.array([feats[k] for k in V1_FEAT_KEYS], dtype=np.float64).reshape(1, -1)
         elif len(feats_model) == 143:
             from featurize_v2 import featurize_v2

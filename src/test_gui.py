@@ -27,8 +27,17 @@ def main():
     stego, rep, nb = embed_string(gray, "smoke test", method="nsF5", p=3)
     app._show_in(app.lbl_stego, stego)
     root.update()
+    # 教学面板冒烟: 打开矩阵编码演示并启动/停止自动演示动画
+    top = app._demo_matrix()
+    root.update()
+    app._md_anim_play(top)
+    root.update()
+    assert top._md_play["step"] == 1, "自动演示应在第一轮生成随机块"
+    app._md_anim_stop(top)
+    top.destroy()
+    root.update()
     root.destroy()
-    print("[OK] GUI 冒烟测试通过 (窗口构建/载入/预览正常)")
+    print("[OK] GUI 冒烟测试通过 (窗口构建/载入/预览/教学动画正常)")
 
 if __name__ == "__main__":
     main()

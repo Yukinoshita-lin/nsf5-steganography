@@ -1,0 +1,19 @@
+format: jb-book
+root: content/intro
+chapters:
+  - file: content/ch01
+  - file: content/ch02
+  - file: content/ch03
+  - file: content/ch04
+  - file: content/ch05
+  - file: content/ch06
+  - file: content/ch07
+  - file: content/ch08
+  - file: content/ch09
+  - file: content/ch10
+  - file: content/ch11
+  - file: content/appA
+  - file: content/appB
+  - file: content/appC
+  - file: content/appD
+  - file: content/appE

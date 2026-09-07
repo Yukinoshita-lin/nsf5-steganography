@@ -1,0 +1,18 @@
+title: "From Zero to nsF5 Steganography"
+author: nsf5stego
+description: >-
+  Information hiding x machine learning x engineering: bilingual project
+  handbook (English edition)
+execute:
+  execute_notebooks: off
+only_build_toc_files: true
+html:
+  home_page_in_navbar: false
+  use_repository_button: true
+  use_edit_page_button: false
+  comments:
+    hypothesis: false
+launch_buttons:
+  notebook_interface: jupyterlab
+repository:
+  url: https://github.com/Yukinoshita-lin/nsf5-steganography

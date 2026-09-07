@@ -1,0 +1,15 @@
+services:
+  teaching:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/workspace/notebooks
+      - ./output:/workspace/output
+    environment:
+      - JUPYTER_TOKEN=nsf5
+    command: >
+      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+      --NotebookApp.token=nsf5
