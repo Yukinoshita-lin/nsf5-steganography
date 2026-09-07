@@ -4,7 +4,7 @@
 ![version](https://img.shields.io/badge/version-1.5.0-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14851234.svg)](https://doi.org/10.5281/zenodo.14851234)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543629.svg)](https://doi.org/10.5281/zenodo.22543629)
 
 针对 **8bit 灰度/彩色图像** 的隐写研究工具，实现了基于**伴随式矩阵编码（二元汉明码）** 的
 nsF5 隐写算法，并附带**盲隐写分析**、**图像哈希键控**与**码族/嵌入效率可视化**。

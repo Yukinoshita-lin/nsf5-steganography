@@ -29,6 +29,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   DOCX->Markdown converter (`teaching/web/docx2md.py`) and GitHub Pages
   workflow building both books into one site.
 
+### Fixed
+
+- README Zenodo DOI badge pointed to an unrelated record
+  (10.5281/zenodo.14851234); corrected to the project's actual archive
+  10.5281/zenodo.22543629.
+
 ## [1.6.0] - 2026-09-07
 
 ### Added — OOD Robustness Journal Paper
