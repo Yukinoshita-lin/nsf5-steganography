@@ -45,3 +45,6 @@ site/
 ├── zh/               # Chinese handbook
 └── en/               # English handbook
 ```
+
+Deployment note: this workflow is triggered whenever `teaching/web/**` changes.
+Enable GitHub Pages with **Source: GitHub Actions** in the repository settings.
