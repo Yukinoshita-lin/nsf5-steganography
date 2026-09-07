@@ -9,6 +9,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - README: full English overview section (features, cross-platform quick start,
   learning resources and license) alongside the Chinese documentation.
+- teaching/README: bilingual version - full English teaching guide followed by
+  the Chinese section.
 - Cross-platform (Linux/macOS/Windows) support:
   - `fsfeatures.get_lib()` falls back to pure-Python 11-D features when the
     Windows DLL is missing;
