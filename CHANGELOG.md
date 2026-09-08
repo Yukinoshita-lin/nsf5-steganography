@@ -22,6 +22,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Website data-viz lab: payload scan (real project statistics on a campus
   photo) with chi-square p / RS estimate / ML probability curves synced to an
   embedding-density slider.
+- Website tests: `webapp/tests/interactive.mjs` runs the full interactive lab
+  (language toggle, LSB embed, Hamming, wet auto-play, threshold/payload
+  sliders, mobile menu) in Chrome/Edge with console-error detection.
 - README: full English overview section (features, cross-platform quick start,
   learning resources and license) alongside the Chinese documentation.
 - teaching/README: bilingual version - full English teaching guide followed by

@@ -1,0 +1,11 @@
+{
+  "name": "nsf5-webapp-interactive-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node interactive.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.50.0"
+  }
+}
