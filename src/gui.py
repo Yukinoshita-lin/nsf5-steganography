@@ -5,6 +5,7 @@ nsF5 隐写工具 —— tkinter GUI
 from __future__ import annotations
 import os
 import threading
+import queue
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import sys
@@ -44,9 +45,24 @@ class App:
         self.stego_path = None
         self.cover_img = None
         self.stego_img = None
+        # 线程安全的"主线程回调"队列: 后台线程只入队, 主线程 _poll 依次执行
+        self._queue = queue.Queue()
         self._build_ui()
         self._build_menu()
         self._bind_shortcuts()
+        self._poll()
+
+    def _poll(self):
+        try:
+            while True:
+                fn, args = self._queue.get_nowait()
+                try:
+                    fn(*args)
+                except Exception:
+                    traceback.print_exc()
+        except queue.Empty:
+            pass
+        self.root.after(50, self._poll)
 
     # ------------------------------------------------------- 窗口基础
     def _center(self, root):
@@ -264,20 +280,23 @@ class App:
         widget.image = ph
 
     def _busy(self, fn, on_done, *args, **kwargs):
-        """后台线程执行, 完成后通过 after 回主线程。带进度指示。"""
+        """后台线程执行, 结果通过队列回主线程执行 on_done (线程安全)。"""
         self._wait("处理中…")
         self.progress.start(12)
         def worker():
             try:
                 res = fn(*args, **kwargs)
-                self.root.after(0, lambda: on_done(res))
+                self._queue.put((on_done, (res,)))
             except Exception as e:
                 traceback.print_exc()
-                self.root.after(0, lambda: (self._set_out(f"出错: {e}"),
-                                            self._wait("失败")))
+                self._queue.put((self._on_busy_error, (e,)))
             finally:
-                self.root.after(0, lambda: self.progress.stop())
+                self._queue.put((self.progress.stop, ()))
         threading.Thread(target=worker, daemon=True).start()
+
+    def _on_busy_error(self, e):
+        self._set_out(f"出错: {e}")
+        self._wait("失败")
 
     def _load(self):
         path = filedialog.askopenfilename(
@@ -629,53 +648,90 @@ class App:
             messagebox.showwarning("提示", "请先载入一张图片再扫描"); return
         top = tk.Toplevel(self.root)
         top.title("隐写分析随载荷扫描")
-        bar = ttk.Frame(top, padding=6); bar.pack(fill="x")
-        ttk.Label(bar, text="最大 payload(嵌入密度):").pack(side="left")
+        # 参数行
+        bar = ttk.Frame(top, padding=8); bar.pack(fill="x")
+        ttk.Label(bar, text="算法:").pack(side="left")
+        mvar = tk.StringVar(value=self.var_method.get())
+        ttk.Combobox(bar, textvariable=mvar, state="readonly", width=14,
+                     values=["nsF5 (减幅+湿纸)", "matrix (LSB矩阵编码)"]).pack(side="left", padx=(2, 8))
+        ttk.Label(bar, text="p:").pack(side="left")
+        pvar = tk.StringVar(value=self.var_p.get())
+        ttk.Combobox(bar, textvariable=pvar, state="readonly", width=4,
+                     values=[str(i) for i in range(1, 9)]).pack(side="left", padx=(2, 8))
+        ttk.Label(bar, text="最大 payload:").pack(side="left")
         maxv = tk.DoubleVar(value=0.30)
         sc = tk.Scale(bar, from_=0.0, to=0.4, resolution=0.01, orient="horizontal",
-                      variable=maxv, length=260)
+                      variable=maxv, length=240)
         sc.pack(side="left", padx=6)
-        lbl = ttk.Label(bar, text="0.30"); lbl.pack(side="left")
-        ttk.Label(bar, text="  越深越容易显现隐写痕迹", foreground="#888").pack(side="left", padx=6)
-        ph_host = ttk.Label(top, text="(等待计算…)")
-        ph_host.pack(padx=8, pady=8)
+        vlbl = ttk.Label(bar, text="0.30"); vlbl.pack(side="left")
+        btn = ttk.Button(bar, text="重新扫描"); btn.pack(side="left", padx=8)
+        # 进度/状态
+        prog = ttk.Progressbar(top, mode="indeterminate")
+        prog.pack(fill="x", padx=8)
+        stat = ttk.Label(top, text="就绪", foreground="#1a73e8")
+        stat.pack(anchor="w", padx=8)
+        ph = ttk.Label(top, text="(等待计算…)"); ph.pack(padx=8, pady=8)
         ttk.Label(top, text="AUC 需整组正/负样本集合判定, 单张图无法给出真值; "
                             "此处以 ML 含密概率曲线作为区分能力趋势示意。",
                   foreground="#666").pack(pady=(0, 6))
-        pending = {"id": None}
+        top._sp = dict(mvar=mvar, pvar=pvar, maxv=maxv, vlbl=vlbl,
+                       prog=prog, stat=stat, ph=ph, btn=btn)
+        top._sp_id = None
 
-        def run(val):
-            method, p, pwd = self._params()
-            dens = np.linspace(0, val, 7)
-            ph_host.configure(text=f"计算中… 载荷 {val:.2f}({method} p={p})")
-            top.update_idletasks()
+        def refresh(*_a):
+            vlbl.configure(text=f"{maxv.get():.2f}")
+            if top._sp_id is not None:
+                top.after_cancel(top._sp_id)
+            top._sp_id = top.after(350, lambda: self._scan_go(top))
+        sc.configure(command=refresh)
+        btn.configure(command=lambda: (top.after_cancel(top._sp_id)
+                                       if top._sp_id is not None else None,
+                                       self._scan_go(top)))
+        refresh()
+        return top
+
+    def _scan_go(self, top):
+        cfg = top._sp
+        m = cfg["mvar"].get()
+        method = "nsF5" if m.startswith("nsF5") else "matrix"
+        p = int(cfg["pvar"].get()); pwd = self.var_pwd.get()
+        val = round(float(cfg["maxv"].get()), 2)
+        cfg["btn"].configure(state="disabled")
+        cfg["prog"].start(12)
+        cfg["stat"].configure(text=f"计算中… 载荷 0→{val:.2f} ({method} p={p})")
+
+        def work():
             try:
+                densities = np.linspace(0, val, 7)
                 res = SP.scan_curves(self.cover_img, method=method, p=p,
-                                     password=pwd, densities=dens)
+                                     password=pwd, densities=densities)
                 path = os.path.join(PROJECT_DIR, "output", "scan_curves.png")
                 SP.plot_scan(res, path)
+                return path, None
             except Exception as e:
-                ph_host.configure(text="扫描失败: " + str(e)); return
+                return None, e
+
+        def done(res):
+            cfg["prog"].stop(); cfg["btn"].configure(state="normal")
+            path, err = res
+            if path is None:
+                cfg["stat"].configure(text="扫描失败: " + str(err)); return
             try:
                 im = Image.open(path).convert("RGB")
                 im.thumbnail((int(self.root.winfo_screenwidth() * 0.92),
-                              int(self.root.winfo_screenheight() * 0.5)))
+                              int(self.root.winfo_screenheight() * 0.5)),
+                             getattr(Image, "Resampling", Image).LANCZOS)
                 ph = ImageTk.PhotoImage(im)
-                ph_host.configure(image=ph, text="")
-                ph_host.image = ph
+                cfg["ph"].configure(image=ph, text="")
+                cfg["ph"].image = ph
             except Exception as e:
-                ph_host.configure(text="绘图失败: " + str(e))
+                cfg["ph"].configure(text="绘图失败: " + str(e))
+            cfg["stat"].configure(text=f"完成 · 载荷 0→{float(cfg['maxv'].get()):.2f}  ({os.path.basename(path)})")
 
-        def refresh(*_a):
-            val = round(maxv.get(), 2)
-            lbl.configure(text=f"{val:.2f}")
-            if pending["id"] is not None:
-                top.after_cancel(pending["id"])
-            pending["id"] = top.after(350, lambda: run(val))
-
-        sc.configure(command=refresh)
-        refresh()
-        return top
+        def worker():
+            res = work()
+            self._queue.put((done, (res,)))
+        threading.Thread(target=worker, daemon=True).start()
 
 
 def main():
