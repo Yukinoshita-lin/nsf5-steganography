@@ -34,6 +34,89 @@ def _rgb(img: np.ndarray):
     return np.stack([a, a, a], axis=-1)
 
 
+class ImageViewer(ttk.Frame):
+    """可缩放的图像预览: 滚轮缩放, 拖拽平移, 双击复位。"""
+
+    def __init__(self, master, placeholder="(空)"):
+        super().__init__(master)
+        self.canvas = tk.Canvas(self, bg="#eef0f3", highlightthickness=0, borderwidth=0)
+        self.canvas.pack(fill="both", expand=True)
+        self._img = None
+        self._photo = None
+        self._zoom = 1.0
+        self._ox = 0.0
+        self._oy = 0.0
+        self._placeholder = placeholder
+        self._drag = None
+        self.canvas.bind("<MouseWheel>", self._on_wheel)
+        self.canvas.bind("<Double-Button-1>", lambda e: self._reset())
+        self.canvas.bind("<ButtonPress-1>", self._on_press)
+        self.canvas.bind("<B1-Motion>", self._on_motion)
+        self.canvas.bind("<Configure>", lambda e: self._draw())
+        self.show_placeholder(placeholder)
+
+    def set_image(self, img: np.ndarray):
+        self._img = img
+        self._zoom = 1.0
+        self._ox = self._oy = 0.0
+        self._draw()
+
+    def show_placeholder(self, text: str | None = None):
+        self._img = None
+        if text is not None:
+            self._placeholder = text
+        self._draw_placeholder()
+
+    def _draw_placeholder(self):
+        self.canvas.delete("all")
+        cw = max(1, self.canvas.winfo_width()); ch = max(1, self.canvas.winfo_height())
+        if cw < 10 or ch < 10:
+            return
+        self.canvas.create_text(cw / 2, ch / 2, text=self._placeholder,
+                                fill="#9aa5b1", font=("Arial", 11))
+
+    def _reset(self):
+        self._zoom = 1.0
+        self._ox = self._oy = 0.0
+        self._draw()
+
+    def _draw(self):
+        self.canvas.delete("all")
+        if self._img is None:
+            self._draw_placeholder(); return
+        cw = max(1, self.canvas.winfo_width()); ch = max(1, self.canvas.winfo_height())
+        if cw < 10 or ch < 10:
+            return
+        im = Image.fromarray(_rgb(self._img))
+        iw, ih = im.size
+        scale = min(cw / iw, ch / ih) * self._zoom
+        nw, nh = max(1, int(iw * scale)), max(1, int(ih * scale))
+        resample = getattr(Image, "Resampling", Image).LANCZOS
+        sim = im.resize((nw, nh), resample)
+        ph = ImageTk.PhotoImage(sim)
+        self._photo = ph
+        self.canvas.create_image(cw / 2 + self._ox, ch / 2 + self._oy, image=ph, anchor="center")
+        self.canvas.create_text(8, 8, anchor="nw", fill="#666",
+                                font=("Arial", 8),
+                                text=f"{nw}×{nh}  ({self._zoom:.1f}× · 滚轮缩放/拖拽平移)")
+
+    def _on_wheel(self, e):
+        if self._img is None:
+            return
+        self._zoom = max(0.2, min(8.0, self._zoom * (1.15 if e.delta > 0 else 1 / 1.15)))
+        self._draw()
+
+    def _on_press(self, e):
+        self._drag = (e.x, e.y)
+
+    def _on_motion(self, e):
+        if self._drag:
+            self._ox += e.x - self._drag[0]
+            self._oy += e.y - self._drag[1]
+            self._drag = (e.x, e.y)
+            self._draw()
+
+
 class App:
     def __init__(self, root: tk.Tk):
         self.root = root
@@ -228,9 +311,9 @@ class App:
         ttk.Label(f, text="原始 / 封面").grid(row=0, column=0)
         self.lbl_stego_hdr = ttk.Label(f, text="含密图")
         self.lbl_stego_hdr.grid(row=0, column=1)
-        self.lbl_cover = ttk.Label(f, text="(未载入)", anchor="center")
+        self.lbl_cover = ImageViewer(f, placeholder="(未载入)")
         self.lbl_cover.grid(row=1, column=0, sticky="nsew")
-        self.lbl_stego = ttk.Label(f, text="(未生成)", anchor="center")
+        self.lbl_stego = ImageViewer(f, placeholder="(未生成)")
         self.lbl_stego.grid(row=1, column=1, sticky="nsew")
 
         # 差异图切换
@@ -292,6 +375,8 @@ class App:
         self.status.configure(text="状态: " + t)
 
     def _show_in(self, widget: ttk.Label, image: np.ndarray):
+        if hasattr(widget, "set_image"):        # ImageViewer
+            widget.set_image(image); return
         w = widget.winfo_width()
         h = widget.winfo_height()
         if w < 40 or h < 40:
@@ -345,7 +430,7 @@ class App:
         self.stego_img = None
         self.stego = None
         self._show_in(self.lbl_cover, gray)
-        self.lbl_stego.configure(text="(未生成)")
+        self.lbl_stego.show_placeholder("(未生成)")
         self.lbl_stego_hdr.configure(text="含密图")
         self.var_diff.set(False)
         self.cb_diff.configure(state="disabled")
