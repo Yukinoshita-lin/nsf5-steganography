@@ -734,14 +734,31 @@ class App:
         threading.Thread(target=worker, daemon=True).start()
 
 
-def main():
-    root = tk.Tk()
+def _configure_theme(root: tk.Tk):
+    """统一 ttk 主题与浅色配色, 让主窗/各面板观感一致。"""
     try:
         style = ttk.Style(root)
-        if "vista" in style.theme_names():
-            style.theme_use("vista")
+        if "clam" in style.theme_names():
+            style.theme_use("clam")
+        bg = "#f5f6f8"; fg = "#1f2a37"; accent = "#1a73e8"
+        root.configure(bg=bg)
+        style.configure(".", background=bg, foreground=fg)
+        style.configure("TFrame", background=bg)
+        style.configure("TLabelframe", background=bg)
+        style.configure("TLabelframe.Label", background=bg, foreground=fg)
+        style.configure("TLabel", background=bg, foreground=fg)
+        style.configure("TButton", padding=(6, 3))
+        style.configure("TCombobox", padding=2)
+        style.configure("TNotebook", background=bg)
+        style.map("TButton",
+                  foreground=[("pressed", accent), ("active", "#0b57d0")])
     except Exception:
         pass
+
+
+def main():
+    root = tk.Tk()
+    _configure_theme(root)
     App(root)
     root.mainloop()
 
