@@ -93,15 +93,16 @@ GitHub Pages 首页已升级为**交互式双语教学网站**（不依赖手册
 
 - 🔗 主站: https://yukinoshita-lin.github.io/nsf5-steganography/
 - 🌐 语言切换: 页面右上角一键中英切换，或使用 `?lang=zh` / `?lang=en`
-- 🧪 交互实验: LSB 位平面（可抽出单层观察 + 按权重叠加还原）/ 汉明伴随式找位 /
-  湿纸干点求解(自动演示) / ML 阈值判别 / 载荷扫描（真实项目统计）
+- 🧪 交互实验: LSB 位平面（可抽出单层观察 + 按权重叠加还原）/ LSB 嵌入→解码闭环
+  + 卡方/RS 实时自检 + 改动像素掩码 / 汉明伴随式找位 / 湿纸干点求解(自动演示) /
+  ML 阈值判别 / 载荷扫描（真实项目统计）
 - 🗺 教学层次: 首页"本页导航"把整页分成动手实验/原理/学习路径/FAQ 四部分，
   每节带部分徽章，末尾附双语 FAQ 手风琴答疑
-- 🖼 可视化: 15+ 张教学示意图，覆盖 cover↔stego、位平面分层加权叠加、统计直方图、
+- 🖼 可视化: 16 张教学示意图，覆盖 cover↔stego、位平面分层加权叠加、统计直方图、
   湿纸、效率曲线、ROC 与双模型对比
 - 📚 原手册仍保留: [`/zh`](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html)
   与 [`/en`](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
-- 🧪 自动化回归: `webapp/tests/`（交互 + 桌面/移动布局检查）
+- 🧪 自动化回归: `webapp/tests/`（交互 + 桌面/移动布局检查，已接入 GitHub Actions）
 
 ---
 
@@ -120,11 +121,11 @@ GitHub Pages 首页已升级为**交互式双语教学网站**（不依赖手册
 
 ## 学习手册
 
-项目提供**中英文双语学习手册**，从零基础开始，12 周学完整个项目:
+项目提供**中英文双语学习手册**，从零基础开始，12 周快速入门；想深入可预留 6–12 个月（见手册附录 F 的完整路线）:
 
 - 🖥 网页版: [中文](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html) · [English](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
-- 🇨🇳 [`docs/学习手册-从零读懂nsF5隐写项目.pdf`](docs/学习手册-从零读懂nsF5隐写项目.pdf) — 中文版, 94 页
-- 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 80 pages
+- 🇨🇳 [`docs/学习手册-从零读懂nsF5隐写项目.pdf`](docs/学习手册-从零读懂nsF5隐写项目.pdf) — 中文版, 66 页
+- 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 72 pages
 - 📓 按章 Colab/Jupyter Notebook: 见 [`teaching/README.md`](teaching/README.md)
 - 🐳 Docker/JupyterLab 教学镜像: `docker compose up --build`
 
@@ -407,8 +408,7 @@ py src/make_dataset.py --out campus_v2 --feature-set v2 --variants all
 py src/make_dataset.py --out campus_v2_min --feature-set v2 --variants minimal  # 6 档对照
 
 # 训练 v2 143d + 4 模型 stacking (5 折 GroupKFold, 留出 25% 测)
-$env:DS_FILES = "dataset_campus_v2.csv"
-py src/train_model.py
+DS_FILES="dataset_campus_v2.csv" python src/train_model.py
 ```
 
 **严格 A/B 对比**（同一测试集照片 ID 分组，5 折 GroupKFold OOF）：
@@ -457,8 +457,7 @@ stego p5=1.30）。v2 模型在训练分布内已"过激"，JPEG 干净图即使
 py src/_add_jpeg_clean.py
 
 # 训练 (与 v2 同样的 5 折 GroupKFold + 4 模型 stacking)
-$env:DS_FILES = "dataset_campus_v2_jpeg.csv"
-py src/train_model.py
+DS_FILES="dataset_campus_v2_jpeg.csv" python src/train_model.py
 ```
 
 **v2 特征可解释性**(2026-09-06):
@@ -711,8 +710,8 @@ git tag v1.1 && git push origin main --tags
 
 - **v1.5.0 (当前) — 学习手册发布 + Zenodo DOI**
   - 发布中英文学习手册(PDF)至 `docs/`:
-    - `docs/学习手册-从零读懂nsF5隐写项目.pdf` (中文, 12 周学习路线, 94 页)
-    - `docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf` (英文, 12 周 roadmap, 80 页)
+    - `docs/学习手册-从零读懂nsF5隐写项目.pdf` (中文, 12 周快速入门路线, 深入版见附录 F, 66 页)
+    - `docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf` (英文, 12-week quick-start roadmap, deep 6–12 month track in Appendix F, 72 页)
   - 涵盖 v1.4.0 全部新特性: 143d/53d 双版本 ML 模型、SRM 高通滤波、特征可解释性分析
   - 零基础: 从"像素与二进制"到"LGB 分类器超参调优"的完整学习路径
   - 新增 Zenodo 存档 DOI 徽章
