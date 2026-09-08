@@ -54,6 +54,14 @@ await page.click("#wet-stop");
 const wetInfo = await page.textContent("#wet-info");
 if (!wetInfo.includes("m=")) errors.push("Wet demo did not run: " + wetInfo);
 
+// 5b) keyboard support on interactive canvases
+await page.focus("#ham-canvas");
+await page.keyboard.press("ArrowRight");
+await page.keyboard.press("Space");
+await page.focus("#wet-canvas");
+await page.keyboard.press("ArrowRight");
+await page.keyboard.press("Space");
+
 // 6) threshold slider
 await page.$eval("#thr-slider", (el) => {
   el.value = "200";

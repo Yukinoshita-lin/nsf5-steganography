@@ -90,6 +90,7 @@ h1 { font-size: clamp(1.9rem, 4.2vw, 3.2rem); line-height: 1.2; margin: 10px 0 1
   padding: 14px; box-shadow: var(--shadow);
 }
 .canvas-card canvas { width: 100%; height: auto; background: #fafcff; border-radius: 10px; touch-action: none; }
+.canvas-card canvas:focus { outline: 3px solid var(--teal); outline-offset: 3px; }
 .stat-line { margin-top: 8px; color: var(--blue-2); font-weight: 600; font-size: .95rem; }
 .lab-controls label { display: block; font-weight: 700; margin: 14px 0 6px; }
 .lab-controls input[type=text], .lab-controls select {

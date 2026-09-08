@@ -59,7 +59,7 @@
       <div class="lab-grid">
         <figure class="canvas-card">
           <canvas id="lsb-canvas" width="400" height="400" aria-label="Generated test image"></canvas>
-          <figcaption id="lsb-stats" class="stat-line">LSB=1 比例: 50.0% · 修改像素: 0</figcaption>
+          <figcaption id="lsb-stats" class="stat-line" aria-live="polite">LSB=1 比例: 50.0% · 修改像素: 0</figcaption>
         </figure>
         <div class="lab-controls">
           <label for="bitplane" data-i18n="lsb.bitplane">显示位平面</label>
@@ -122,7 +122,7 @@
           </ul>
         </div>
         <figure class="canvas-card">
-          <canvas id="ham-canvas" width="560" height="170" aria-label="Hamming code block"></canvas>
+          <canvas id="ham-canvas" width="560" height="170" aria-label="Hamming code block. Use arrow keys to move and space to flip a bit." tabindex="0"></canvas>
           <figcaption id="ham-caption" data-i18n="ham.caption">黄格 = 建议翻转的 LSB</figcaption>
         </figure>
       </div>
@@ -143,8 +143,8 @@
            data-src-zh="assets/wetpaper-zh.png" data-src-en="assets/wetpaper-en.png">
       <div class="lab-grid wide-lab">
         <figure class="canvas-card">
-          <canvas id="wet-canvas" width="640" height="200" aria-label="Wet paper dry-position solver"></canvas>
-          <figcaption id="wet-info" class="mono sm" role="status">s=… · m=… → solve on dry</figcaption>
+          <canvas id="wet-canvas" width="640" height="200" aria-label="Wet paper dry-position solver. Use arrow keys to move and space to toggle wet or dry." tabindex="0"></canvas>
+          <figcaption id="wet-info" class="mono sm" role="status" aria-live="polite">s=… · m=… → solve on dry</figcaption>
         </figure>
         <div class="lab-controls">
           <label data-i18n="wet.m">目标伴随式 m</label>

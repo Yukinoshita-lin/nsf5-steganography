@@ -7,6 +7,7 @@ real browser (Chrome or Edge) and checks:
 - LSB embed changes pixels
 - Hamming random/solve
 - wet-paper auto-play cycle
+- keyboard operation of Hamming and wet-paper canvases
 - decision-threshold slider
 - payload-scan slider
 - mobile menu

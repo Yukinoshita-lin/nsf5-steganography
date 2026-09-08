@@ -25,6 +25,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Website tests: `webapp/tests/interactive.mjs` runs the full interactive lab
   (language toggle, LSB embed, Hamming, wet auto-play, threshold/payload
   sliders, mobile menu) in Chrome/Edge with console-error detection.
+- Website accessibility: Hamming and wet-paper canvases are keyboard-operable
+  (arrow keys + Space) with visible focus outlines; live result captions are
+  announced via `aria-live`.
 - README: full English overview section (features, cross-platform quick start,
   learning resources and license) alongside the Chinese documentation.
 - teaching/README: bilingual version - full English teaching guide followed by

@@ -19,9 +19,11 @@ const state = {
   hamP: 3,
   hamHighlight: -1,
   hamChanged: false,
+  hamFocus: 0,
   wetVals: [130, 129, 126, 133, 128, 124, 127],
   wetForceDry: new Array(7).fill(false),
   wetChanged: new Set(),
+  wetFocus: 0,
   wetTimer: null,
   wetStop: false,
   scanData: null,
@@ -338,6 +340,12 @@ function renderWetCanvas() {
     ctx.font = "600 15px system-ui";
     if (changed) ctx.fillText("▲", x + cellW / 2, y - 6);
   }
+  const fx = startX + state.wetFocus * (cellW + gap);
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = "#2e74b5";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(fx - 3, y - 3, cellW + 6, cellH + 6);
+  ctx.setLineDash([]);
 }
 
 function wetClick(ev) {
@@ -347,10 +355,22 @@ function wetClick(ev) {
   const mx = (ev.clientX - rect.left) * scaleX;
   const idx = Math.floor((mx - 24) / (66 + 12));
   if (idx >= 0 && idx < 7) {
+    state.wetFocus = idx;
     state.wetForceDry[idx] = !state.wetForceDry[idx];
     state.wetChanged = new Set();
     renderWetCanvas();
   }
+}
+
+function wetKey(ev) {
+  if (ev.key === "ArrowRight") { state.wetFocus = (state.wetFocus + 1) % 7; ev.preventDefault(); }
+  else if (ev.key === "ArrowLeft") { state.wetFocus = (state.wetFocus - 1 + 7) % 7; ev.preventDefault(); }
+  else if (ev.key === " " || ev.key === "Enter") {
+    state.wetForceDry[state.wetFocus] = !state.wetForceDry[state.wetFocus];
+    state.wetChanged = new Set();
+    ev.preventDefault();
+  } else return;
+  renderWetCanvas();
 }
 
 /* ---------- ML threshold playground ---------- */
@@ -514,6 +534,12 @@ function renderHammingCanvas() {
     ctx.fillText(String(i + 1), x + cell / 2, y + cell + 16);
     ctx.font = "600 15px system-ui";
   }
+  const fx = 16 + state.hamFocus * (cell + 8);
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = "#2e74b5";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(fx - 4, 30, cell + 8, cell + 8);
+  ctx.setLineDash([]);
   els("ham-caption").textContent = t("ham.caption");
 }
 
@@ -526,9 +552,19 @@ function hamClick(ev) {
   const cell = Math.min(72, (canvas.width - 30) / n);
   const idx = Math.floor((mx - 16) / (cell + 8));
   if (idx >= 0 && idx < n) {
+    state.hamFocus = idx;
     state.hamX[idx] ^= 1;
     solveHamming();
   }
+}
+
+function hamKey(ev) {
+  const n = state.hamX.length;
+  if (ev.key === "ArrowRight" || ev.key === "ArrowDown") { state.hamFocus = (state.hamFocus + 1) % n; ev.preventDefault(); }
+  else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") { state.hamFocus = (state.hamFocus - 1 + n) % n; ev.preventDefault(); }
+  else if (ev.key === " " || ev.key === "Enter") { state.hamX[state.hamFocus] ^= 1; ev.preventDefault(); }
+  else return;
+  solveHamming();
 }
 
 /* ---------- roadmap ---------- */
@@ -581,12 +617,14 @@ function init() {
   els("ham-p").addEventListener("change", () => { resizeHamming(); randomHamming(); });
   els("ham-m").addEventListener("change", () => { resizeHamming(); solveHamming(); });
   els("ham-canvas").addEventListener("click", hamClick);
+  els("ham-canvas").addEventListener("keydown", hamKey);
   els("wet-random").addEventListener("click", wetRandom);
   els("wet-solve").addEventListener("click", wetSolve);
   els("wet-auto").addEventListener("click", wetAutoPlay);
   els("wet-stop").addEventListener("click", wetAutoStop);
   els("wet-m").addEventListener("change", wetSolve);
   els("wet-canvas").addEventListener("click", wetClick);
+  els("wet-canvas").addEventListener("keydown", wetKey);
   els("thr-slider").addEventListener("input", renderThreshold);
   els("pay-slider").addEventListener("input", renderScan);
   applyLang();
