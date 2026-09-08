@@ -426,41 +426,55 @@ class App:
         top.title("伴随式矩阵编码演示 (syndrome 查找与系数翻转)")
         pv, tv = tk.StringVar(value="3"), tk.StringVar(value="110")
         top._md_pvar, top._md_tvar, top._md_x = pv, tv, MD.random_block(3)
-        top._md_cv, top._md_cell, top._md_n = None, 30, 7
+        top._md_cv, top._md_hcv, top._md_cell, top._md_n = None, None, 30, 7
         top._md_play = {"id": None, "stop": False, "phase": "show",
                         "delay": 1200, "step": 0}
 
-        bar = ttk.Frame(top, padding=6); bar.pack(fill="x")
+        # 参数行
+        bar = ttk.Frame(top, padding=(8, 6)); bar.pack(fill="x")
         ttk.Label(bar, text="参数 p:").pack(side="left")
         cbbp = ttk.Combobox(bar, textvariable=pv, state="readonly", width=4,
                             values=[str(i) for i in range(1, 5)])
         cbbp.pack(side="left", padx=(2, 8))
         cbbp.bind("<<ComboboxSelected>>", lambda *_: self._md_render(top))
-        ttk.Label(bar, text="目标伴随式 m:").pack(side="left")
-        ttk.Entry(bar, textvariable=tv, width=9).pack(side="left", padx=2)
+        ttk.Label(bar, text="目标伴随式 m (二进制):").pack(side="left")
+        ttk.Entry(bar, textvariable=tv, width=10).pack(side="left", padx=2)
         ttk.Button(bar, text="随机块", command=lambda: self._md_random(top)
-                   ).pack(side="left", padx=6)
+                   ).pack(side="left", padx=8)
         ttk.Button(bar, text="执行修改", command=lambda: self._md_flip(top)
                    ).pack(side="left", padx=2)
-        # ---- auto-play animation controls (teaching mode) ----
-        anim = ttk.Frame(top); anim.pack(fill="x", padx=6)
+
+        # 动画行
+        anim = ttk.Frame(top); anim.pack(fill="x", padx=8, pady=2)
         ttk.Button(anim, text="\u25b6 自动演示",
-                   command=lambda: self._md_anim_play(top)
-                   ).pack(side="left")
+                   command=lambda: self._md_anim_play(top)).pack(side="left")
         ttk.Button(anim, text="\u25a0 停止",
-                   command=lambda: self._md_anim_stop(top)
-                   ).pack(side="left", padx=4)
+                   command=lambda: self._md_anim_stop(top)).pack(side="left", padx=4)
         ttk.Label(anim, text="速度:").pack(side="left", padx=(6, 0))
         spd = ttk.Combobox(anim, state="readonly", width=7,
                            values=["0.6 s", "1.2 s", "2.0 s", "3.0 s"])
-        spd.set("1.2 s")
-        spd.pack(side="left", padx=(2, 6))
+        spd.set("1.2 s"); spd.pack(side="left", padx=(2, 6))
         top._md_speed = spd
-        top._md_anim_lbl = ttk.Label(anim, text="自动演示：每轮随机块 → 观察 s/m/d 与命中列 → 自动执行修改",
+
+        # 主体: 左=LSB 块, 右=校验矩阵 H
+        body = ttk.Frame(top); body.pack(fill="both", expand=True, padx=8, pady=4)
+        left = ttk.Frame(body); left.pack(side="left", fill="y", padx=(0, 10))
+        ttk.Label(left, text="LSB 块 (点格子可手动翻转)").pack(anchor="w", pady=(0, 2))
+        cv = tk.Canvas(left, width=top._md_n * top._md_cell + 8, height=70,
+                       bg="#fafafa", highlightthickness=1)
+        cv.pack(); cv.bind("<Button-1>", lambda e: self._md_click(top, e))
+        top._md_cv = cv
+        right = ttk.Frame(body); right.pack(side="left", fill="both", expand=True)
+        ttk.Label(right, text="校验矩阵 H (列=像素位; 绿框=命中列)").pack(anchor="w", pady=(0, 2))
+        hcv = tk.Canvas(right, width=20 * top._md_n + 8, height=70,
+                        bg="#fafafa", highlightthickness=1)
+        hcv.pack(anchor="w"); top._md_hcv = hcv
+
+        top._md_anim_lbl = ttk.Label(top,
+                                     text="自动演示：每轮随机块 → 观察 s/m/d 与命中列 → 自动执行修改",
                                      foreground="#1a73e8")
-        top._md_anim_lbl.pack(side="left", padx=8)
-        ttk.Label(top, text=" (点击像素格可手动翻转 0/1)", foreground="#888").pack(padx=8, pady=(0, 2))
-        top._md_info = ttk.Label(top, text="", justify="left", foreground="#1a73e8", padding=(8, 2))
+        top._md_anim_lbl.pack(anchor="w", padx=8, pady=(4, 0))
+        top._md_info = ttk.Label(top, text="", justify="left", foreground="#1a73e8", padding=(8, 4))
         top._md_info.pack(fill="x", padx=4)
         self._md_render(top)
         top.bind("<Destroy>", lambda e: self._md_anim_stop(top, destroy=True))
@@ -549,39 +563,64 @@ class App:
             r = MD.demo_step(p, top._md_x, m)
         except Exception as e:
             top._md_info.configure(text="参数错误: " + str(e)); return
+        from ns5_core import build_hamming
         n, cell = r["n"], top._md_cell
         top._md_n = n
-        cv = top._md_cv
-        if cv is None:
-            cv = tk.Canvas(top, width=n * cell + 8, height=98, bg="#fafafa",
-                           highlightthickness=1)
-            cv.pack(padx=8, pady=4)
-            cv.bind("<Button-1>", lambda e: self._md_click(top, e))
-            top._md_cv = cv
-        else:
-            cv.configure(width=n * cell + 8)
-        cv.delete("all")
         hcol = r["col"] if (r["modified"] and r["valid_col"]) else None
+
+        # --- LSB 块 canvas ---
+        cv = top._md_cv
+        cv.configure(width=n * cell + 8, height=70)
+        cv.delete("all")
         for i in range(n):
             x = i * cell + 4
             val = int(r["x"][i])
-            fill = "#ffd54f" if i == hcol else ("#2e7d32" if val else "#eceff1")
-            tex_col = "#ffffff" if (i == hcol or val) else "#37474f"
-            cv.create_rectangle(x, 10, x + cell, 10 + cell - 6,
-                                fill=fill, outline=("#c62828" if i == hcol else "#90a4ae"),
-                                width=(3 if i == hcol else 1))
-            cv.create_text(x + cell / 2, 10 + (cell - 6) / 2, text=str(val),
-                           font=("Arial", 14, "bold"), fill=tex_col)
-            cv.create_text(x + cell / 2, 10 + cell + 2, text=str(i + 1),
+            is_hit = (i == hcol)
+            fill = "#ffd54f" if is_hit else ("#2e7d32" if val else "#eceff1")
+            outline = "#c62828" if is_hit else "#90a4ae"
+            cv.create_rectangle(x, 6, x + cell, 6 + cell - 8, fill=fill,
+                                outline=outline, width=(3 if is_hit else 1))
+            cv.create_text(x + cell / 2, 6 + (cell - 8) / 2, text=str(val),
+                           font=("Arial", 14, "bold"),
+                           fill=("#ffffff" if (is_hit or val) else "#37474f"))
+            cv.create_text(x + cell / 2, 6 + cell + 10, text=str(i + 1),
                            font=("Arial", 8), fill="#78909c")
+        cv.create_text(4, 6 + cell + 24, anchor="w", text="黄/红框=命中列 · 绿=1 灰=0",
+                       font=("Arial", 8), fill="#78909c")
+
+        # --- 校验矩阵 H canvas ---
+        H = build_hamming(p)
+        hcv = top._md_hcv
+        hcell = 20
+        hcw = n * hcell + 8
+        hch = p * (hcell - 2) + 30
+        hcv.configure(width=hcw, height=hch)
+        hcv.delete("all")
+        for ci in range(n):
+            for ri in range(p):
+                x = ci * hcell + 4
+                y = ri * (hcell - 2) + 4
+                v = int(H[ri, ci])
+                is_hit = (ci == hcol)
+                fill = "#ffd54f" if is_hit else ("#90caf9" if v else "#f4f4f4")
+                outline, w = ("#c62828", 2) if is_hit else ("#90a4ae", 1)
+                hcv.create_rectangle(x, y, x + hcell, y + (hcell - 2),
+                                     fill=fill, outline=outline, width=w)
+                hcv.create_text(x + hcell / 2, y + (hcell - 2) / 2, text=str(v),
+                                font=("Arial", 9, "bold"), fill=("#5d4037" if is_hit else "#37474f"))
+            x = ci * hcell + 4
+            hcv.create_text(x + hcell / 2, p * (hcell - 2) + 16, text=str(ci + 1),
+                            font=("Arial", 8), fill="#78909c")
+
+        # --- 结构化状态 ---
         if r["modified"] and r["valid_col"]:
-            info = (f"块 LSB: 当前 syndrome  s={r['s_bin']}({r['s_val']})   目标 m={r['m_bin']}({r['m_val']})\n"
-                    f"差值 d = s⊕m = {r['d_bin']} → 校验矩阵 H 命中的列 ⇒ 应翻转{r['flip_label']} "
-                    f"({r['flip_from']}→{r['flip_to']}), 图中黄格/红边框即为该系数。\n"
-                    f"点击「执行修改」翻转后 H·x 将恰好等于目标 m。")
+            info = (f"s = {r['s_bin']} ({r['s_val']})      m = {r['m_bin']} ({r['m_val']})\n"
+                    f"d = s⊕m = {r['d_bin']} ({r['d_val']})  →  H 命中第 {r['col'] + 1} 列\n"
+                    f"把第 {r['col'] + 1} 个系数 {r['flip_from']}→{r['flip_to']}；"
+                    f"翻转后 H·x′ = {r['s2_bin']} = m  ✓")
         else:
-            info = (f"块 LSB 当前 syndrome  s={r['s_bin']}({r['s_val']}) 已等于目标 m={r['m_bin']}({r['m_val']}), "
-                    f"该块无需任何像素改动 ✓")
+            info = (f"s = {r['s_bin']} ({r['s_val']})  已等于目标 m = {r['m_bin']} ({r['m_val']})\n"
+                    f"该块无需任何改动  ✓")
         top._md_info.configure(text=info)
 
     # ------------------------------------------------------- 增强面板 2: 隐写分析扫描
