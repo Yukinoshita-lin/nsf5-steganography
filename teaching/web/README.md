@@ -41,13 +41,14 @@ Site structure:
 
 ```text
 site/
-├── index.html        # redirect to /zh/content/intro.html
-├── zh/               # Chinese handbook
-└── en/               # English handbook
+├── index.html        # interactive bilingual learning lab (webapp/)
+├── zh/               # Chinese handbook (Jupyter Book)
+└── en/               # English handbook (Jupyter Book)
 ```
 
 Live URLs after deployment:
 
+- Interactive lab: `https://yukinoshita-lin.github.io/nsf5-steganography/`
 - Chinese: `https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html`
 - English: `https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html`
 
