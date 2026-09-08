@@ -88,6 +88,29 @@
         <img src="assets/histogram-pairs-zh.png" alt="Gray-level pair histogram before and after embedding"
              data-src-zh="assets/histogram-pairs-zh.png" data-src-en="assets/histogram-pairs-en.png">
       </div>
+
+      <div class="lab-grid wide-lab">
+        <figure class="canvas-card">
+          <canvas id="layer-canvas" width="300" height="300" aria-label="Bit-plane layering explorer. Use bit chips or arrow keys to move, space to toggle." tabindex="0"></canvas>
+          <figcaption id="layer-stats" class="stat-line" aria-live="polite">正在观察 bit 0（权重 ×1）· 黑白二值图</figcaption>
+        </figure>
+        <div class="lab-controls">
+          <p class="eyebrow" data-i18n="layer.eyebrow">进阶 · 位平面分层</p>
+          <h3 data-i18n="layer.title">把 8bit 图像拆成 8 层：抽出单层看，或按权重重新叠加</h3>
+          <p class="hint" data-i18n="layer.sub">点击下方位平面小块：单层模式下可抽出任意一位平面单独观察；叠加模式下可开关若干层，看加权和如何逐层逼近原图。</p>
+          <div class="btn-row" role="group" aria-label="Layer mode">
+            <button id="layer-mode-extract" class="btn primary" data-i18n="layer.extract">抽看单层</button>
+            <button id="layer-mode-restack" class="btn ghost" data-i18n="layer.restack">叠加还原</button>
+          </div>
+          <div id="layer-chips" class="plane-chips" role="group" aria-label="Bit planes"></div>
+          <p class="hint" data-i18n="layer.hint">试试：叠加模式下先关掉 bit 0、1、2，画面变“平”；把 8 层全开则精确还原原图。</p>
+        </div>
+      </div>
+      <figure class="layering-figure">
+        <img src="assets/lsb-layering-zh.png" alt="8-bit image split into 8 weighted bit planes that must be re-summed to reconstruct"
+             data-src-zh="assets/lsb-layering-zh.png" data-src-en="assets/lsb-layering-en.png">
+        <figcaption data-i18n="layer.caption">8bit 图像 = 8 个位平面按 2 的幂加权后叠加。上图：8 层各自的二值平面（×128 … ×1）；下图：按权重从最高位逐层累加，只有 8 层全加才等于原图——这就是“必须加权才能叠加”。</figcaption>
+      </figure>
     </section>
 
     <!-- ============ HAMMING DEMO ============ -->

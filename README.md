@@ -93,9 +93,9 @@ GitHub Pages 首页已升级为**交互式双语教学网站**（不依赖手册
 
 - 🔗 主站: https://yukinoshita-lin.github.io/nsf5-steganography/
 - 🌐 语言切换: 页面右上角一键中英切换，或使用 `?lang=zh` / `?lang=en`
-- 🧪 交互实验: LSB 位平面 / 汉明伴随式找位 / 湿纸干点求解(自动演示) /
-  ML 阈值判别 / 载荷扫描（真实项目统计）
-- 🖼 可视化: 15+ 张教学示意图，覆盖 cover↔stego、位平面、统计直方图、
+- 🧪 交互实验: LSB 位平面（可抽出单层观察 + 按权重叠加还原）/ 汉明伴随式找位 /
+  湿纸干点求解(自动演示) / ML 阈值判别 / 载荷扫描（真实项目统计）
+- 🖼 可视化: 15+ 张教学示意图，覆盖 cover↔stego、位平面分层加权叠加、统计直方图、
   湿纸、效率曲线、ROC 与双模型对比
 - 📚 原手册仍保留: [`/zh`](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html)
   与 [`/en`](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)

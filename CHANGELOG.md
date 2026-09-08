@@ -7,6 +7,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Bit-plane layering teaching visual (`lsb-layering-{zh,en}.png` in `webapp/assets`
+  and `img009.png` in both handbook assets): shows an 8-bit image as eight
+  stacked bit planes and proves each must be weighted by `2**k` before they can
+  be summed back into the original.
+- Website LSB experiment extension: a bit-plane layering explorer that switches
+  between **Extract plane** (pull out any single bit plane to inspect) and
+  **Restack (weighted)** (toggle planes on/off and watch the weighted sum
+  reconstruct the original), plus the new weighted-stacking figure; keyboard
+  operable and covered by the interactive test.
 - README refresh: interactive teaching-website section, updated bilingual
   handbook links, current directory tree, and cross-platform command examples.
 - Interactive bilingual learning website (`webapp/`): LSB bit-plane lab and

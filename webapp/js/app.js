@@ -27,6 +27,9 @@ const state = {
   wetTimer: null,
   wetStop: false,
   scanData: null,
+  layerMode: "extract",        // "extract" (single plane) | "stack" (weighted sum)
+  layerOn: new Array(8).fill(true),  // index k = bit k (bit 0 at index 0)
+  layerFocus: 0,
 };
 
 const els = (id) => document.getElementById(id);
@@ -49,6 +52,8 @@ function applyLang() {
   renderWet();
   renderThreshold();
   renderScan();
+  renderLayerChips();
+  renderLayerCanvas();
 }
 
 /* ---------- image generation ---------- */
@@ -138,6 +143,98 @@ function refreshLsbStats() {
   els("lsb-stats").textContent = t("stats")
     .replace("{p}", (ones / (n * n) * 100).toFixed(1) + "%")
     .replace("{c}", String(state.embedChanged || 0));
+}
+
+/* ---------- LSB bit-plane layering explorer ---------- */
+const BIT_WEIGHTS = [1, 2, 4, 8, 16, 32, 64, 128];
+
+function renderLayerChips() {
+  const box = els("layer-chips");
+  box.innerHTML = "";
+  for (let bit = 7; bit >= 0; bit--) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "plane-chip";
+    chip.dataset.bit = String(bit);
+    const on = state.layerMode === "extract" ? bit === state.layerFocus
+      : state.layerOn[bit];
+    const label = bit === 0 ? t("layer.lsb").replace("{w}", "×1")
+      : "bit " + bit + " ×" + BIT_WEIGHTS[bit];
+    chip.textContent = label;
+    if (on) chip.classList.add("on");
+    chip.addEventListener("click", () => layerPickBit(bit));
+    box.appendChild(chip);
+  }
+}
+
+function layerPickBit(bit) {
+  if (state.layerMode === "extract") {
+    state.layerFocus = bit;
+  } else {
+    state.layerOn[bit] = !state.layerOn[bit];
+  }
+  renderLayerChips();
+  renderLayerCanvas();
+}
+
+function renderLayerCanvas() {
+  const canvas = els("layer-canvas");
+  const n = state.size;
+  const src = state.stego || state.cover;
+  const out = new Uint8Array(n * n);
+  let err2 = 0; // mean squared error vs original gray, only meaningful in stack mode
+  if (state.layerMode === "extract") {
+    const bit = state.layerFocus;
+    for (let i = 0; i < n * n; i++) out[i] = ((src[i] >> bit) & 1) * 255;
+    els("layer-stats").textContent = t("layer.statExtract")
+      .replace("{b}", String(bit)).replace("{w}", "×" + BIT_WEIGHTS[bit]);
+  } else {
+    let acc = 0; // cumulative weight of enabled planes, for the caption
+    for (let bit = 0; bit < 8; bit++) {
+      if (!state.layerOn[bit]) continue;
+      acc += BIT_WEIGHTS[bit];
+      for (let i = 0; i < n * n; i++) out[i] += ((src[i] >> bit) & 1) * BIT_WEIGHTS[bit];
+    }
+    if (state.layerOn.reduce((a, b) => a + b, 0) === 8) {
+      els("layer-stats").textContent = t("layer.statFull").replace("{w}", String(acc));
+    } else {
+      for (let i = 0; i < n * n; i++) {
+        const d = out[i] - src[i];
+        err2 += d * d;
+      }
+      err2 = Math.sqrt(err2 / (n * n));
+      els("layer-stats").textContent = t("layer.statStack")
+        .replace("{w}", String(acc)).replace("{e}", err2.toFixed(1));
+    }
+  }
+  drawGray(canvas, out);
+}
+
+function setLayerMode(mode) {
+  state.layerMode = mode;
+  if (mode === "stack" && state.layerOn.reduce((a, b) => a + b, 0) === 0) {
+    state.layerOn = new Array(8).fill(true); // avoid an all-off empty image
+  }
+  const ex = els("layer-mode-extract");
+  const st = els("layer-mode-restack");
+  ex.classList.toggle("primary", mode === "extract");
+  ex.classList.toggle("ghost", mode !== "extract");
+  st.classList.toggle("primary", mode === "stack");
+  st.classList.toggle("ghost", mode !== "stack");
+  renderLayerChips();
+  renderLayerCanvas();
+}
+
+function layerKey(ev) {
+  if (ev.key === "ArrowRight") { state.layerFocus = Math.min(state.layerFocus + 1, 7); ev.preventDefault(); }
+  else if (ev.key === "ArrowLeft") { state.layerFocus = Math.max(state.layerFocus - 1, 0); ev.preventDefault(); }
+  else if (ev.key === " " || ev.key === "Enter") {
+    if (state.layerMode === "extract") state.layerFocus = (state.layerFocus + 1) % 8;
+    else state.layerOn[state.layerFocus] = !state.layerOn[state.layerFocus];
+    ev.preventDefault();
+  } else return;
+  renderLayerChips();
+  renderLayerCanvas();
 }
 
 /* ---------- Hamming demo ---------- */
@@ -612,6 +709,9 @@ function init() {
   els("lsb-embed").addEventListener("click", embedMessage);
   els("lsb-reset").addEventListener("click", resetDemo);
   els("bitplane").addEventListener("input", redrawLsb);
+  els("layer-mode-extract").addEventListener("click", () => setLayerMode("extract"));
+  els("layer-mode-restack").addEventListener("click", () => setLayerMode("stack"));
+  els("layer-canvas").addEventListener("keydown", layerKey);
   els("ham-random").addEventListener("click", randomHamming);
   els("ham-solve").addEventListener("click", solveHamming);
   els("ham-p").addEventListener("change", () => { resizeHamming(); randomHamming(); });

@@ -65,6 +65,71 @@ def lsb_planes():
     plt.close(fig)
 
 
+def lsb_layering(lang):
+    """The 8-bit image as 8 stacked bit planes; each must be weighted by 2**k.
+
+    Top row: original + the eight individual planes (MSB .. LSB).
+    Bottom row: the *weighted* cumulative reconstruction, plane 7 down to 0 --
+    it only equals the original once every plane is added, which is exactly why
+    the layers must be weighted (× 2**k) before they can be summed.
+    """
+    img = demo_image(150)
+    planes = [((img >> k) & 1) * 255 for k in range(7, -1, -1)]  # k = 7 .. 0
+    weights = [128, 64, 32, 16, 8, 4, 2, 1]
+    acc = np.zeros(img.shape, dtype=np.float64)
+    recs = []
+    for k in range(7, -1, -1):
+        acc += ((img >> k) & 1) * (2 ** k)
+        recs.append(acc.copy())
+    recs = [np.clip(r / 255.0, 0, 1) for r in recs]
+
+    fig, axes = plt.subplots(2, 9, figsize=(16.2, 6.4))
+    fig.subplots_adjust(wspace=0.06, hspace=0.34, left=0.008, right=0.995,
+                        top=0.90, bottom=0.04)
+
+    # --- top row: original, then plane 7 .. plane 0 ---
+    top_titles = (["original"] if lang == "en" else ["原图"]) + \
+                 [f"bit {k}" for k in range(7, -1, -1)]
+    top_views = [img] + planes
+    for ax, im, ti in zip(axes[0], top_views, top_titles):
+        ax.imshow(im, cmap="gray", vmin=0, vmax=255)
+        ax.set_title(ti, fontsize=11, fontweight="bold")
+        ax.set_xticks([]); ax.set_yticks([])
+    for ax, w in zip(axes[0][1:], weights):
+        ax.set_xlabel(f"×{w}", fontsize=10, color="#2e74b5", labelpad=3)
+
+    # --- bottom row: slot 0 is a note, slots 1..8 are cumulative ---
+    axes[1][0].axis("off")
+    axes[1][0].text(0.5, 0.5,
+                    ("weighted sum\n↓ accumulate" if lang == "en"
+                     else "按权重相加\n↓ 逐层累加"),
+                    ha="center", va="center", fontsize=10, color="#12263a",
+                    fontweight="bold", transform=axes[1][0].transAxes)
+    step_labels = (["+bit 7"] if lang == "en" else ["+位7"]) + \
+                  [f"+bit {k}" for k in range(6, -1, -1)]
+    for ax, im, lab in zip(axes[1][1:], recs, step_labels):
+        ax.imshow(im, cmap="gray", vmin=0, vmax=1)
+        ax.set_xlabel(lab, fontsize=9, color="#5b6b7a", labelpad=2)
+        ax.set_xticks([]); ax.set_yticks([])
+
+    for ax in axes.ravel():
+        for s in ax.spines.values():
+            s.set_color("#dbe4ee")
+    fig.suptitle(
+        ("An 8-bit image = 8 bit planes stacked on top of each other, each weighted by its power of two"
+         if lang == "en" else
+         "8bit 图像 = 8 个位平面叠加，每个按 2 的幂加权后才能相加"),
+        fontsize=13, fontweight="bold", y=0.975)
+    path = os.path.join(OUT, f"lsb-layering-{lang}.png")
+    fig.savefig(path, dpi=125, bbox_inches="tight")
+    plt.close(fig)
+    # Also emit a copy for the handbook (Jupyter Book) asset folder.
+    doc_dir = os.path.join(ROOT, "teaching", "web", lang, "assets")
+    os.makedirs(doc_dir, exist_ok=True)
+    fig.savefig(os.path.join(doc_dir, "img009.png"), dpi=125, bbox_inches="tight")
+    plt.close(fig)
+
+
 def stego_detect():
     from ns5_core import embed_string
     import steganalysis as SA
@@ -321,6 +386,7 @@ def main():
         pipeline(lang)
         histogram_pairs(lang)
         wetpaper(lang)
+        lsb_layering(lang)
     print("assets written to", OUT)
 
 
