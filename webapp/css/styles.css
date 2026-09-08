@@ -98,6 +98,9 @@ h1 { font-size: clamp(1.9rem, 4.2vw, 3.2rem); line-height: 1.2; margin: 10px 0 1
   font-family: Consolas, "SF Mono", monospace; background: #0f2638; color: #9fe8d6;
   border-radius: 10px; padding: 12px 14px; margin: 12px 0; font-size: .95rem;
 }
+.mono.sm { font-size: .85rem; }
+.hint { color: var(--ink-2); font-size: .92rem; margin: 6px 0; }
+.wide-lab { margin-top: 26px; }
 .learn-list { padding-left: 20px; color: var(--ink-2); }
 .learn-list li { margin: 6px 0; }
 .field-row { display: flex; gap: 14px; align-items: center; }

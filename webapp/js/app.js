@@ -19,6 +19,9 @@ const state = {
   hamP: 3,
   hamHighlight: -1,
   hamChanged: false,
+  wetVals: [130, 129, 126, 133, 128, 124, 127],
+  wetForceDry: new Array(7).fill(false),
+  wetChanged: new Set(),
 };
 
 const els = (id) => document.getElementById(id);
@@ -38,6 +41,8 @@ function applyLang() {
   renderRoadmap();
   refreshLsbStats();
   renderHamming();
+  renderWet();
+  renderThreshold();
 }
 
 /* ---------- image generation ---------- */
@@ -204,6 +209,196 @@ function renderHamming() {
   solveHamming();
 }
 
+/* ---------- Wet paper dry-position demo ---------- */
+function wetDry(wetState, i) {
+  const auto = Math.abs(wetState.wetVals[i] - 128) <= 1;
+  return wetState.wetForceDry[i] ? true : !auto;
+}
+
+function wetRandom() {
+  const rnd = mulberry32((Date.now() ^ 0x9e3779b9) >>> 0);
+  const vals = [];
+  for (let i = 0; i < 7; i++) {
+    const v = 118 + Math.floor(rnd() * 20);
+    vals.push(v);
+  }
+  state.wetVals = vals;
+  state.wetForceDry = new Array(7).fill(false);
+  state.wetChanged = new Set();
+  renderWetCanvas();
+  els("wet-info").textContent = "s=… · m=…";
+}
+
+function wetSolve() {
+  const p = 3, n = 7;
+  const H = hammingMatrix(p);
+  const s = new Array(p).fill(0);
+  state.wetVals.forEach((v, j) => {
+    const bit = v & 1;
+    if (!bit) return;
+    for (let r = 0; r < p; r++) s[r] ^= H[j][r];
+  });
+  const mBits = (els("wet-m").value || "101").split("").map(Number);
+  const sVal = intLE(s);
+  const mVal = parseInt(mBits.join(""), 2);
+  const dVal = sVal ^ mVal;
+  const dry = [];
+  state.wetVals.forEach((_, j) => { if (wetDry(state, j)) dry.push(j); });
+  state.wetChanged = new Set();
+  let action;
+  if (dVal === 0) {
+    action = t("wet.ok") + " · d=0";
+  } else {
+    let hit = -1;
+    for (const j of dry) {
+      if (intLE(H[j]) === dVal) { hit = j; break; }
+    }
+    if (hit < 0) {
+      outer:
+      for (let a = 0; a < dry.length; a++) {
+        for (let b = a + 1; b < dry.length; b++) {
+          const ca = intLE(H[dry[a]]), cb = intLE(H[dry[b]]);
+          if ((ca ^ cb) === dVal) {
+            state.wetChanged.add(dry[a]);
+            state.wetChanged.add(dry[b]);
+            hit = dry[a];
+            break outer;
+          }
+        }
+      }
+      if (hit < 0) action = t("wet.fail");
+      else action = t("wet.ok");
+    } else {
+      state.wetChanged.add(hit);
+      action = t("wet.ok");
+    }
+  }
+  els("wet-info").textContent =
+    "s=" + toBin(sVal, p) + " · m=" + mBits.join("") +
+    " · d=" + toBin(dVal, p) + " → " + action;
+  renderWetCanvas();
+}
+
+function renderWet() {
+  const m = els("wet-m").value || "101";
+  els("wet-m").value = m.length === 3 ? m : m.padStart(3, "0").slice(-3);
+  renderWetCanvas();
+}
+
+function renderWetCanvas() {
+  const canvas = els("wet-canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const n = 7, cellW = 66, gap = 12;
+  const startX = 24, y = 34, cellH = 84;
+  ctx.font = "600 15px system-ui";
+  for (let i = 0; i < n; i++) {
+    const x = startX + i * (cellW + gap);
+    const dry = wetDry(state, i);
+    const changed = state.wetChanged.has(i);
+    const v = state.wetVals[i];
+    const xv = v - 128;
+    ctx.fillStyle = dry ? "#e8f6ee" : "#fdecea";
+    ctx.strokeStyle = changed ? "#ffb300" : (dry ? "#2e7d32" : "#c62828");
+    ctx.lineWidth = changed ? 4 : 2;
+    ctx.fillRect(x, y, cellW, cellH);
+    ctx.strokeRect(x, y, cellW, cellH);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#12263a";
+    ctx.fillText(String(v), x + cellW / 2, y + 34);
+    ctx.fillStyle = dry ? "#2e7d32" : "#c62828";
+    ctx.fillText(dry ? t("wet.dry") : t("wet.wet"), x + cellW / 2, y + 58);
+    ctx.fillStyle = "#5b6b7a";
+    ctx.font = "11px system-ui";
+    ctx.fillText("xv=" + (xv >= 0 ? "+" : "") + xv, x + cellW / 2, y + 76);
+    ctx.font = "600 15px system-ui";
+    if (changed) ctx.fillText("▲", x + cellW / 2, y - 6);
+  }
+}
+
+function wetClick(ev) {
+  const canvas = els("wet-canvas");
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const mx = (ev.clientX - rect.left) * scaleX;
+  const idx = Math.floor((mx - 24) / (66 + 12));
+  if (idx >= 0 && idx < 7) {
+    state.wetForceDry[idx] = !state.wetForceDry[idx];
+    state.wetChanged = new Set();
+    renderWetCanvas();
+  }
+}
+
+/* ---------- ML threshold playground ---------- */
+function gauss(x, mu, sigma) {
+  return Math.exp(-((x - mu) ** 2) / (2 * sigma * sigma)) / (sigma * Math.sqrt(2 * Math.PI));
+}
+
+function normalCdf(x, mu, sigma) {
+  const z = (x - mu) / (sigma * Math.SQRT2);
+  const erf = (t) => {
+    const sign = t < 0 ? -1 : 1;
+    t = Math.abs(t);
+    const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+    const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+    const tt = 1 / (1 + p * t);
+    const poly = (((((a5 * tt + a4) * tt) + a3) * tt + a2) * tt + a1) * tt;
+    return sign * (1 - poly * Math.exp(-t * t));
+  };
+  return 0.5 * (1 + erf(z));
+}
+
+function renderThreshold() {
+  const canvas = els("thr-canvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  const xMin = -2.2, xMax = 4.4;
+  const mapX = (x) => 50 + ((x - xMin) / (xMax - xMin)) * (W - 100);
+  const mapY = (y) => H - 34 - (y / 0.46) * (H - 70);
+  const clean = { mu: 0.45, sigma: 0.95, color: "#4c9be8" };
+  const stego = { mu: 2.35, sigma: 0.95, color: "#ef6f9f" };
+  const sliderVal = parseInt(els("thr-slider").value, 10);
+  const thr = xMin + (sliderVal / 300) * (xMax - xMin);
+  els("thr-note").textContent = "threshold = " + thr.toFixed(2);
+  ctx.strokeStyle = "#c9d4e0";
+  ctx.beginPath();
+  ctx.moveTo(50, mapY(0)); ctx.lineTo(W - 50, mapY(0)); ctx.stroke();
+  ctx.font = "11px system-ui";
+  for (const m of [clean, stego]) {
+    ctx.strokeStyle = m.color;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    for (let px = 0; px <= W - 100; px += 2) {
+      const x = xMin + (px / (W - 100)) * (xMax - xMin);
+      const y = gauss(x, m.mu, m.sigma);
+      if (px === 0) ctx.moveTo(50 + px, mapY(y));
+      else ctx.lineTo(50 + px, mapY(y));
+    }
+    ctx.stroke();
+    ctx.fillStyle = m.color;
+    ctx.fillText(m === clean ? (currentLang === "zh" ? "干净" : "clean")
+      : (currentLang === "zh" ? "含密" : "stego"), mapX(m.mu) + 4, mapY(gauss(m.mu, m.mu, m.sigma)) - 6);
+  }
+  const tx = mapX(thr);
+  ctx.strokeStyle = "#d32f2f"; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(tx, 24); ctx.lineTo(tx, H - 34); ctx.stroke();
+  const fp = 1 - normalCdf(thr, clean.mu, clean.sigma);
+  const fn = normalCdf(thr, stego.mu, stego.sigma);
+  ctx.fillStyle = "rgba(239,111,159,.16)";
+  ctx.beginPath();
+  for (let px = Math.max(0, Math.floor(tx - 50)); px <= W - 50; px += 1) {
+    const x = xMin + ((px - 50) / (W - 100)) * (xMax - xMin);
+    const y = gauss(x, clean.mu, clean.sigma);
+    if (px === Math.floor(tx - 50)) ctx.moveTo(50 + px, mapY(y));
+    else ctx.lineTo(50 + px, mapY(y));
+  }
+  ctx.lineTo(W - 50, mapY(0)); ctx.lineTo(tx, mapY(0)); ctx.closePath();
+  ctx.fill();
+  els("thr-stats").textContent =
+    "FP=" + (fp * 100).toFixed(1) + "% · FN=" + (fn * 100).toFixed(1) + "%";
+}
+
 function renderHammingCanvas() {
   const canvas = els("ham-canvas");
   const ctx = canvas.getContext("2d");
@@ -277,6 +472,11 @@ function init() {
   els("ham-p").addEventListener("change", () => { resizeHamming(); randomHamming(); });
   els("ham-m").addEventListener("change", () => { resizeHamming(); solveHamming(); });
   els("ham-canvas").addEventListener("click", hamClick);
+  els("wet-random").addEventListener("click", wetRandom);
+  els("wet-solve").addEventListener("click", wetSolve);
+  els("wet-m").addEventListener("change", wetSolve);
+  els("wet-canvas").addEventListener("click", wetClick);
+  els("thr-slider").addEventListener("input", renderThreshold);
   applyLang();
 }
 

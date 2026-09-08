@@ -140,6 +140,21 @@
       </div>
       <img class="wide-img" src="assets/wetpaper-zh.png" alt="Wet and dry coefficient positions"
            data-src-zh="assets/wetpaper-zh.png" data-src-en="assets/wetpaper-en.png">
+      <div class="lab-grid wide-lab">
+        <figure class="canvas-card">
+          <canvas id="wet-canvas" width="640" height="200" aria-label="Wet paper dry-position solver"></canvas>
+          <figcaption id="wet-info" class="mono sm" role="status">s=… · m=… → solve on dry</figcaption>
+        </figure>
+        <div class="lab-controls">
+          <label data-i18n="wet.m">目标伴随式 m</label>
+          <input id="wet-m" type="text" value="101" maxlength="3">
+          <div class="btn-row">
+            <button id="wet-random" class="btn primary" data-i18n="wet.random">随机系数块</button>
+            <button id="wet-solve" class="btn ghost" data-i18n="wet.solve">在干点求解</button>
+          </div>
+          <p class="hint" data-i18n="wet.hint">提示：点击格子可在“湿/干”之间切换，观察干点不足时会发生什么。</p>
+        </div>
+      </div>
       <div class="card-row">
         <article class="card">
           <h3 data-i18n="wet.c1t">危险像素</h3>
@@ -191,6 +206,18 @@
       <div class="thumb-row">
         <img src="assets/roc-illustration.png" alt="ROC curve illustration">
         <img src="assets/dual-models.png" alt="Dual model comparison chart">
+      </div>
+      <div class="lab-grid wide-lab">
+        <figure class="canvas-card">
+          <canvas id="thr-canvas" width="640" height="280" aria-label="Decision threshold playground"></canvas>
+          <figcaption id="thr-stats" class="stat-line">FP=… · FN=…</figcaption>
+        </figure>
+        <div class="lab-controls">
+          <label data-i18n="ml.thr">分类阈值（拖动观察误报 / 漏报）</label>
+          <input id="thr-slider" type="range" min="0" max="300" value="150" step="1">
+          <div class="range-note" id="thr-note">0.0</div>
+          <p class="hint" data-i18n="ml.thrhint">红线向右 = 更严格（误报少、漏报多）；向左 = 更宽松（检出高、误报多）。</p>
+        </div>
       </div>
       <div class="card-row">
         <article class="card small">
