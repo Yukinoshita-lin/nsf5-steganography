@@ -11,6 +11,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Hamming syndrome-coding demo in the browser, project visuals, ML charts,
   12-week roadmap, and one-click language switching; served at the GitHub
   Pages root while the Jupyter Books remain at `/zh` and `/en`.
+- Website additions: wet-paper / danger-pixel visual section, LSB histogram
+  and changed-pixel-mask figures (bilingual variants), and `?lang=zh|en` URL
+  switching for sharing and automated checks.
 - README: full English overview section (features, cross-platform quick start,
   learning resources and license) alongside the Chinese documentation.
 - teaching/README: bilingual version - full English teaching guide followed by

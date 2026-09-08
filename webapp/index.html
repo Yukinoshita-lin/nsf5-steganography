@@ -15,6 +15,7 @@
     <nav class="nav" aria-label="Main navigation">
       <a href="#lsb" data-i18n="nav.lsb">LSB 实验</a>
       <a href="#hamming" data-i18n="nav.hamming">矩阵编码</a>
+      <a href="#wetpaper" data-i18n="nav.wetpaper">湿纸</a>
       <a href="#pipeline" data-i18n="nav.pipeline">原理</a>
       <a href="#ml" data-i18n="nav.ml">ML 检测</a>
       <a href="#roadmap" data-i18n="nav.roadmap">路线图</a>
@@ -81,6 +82,11 @@
         <img src="assets/lsb-planes.png" alt="Bit planes of an image">
         <img src="assets/stego-detect.png" alt="Clean vs stego statistics">
       </div>
+      <div class="wide-figure">
+        <img src="assets/diff-mask.png" alt="Changed pixels after embedding">
+        <img src="assets/histogram-pairs-zh.png" alt="Gray-level pair histogram before and after embedding"
+             data-src-zh="assets/histogram-pairs-zh.png" data-src-en="assets/histogram-pairs-en.png">
+      </div>
     </section>
 
     <!-- ============ HAMMING DEMO ============ -->
@@ -122,6 +128,31 @@
       <div class="wide-figure">
         <img src="assets/hamming-illustration.png" alt="Syndrome matrix embedding illustration">
         <img src="assets/efficiency-curve.png" alt="Embedding efficiency curve">
+      </div>
+    </section>
+
+    <!-- ============ WET PAPER ============ -->
+    <section id="wetpaper" class="section alt">
+      <div class="section-head">
+        <p class="eyebrow" data-i18n="wet.eyebrow">更深入一步</p>
+        <h2 data-i18n="wet.title">湿纸编码：把“会变成 0 的位置”划为湿点</h2>
+        <p data-i18n="wet.sub">像素减 128 后，|xv|≤1 的像素像“被水浸湿的纸”。nsF5 不碰它们，只在干点上解 GF(2) 方程——无收缩、无重试。</p>
+      </div>
+      <img class="wide-img" src="assets/wetpaper-zh.png" alt="Wet and dry coefficient positions"
+           data-src-zh="assets/wetpaper-zh.png" data-src-en="assets/wetpaper-en.png">
+      <div class="card-row">
+        <article class="card">
+          <h3 data-i18n="wet.c1t">危险像素</h3>
+          <p data-i18n="wet.c1d">127 / 128 / 129（即 xv = −1, 0, +1）减幅会撞零，标记为湿点。</p>
+        </article>
+        <article class="card">
+          <h3 data-i18n="wet.c2t">干点求解</h3>
+          <p data-i18n="wet.c2d">只在干列上求伴随式方程 H·y = d，优先单列、双列，再高斯消元兜底。</p>
+        </article>
+        <article class="card">
+          <h3 data-i18n="wet.c3t">无收缩</h3>
+          <p data-i18n="wet.c3d">每个块都能一次成功，容量与嵌入效率逼近汉明码理论上限。</p>
+        </article>
       </div>
     </section>
 

@@ -2,7 +2,7 @@
 const I18N = {
   zh: {
     brand: "nsF5 · 隐写互动实验室",
-    "nav.lsb": "LSB 实验", "nav.hamming": "矩阵编码", "nav.pipeline": "原理",
+    "nav.lsb": "LSB 实验", "nav.hamming": "矩阵编码", "nav.wetpaper": "湿纸", "nav.pipeline": "原理",
     "nav.ml": "ML 检测", "nav.roadmap": "路线图", "nav.resources": "资源",
     "hero.eyebrow": "零基础 · 双语 · 交互式",
     "hero.title": "把文字藏进图片，\n亲眼看见算法如何工作",
@@ -26,6 +26,15 @@ const I18N = {
     "ham.li1": "校验矩阵 H 的每一列都不同，所以差值 d 永远能找到唯一要翻转的位置。",
     "ham.li2": "平均每个块只需改动 0.875 次，就能携带 p=3 位消息——嵌入效率大幅提升。",
     "ham.caption": "黄格 = 建议翻转的 LSB",
+    "wet.eyebrow": "更深入一步",
+    "wet.title": "湿纸编码：把“会变成 0 的位置”划为湿点",
+    "wet.sub": "像素减 128 后，|xv|≤1 的像素像“被水浸湿的纸”。nsF5 不碰它们，只在干点上解 GF(2) 方程——无收缩、无重试。",
+    "wet.c1t": "危险像素",
+    "wet.c1d": "127 / 128 / 129（即 xv = −1, 0, +1）减幅会撞零，标记为湿点。",
+    "wet.c2t": "干点求解",
+    "wet.c2d": "只在干列上求伴随式方程 H·y = d，优先单列、双列，再高斯消元兜底。",
+    "wet.c3t": "无收缩",
+    "wet.c3d": "每个块都能一次成功，容量与嵌入效率逼近汉明码理论上限。",
     "pipe.eyebrow": "一张图看懂", "pipe.title": "从“藏”到“查”：完整数据流",
     "pipe.c1t": "嵌入端",
     "pipe.c1d": "消息 → 长度头 + SHA-256 键控 → 汉明/湿纸编码 → 写入 LSB → 含密图。",
@@ -65,7 +74,7 @@ const I18N = {
   },
   en: {
     brand: "nsF5 · Interactive Learning Lab",
-    "nav.lsb": "LSB Lab", "nav.hamming": "Matrix Coding", "nav.pipeline": "How it works",
+    "nav.lsb": "LSB Lab", "nav.hamming": "Matrix Coding", "nav.wetpaper": "Wet paper", "nav.pipeline": "How it works",
     "nav.ml": "ML Detection", "nav.roadmap": "Roadmap", "nav.resources": "Resources",
     "hero.eyebrow": "Zero-to-hero · Bilingual · Interactive",
     "hero.title": "Hide a message in an image,\nand watch the algorithm work",
@@ -89,6 +98,15 @@ const I18N = {
     "ham.li1": "Every column of H is unique, so a difference d always locates exactly one position to flip.",
     "ham.li2": "On average only 0.875 flips are needed per p=3 block - a big jump in embedding efficiency.",
     "ham.caption": "Yellow cell = suggested LSB flip",
+    "wet.eyebrow": "Go one level deeper",
+    "wet.title": "Wet paper coding: mark positions that would become zero as wet",
+    "wet.sub": "After subtracting 128 from pixels, values with |xv|<=1 act like \"wet paper\". nsF5 leaves them alone and solves the GF(2) equation only on dry positions - no shrinkage, no retries.",
+    "wet.c1t": "Danger pixels",
+    "wet.c1d": "127 / 128 / 129 (xv = -1, 0, +1) would hit zero if shrunk, so they are marked wet.",
+    "wet.c2t": "Solve on dry positions",
+    "wet.c2d": "Solve H*y = d on dry columns only: one column, then pairs, then a Gaussian fallback.",
+    "wet.c3t": "No shrinkage",
+    "wet.c3d": "Every block succeeds in one pass, keeping capacity and efficiency near the Hamming bound.",
     "pipe.eyebrow": "One picture", "pipe.title": "From hiding to detection: the full data flow",
     "pipe.c1t": "Embedder",
     "pipe.c1d": "Message -> length header + SHA-256 keying -> Hamming/wet-paper coding -> write LSBs -> stego image.",
@@ -128,7 +146,10 @@ const I18N = {
   },
 };
 
-let currentLang = localStorage.getItem("nsf5-lang") || "zh";
+const _urlLang = new URLSearchParams(location.search).get("lang");
+let currentLang = (_urlLang === "en" || _urlLang === "zh")
+  ? _urlLang
+  : (localStorage.getItem("nsf5-lang") || "zh");
 
 function t(key) {
   return I18N[currentLang][key] != null ? I18N[currentLang][key] : key;

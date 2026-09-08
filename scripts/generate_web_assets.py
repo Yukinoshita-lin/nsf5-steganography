@@ -85,6 +85,78 @@ def stego_detect():
     plt.close(fig)
 
 
+def diff_mask():
+    from ns5_core import embed_string
+    cover = demo_image(256, seed=11)
+    stego, _, _ = embed_string(cover, "S" * 1200, method="nsF5", p=3)
+    mask = (stego != cover).astype(np.uint8) * 255
+    fig, axes = plt.subplots(1, 3, figsize=(11.6, 3.9))
+    for ax, im, title in ((axes[0], cover, "cover"), (axes[1], stego, "stego"),
+                          (axes[2], mask, "changed pixels")):
+        ax.imshow(im, cmap="gray", vmin=0, vmax=255)
+        ax.set_title(title, fontsize=11)
+        ax.axis("off")
+    fig.tight_layout(pad=0.4)
+    fig.savefig(os.path.join(OUT, "diff-mask.png"), dpi=120, bbox_inches="tight")
+    plt.close(fig)
+
+
+def histogram_pairs(lang):
+    plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
+    plt.rcParams["axes.unicode_minus"] = False
+    cover = demo_image(220, seed=3)
+    stego = cover.copy()
+    rng = np.random.default_rng(9)
+    for i in range(0, cover.size, 2):
+        if rng.random() < 0.45:
+            stego.flat[i] = (stego.flat[i] & 0xfe) | (1 - (stego.flat[i] & 1))
+    bins = np.arange(0, 258, 2)
+    hc, _ = np.histogram(cover.ravel(), bins=bins)
+    hs, _ = np.histogram(stego.ravel(), bins=bins)
+    fig, ax = plt.subplots(figsize=(7.6, 3.5))
+    x = np.arange(len(hc))
+    w = 0.4
+    ax.bar(x - w / 2, hc, w, label=("clean" if lang == "en" else "干净图"), color="#4c9be8")
+    ax.bar(x + w / 2, hs, w, label=("embedded" if lang == "en" else "嵌入后"), color="#ef6f9f")
+    ax.set_xlabel(("gray-level pair (2i, 2i+1)" if lang == "en" else "灰度相邻对 (2i, 2i+1)"))
+    ax.set_ylabel(("count" if lang == "en" else "频数"))
+    ax.set_title(("LSB replacement flattens pair counts"
+                  if lang == "en" else "LSB 替换把相邻对频数拉平"), fontsize=11)
+    ax.legend(frameon=False)
+    ax.grid(alpha=0.2, axis="y")
+    fig.tight_layout()
+    fig.savefig(os.path.join(OUT, f"histogram-pairs-{lang}.png"), dpi=120,
+                bbox_inches="tight")
+    plt.close(fig)
+
+
+def wetpaper(lang):
+    plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
+    plt.rcParams["axes.unicode_minus"] = False
+    values = [132, 129, 128, 127, 130, 126, 140]  # |xv|<=1 -> 127..129
+    fig, ax = plt.subplots(figsize=(8.4, 3.4))
+    ax.axis("off")
+    for i, v in enumerate(values):
+        xv = v - 128
+        wet = abs(xv) <= 1
+        color = "#c62828" if wet else "#2e7d32"
+        ax.text(i * 1.12, 0.35, str(v), ha="center", fontsize=15, fontweight="bold")
+        ax.text(i * 1.12, 0.05, f"xv={xv:+d}", ha="center", fontsize=11, color=color)
+        if wet:
+            ax.text(i * 1.12, 0.62, "wet", ha="center", fontsize=9, color="#c62828")
+        else:
+            ax.text(i * 1.12, 0.62, "dry", ha="center", fontsize=9, color="#2e7d32")
+    ax.text(-0.4, 1.55,
+            ("wet (|xv|<=1) never used; solve on dry positions"
+             if lang == "en" else "湿点 (|xv|≤1) 不承载消息，只在干点求解"),
+            fontsize=12, ha="left")
+    ax.set_xlim(-0.5, 7.8)
+    ax.set_ylim(-0.15, 1.85)
+    fig.tight_layout()
+    fig.savefig(os.path.join(OUT, f"wetpaper-{lang}.png"), dpi=120, bbox_inches="tight")
+    plt.close(fig)
+
+
 def hamming_illustration():
     p, n = 3, 7
     x = [0, 1, 0, 1, 1, 0, 1]
@@ -198,11 +270,14 @@ def pipeline(lang):
 
 
 def main():
-    for fn in (hero_covers, lsb_planes, stego_detect, hamming_illustration,
-               efficiency_curve, roc_illustration, dual_models):
+    for fn in (hero_covers, lsb_planes, stego_detect, diff_mask,
+               hamming_illustration, efficiency_curve, roc_illustration,
+               dual_models):
         fn()
     for lang in ("zh", "en"):
         pipeline(lang)
+        histogram_pairs(lang)
+        wetpaper(lang)
     print("assets written to", OUT)
 
 
