@@ -630,6 +630,12 @@ function init() {
   applyLang();
   spy();
   loadScanData();
+  document.querySelectorAll("main img").forEach((img) => {
+    if (!img.closest(".hero-visual")) {
+      img.loading = "lazy";
+      img.decoding = "async";
+    }
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);

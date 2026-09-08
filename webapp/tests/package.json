@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node interactive.mjs"
+    "test": "node interactive.mjs",
+    "test:layout": "node layout.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.50.0"

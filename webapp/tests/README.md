@@ -13,6 +13,9 @@ real browser (Chrome or Edge) and checks:
 - mobile menu
 - no console/page errors
 
+`npm run test:layout` additionally checks desktop/mobile horizontal overflow,
+broken images, missing `alt` attributes, and console errors.
+
 Install and run:
 
 ```bash

@@ -28,6 +28,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Website accessibility: Hamming and wet-paper canvases are keyboard-operable
   (arrow keys + Space) with visible focus outlines; live result captions are
   announced via `aria-live`.
+- Website layout/perf: lazy-loading below-the-fold images and a browser layout
+  test (`webapp/tests/layout.mjs`) covering desktop/mobile overflow, broken
+  images and missing alt text.
 - README: full English overview section (features, cross-platform quick start,
   learning resources and license) alongside the Chinese documentation.
 - teaching/README: bilingual version - full English teaching guide followed by
