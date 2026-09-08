@@ -36,6 +36,10 @@ def main():
     app.var_msg.delete("1.0", "end")
     app.var_msg.insert("1.0", "smoke test")
     root.update()
+    # 状态栏与演示图/复制方法
+    app._refresh_statusbar()
+    assert "图尺寸" in app.statusbar.cget("text")
+    assert callable(app._load_demo) and callable(app._copy_out)
 
     from ns5_core import embed_string
     stego, rep, nb = embed_string(gray, "smoke test", method="nsF5", p=3)

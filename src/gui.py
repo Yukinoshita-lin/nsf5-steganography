@@ -140,6 +140,11 @@ class App:
         prog.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
         self.progress = ttk.Progressbar(prog, mode="indeterminate")
         self.progress.pack(fill="x")
+        sbf = ttk.Frame(mf)
+        sbf.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(2, 0))
+        self.statusbar = ttk.Label(sbf, text="", anchor="w", foreground="#555")
+        self.statusbar.pack(fill="x")
+        self._refresh_statusbar()
         self._log("就绪。请载入图片进行操作。")
 
     def _build_left(self, parent):
@@ -150,9 +155,10 @@ class App:
         # 方法
         ttk.Label(f, text="算法:").grid(row=0, column=0, sticky="w", pady=2)
         self.var_method = tk.StringVar(value="nsF5")
-        ttk.Combobox(f, textvariable=self.var_method, state="readonly", width=18,
-                     values=["nsF5 (减幅+湿纸)", "matrix (LSB矩阵编码)"]
-                     ).grid(row=0, column=1, sticky="ew", pady=2)
+        _cbm = ttk.Combobox(f, textvariable=self.var_method, state="readonly", width=18,
+                            values=["nsF5 (减幅+湿纸)", "matrix (LSB矩阵编码)"])
+        _cbm.grid(row=0, column=1, sticky="ew", pady=2)
+        _cbm.bind("<<ComboboxSelected>>", lambda *_: self._refresh_statusbar())
 
         # p
         ttk.Label(f, text="参数 p (每块比特):").grid(row=1, column=0, sticky="w", pady=2)
@@ -160,6 +166,7 @@ class App:
         pbox = ttk.Combobox(f, textvariable=self.var_p, state="readonly", width=18,
                             values=[str(i) for i in range(1, 9)])
         pbox.grid(row=1, column=1, sticky="ew", pady=2)
+        pbox.bind("<<ComboboxSelected>>", lambda *_: self._refresh_statusbar())
 
         # 口令
         ttk.Label(f, text="口令(可选):").grid(row=2, column=0, sticky="w", pady=2)
@@ -177,7 +184,8 @@ class App:
 
         # 载入
         bf = ttk.Frame(f); bf.grid(row=4, column=0, columnspan=2, sticky="ew", pady=4)
-        ttk.Button(bf, text="载入原始图 / 含密图", command=self._load).pack(side="left", fill="x", expand=True)
+        ttk.Button(bf, text="载入原始图 / 含密图", command=self._load).pack(side="left", fill="x", expand=True, padx=2)
+        ttk.Button(bf, text="演示图", command=self._load_demo).pack(side="left", padx=2)
 
         # 待嵌入字符串
         ttk.Label(f, text="待嵌入字符串(ASCII):").grid(row=5, column=0, sticky="nw", pady=2)
@@ -234,6 +242,7 @@ class App:
         ttk.Label(ctrl, text="  仅在有含密图时可用", foreground="#888").pack(side="left", padx=6)
 
         ttk.Label(f, text="分析结果与解码输出:").grid(row=3, column=0, columnspan=2, sticky="w", pady=(6, 2))
+        ttk.Button(f, text="复制结果", command=self._copy_out).grid(row=3, column=1, sticky="e", pady=(6, 2))
         self.out = tk.Text(f, height=9, state="disabled", wrap="word")
         self.out.grid(row=4, column=0, columnspan=2, sticky="nsew")
         return f
@@ -264,6 +273,20 @@ class App:
         self.out.delete("1.0", "end")
         self.out.insert("end", msg)
         self.out.configure(state="disabled")
+
+    def _copy_out(self):
+        txt = self.out.get("1.0", "end").strip()
+        if not txt:
+            messagebox.showinfo("提示", "当前无可复制的结果"); return
+        self.root.clipboard_clear()
+        self.root.clipboard_append(txt)
+        self._log("结果已复制到剪贴板")
+
+    def _refresh_statusbar(self):
+        m = self.var_method.get()
+        size = (f"{self.cover_img.shape[1]}×{self.cover_img.shape[0]}"
+                if self.cover_img is not None else "-")
+        self.statusbar.configure(text=f"方法: {m}  ·  p={self.var_p.get()}  ·  图尺寸: {size}")
 
     def _wait(self, t):
         self.status.configure(text="状态: " + t)
@@ -303,6 +326,15 @@ class App:
             filetypes=[("图像", (".png", ".bmp", ".jpg", ".jpeg", ".tif", ".tiff"))])
         if not path:
             return
+        self._load_path(path)
+
+    def _load_demo(self):
+        p = os.path.join(PROJECT_DIR, "img", "cover.png")
+        if not os.path.exists(p):
+            messagebox.showwarning("提示", "演示图不存在: " + p); return
+        self._load_path(p)
+
+    def _load_path(self, path: str):
         try:
             gray = IO.load_as_gray(path)
         except Exception as e:
@@ -319,6 +351,7 @@ class App:
         self.cb_diff.configure(state="disabled")
         self._log(f"载入: {path}  尺寸 {gray.shape[1]}x{gray.shape[0]}  "
                   f"SHA256={get_image_hash(gray)[:12]}…")
+        self._refresh_statusbar()
 
     def _params(self):
         m = self.var_method.get()
