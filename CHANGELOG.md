@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- README refresh: interactive teaching-website section, updated bilingual
+  handbook links, current directory tree, and cross-platform command examples.
 - Interactive bilingual learning website (`webapp/`): LSB bit-plane lab and
   Hamming syndrome-coding demo in the browser, project visuals, ML charts,
   12-week roadmap, and one-click language switching; served at the GitHub

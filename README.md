@@ -87,6 +87,20 @@ nsF5 隐写算法，并附带**盲隐写分析**、**图像哈希键控**与**�
 `nsf5_permute`）；DLL 缺失时（如 Linux/macOS）自动回退到同算法纯 Python 实现：
 嵌入/解码仍可逆、11-D/143-D 特征与双版本 ML 模型均可使用。
 
+## 互动教学网站
+
+GitHub Pages 首页已升级为**交互式双语教学网站**（不依赖手册即可动手理解项目）：
+
+- 🔗 主站: https://yukinoshita-lin.github.io/nsf5-steganography/
+- 🌐 语言切换: 页面右上角一键中英切换，或使用 `?lang=zh` / `?lang=en`
+- 🧪 交互实验: LSB 位平面 / 汉明伴随式找位 / 湿纸干点求解(自动演示) /
+  ML 阈值判别 / 载荷扫描（真实项目统计）
+- 🖼 可视化: 15+ 张教学示意图，覆盖 cover↔stego、位平面、统计直方图、
+  湿纸、效率曲线、ROC 与双模型对比
+- 📚 原手册仍保留: [`/zh`](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html)
+  与 [`/en`](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
+- 🧪 自动化回归: `webapp/tests/`（交互 + 桌面/移动布局检查）
+
 ---
 
 ## 功能总览
@@ -104,10 +118,13 @@ nsF5 隐写算法，并附带**盲隐写分析**、**图像哈希键控**与**�
 
 ## 学习手册
 
-项目提供**中英文双语学习手册 (PDF)**，从零基础开始，12 周学完整个项目:
+项目提供**中英文双语学习手册**，从零基础开始，12 周学完整个项目:
 
+- 🖥 网页版: [中文](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html) · [English](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
 - 🇨🇳 [`docs/学习手册-从零读懂nsF5隐写项目.pdf`](docs/学习手册-从零读懂nsF5隐写项目.pdf) — 中文版, 94 页
 - 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 80 pages
+- 📓 按章 Colab/Jupyter Notebook: 见 [`teaching/README.md`](teaching/README.md)
+- 🐳 Docker/JupyterLab 教学镜像: `docker compose up --build`
 
 涵盖: 数字图像基础 → Python 入门 → LSB 隐写 → 卡方/RS 分析 → 汉明矩阵编码 → F5/nsF5 → 湿纸编码 → 哈希键控 → 机器学习基础 → v1/v2 特征工程 → SRM 滤波 → 143d/53d 双版本模型 → C++/GPU 加速 → 综合实验。每章配有"动手做"实验与"想一想"思考题, 适合本科毕设自学。
 
@@ -201,39 +218,33 @@ python src/test_gui.py     # GUI 冒烟测试（构建窗口/载入/预览）
 ## 目录结构
 
 ```
-F:\Steganography
-├── README.md
-├── cpp
-│   ├── fsfeatures.cpp    # C++ 特征提取源
-│   ├── fsfeatures.dll    # 编译产物 (MinGW)
-│   ├── nsf5embed.cpp     # C++ nsF5/matrix 嵌入热路径源
-│   └── nsf5embed.dll     # 编译产物 (MinGW)
-├── data/dataset.csv      # 有监督训练数据集 (clean+stego 特征)
-├── gpu
-│   ├── make_imageset.py  # GPU版数据集生成 (完整512, 1干净+4含密变体/照片)
-│   ├── featurize_gpu.py  # GPU批量向量化 11 维统计特征 (与 CPU 参考 bit 级一致)
-│   ├── train_ml_gpu.py   # GPU特征提取 + 按照片分组训练分类器
-│   └── predict_gpu.py    # 单图像 GPU 隐写检测
-├── models                # 训练出的分类器 stego_classifier.joblib / steg_classifier_gpu.joblib
-└── src
-    ├── ns5_core.py       # nsF5 核心：汉明码、湿纸求解、哈希键控、嵌入/解码
-    ├── cppembed.py       # C++ 嵌入封装 (自校验与 Python 像素级一致)
-    ├── steganalysis.py   # 盲隐写分析：卡方 + RS 嵌入率估计
-    ├── fsfeatures.py     # C++ 特征库的 ctypes 绑定（含与 Python 一致性校验）
-    ├── ml_predict.py     # 有监督 ML 判定封装
-    ├── make_dataset.py   # 批量生成特征数据集 (支持 --preprocess srm SRM 预处理)
-    ├── srm_filter.py     # SRM 高通滤波预处理层 (numpy + torch 双实现, 30 核)
-    ├── train_model.py    # 训练/评估/保存分类器
-    ├── efficiency.py     # 码族与嵌入效率绘图
-    ├── image_io.py       # 图像读写工具
-    ├── gui.py            # tkinter GUI
-    ├── run_e2e.py        # 端到端验证脚本
-    ├── test_core.py      # 核心算法单测
-    ├── test_steg.py      # 隐写分析单测
-    ├── test_false_positive.py  # 误报回归测试
-    └── test_gui.py       # GUI 冒烟测试
-├── img                   # 示例封面图
-└── output                # 生成结果（含密图、效率图）
+nsf5-steganography/
+├── README.md / CHANGELOG.md / LICENSE / NOTICE
+├── Makefile                 # install/test/e2e/notebooks/docker/web 快捷命令
+├── docker-compose.yml
+├── cpp/                     # 可选 Windows C++ DLL（缺失时纯 Python 回退）
+├── data/                    # 数据集 CSV 与 campus_jpg/BOSSbase 目录
+├── docker/Dockerfile        # Linux JupyterLab 教学镜像
+├── gpu/                     # PyTorch 批量特征 / GPU 训练
+├── img/                     # 示例封面图
+├── models/                  # 训练出的分类器 joblib
+├── notebooks/               # 10 个按章 Colab/Jupyter Notebook
+├── scripts/                 # 数据集下载、网页资源生成等脚本
+├── src/
+│   ├── ns5_core.py          # nsF5 核心：汉明码、湿纸、哈希键控、嵌入/解码
+│   ├── cppembed.py          # C++ 嵌入封装（含纯 Python 回退）
+│   ├── py_features.py       # 纯 Python 11 维特征（跨平台）
+│   ├── featurize_v2.py      # v2 143 维特征
+│   ├── srm_filter.py        # SRM 高通滤波（numpy/torch）
+│   ├── fsfeatures.py        # C++ 特征绑定（DLL 缺失回退）
+│   ├── steganalysis.py      # 卡方 + RS 盲隐写分析
+│   ├── ml_predict.py        # 143d/53d 双版本模型推理
+│   ├── make_dataset.py / train_model.py
+│   ├── gui.py / efficiency.py / image_io.py
+│   └── test_*.py            # 回归测试
+├── teaching/                # 教学文档、Notebook 生成器、Jupyter Book 站点
+├── webapp/                  # 交互式双语教学网站（Pages 首页）
+└── output/                  # 运行产物（gitignore）
 ```
 
 ---
@@ -288,12 +299,12 @@ F:\Steganography
 ### 训练管线
 
 ```bash
-# 1) 用 F:\DCIM\Camera 下照片批量生成 干净/含密 特征数据集
+# 1) 用 data/campus_jpg 下照片批量生成 干净/含密 特征数据集
 #    (每张降采样 512x512 灰度, 1 干净 + 6 含密变体, C++ 提取 11 维特征 + C++ 嵌入)
-python src\make_dataset.py
+python src/make_dataset.py
 
 # 2) 训练/评估 (预留 held-out 测试集 + 5 折 GroupKFold 交叉验证选模)
-python src\train_model.py
+python src/train_model.py
 ```
 
 - **特征 (全由 C++ 计算)**：`RS_Gn, RS_Gr, Rm, Sm, Rn, Sn`、
@@ -345,10 +356,10 @@ print(get_predictor().predict(a))"
 
 ```bash
 # CPU数据集: --preprocess srm (默认 none=原图基线)
-py src\make_dataset.py data\campus_jpg --out campus_srm --preprocess srm -j 16
+py src/make_dataset.py data/campus_jpg --out campus_srm --preprocess srm -j 16
 
 # GPU特征: extract_features_gpu(x, use_srm=True) (默认开启)
-#   自检: py gpu\featurize_gpu.py   (含 SRM 路径冒烟)
+#   自检: py gpu/featurize_gpu.py   (含 SRM 路径冒烟)
 ```
 
 **实测效果（同一 414 张校园照片，LR，同协议 5 折 GroupKFold + 留出测试）**：
@@ -390,12 +401,12 @@ SRM 在保持低误报不变的同时，将 CV-AUC 提升约 **3.3 个百分点*
 
 ```bash
 # 重新生成 v2 数据集 (单进程 GPU, 414 张 ~7 min)
-py src\make_dataset.py --out campus_v2 --feature-set v2 --variants all
-py src\make_dataset.py --out campus_v2_min --feature-set v2 --variants minimal  # 6 档对照
+py src/make_dataset.py --out campus_v2 --feature-set v2 --variants all
+py src/make_dataset.py --out campus_v2_min --feature-set v2 --variants minimal  # 6 档对照
 
 # 训练 v2 143d + 4 模型 stacking (5 折 GroupKFold, 留出 25% 测)
 $env:DS_FILES = "dataset_campus_v2.csv"
-py src\train_model.py
+py src/train_model.py
 ```
 
 **严格 A/B 对比**（同一测试集照片 ID 分组，5 折 GroupKFold OOF）：
@@ -441,11 +452,11 @@ stego p5=1.30）。v2 模型在训练分布内已"过激"，JPEG 干净图即使
 
 ```bash
 # 自动生成 v2 + JPEG 数据集 (campus_v2.csv + 414 JPEG clean -> campus_v2_jpeg.csv)
-py src\_add_jpeg_clean.py
+py src/_add_jpeg_clean.py
 
 # 训练 (与 v2 同样的 5 折 GroupKFold + 4 模型 stacking)
 $env:DS_FILES = "dataset_campus_v2_jpeg.csv"
-py src\train_model.py
+py src/train_model.py
 ```
 
 **v2 特征可解释性**(2026-09-06):
@@ -578,18 +589,18 @@ result_53 = pred_53.predict(img)    # AUC 更高 + 可对每维特征解释
 
 ```bash
 # 1) 生成数据集 (每张照片 1 干净 + 4 档含密变体, 完整 512x512, 不裁剪以保留统计)
-python gpu\make_imageset.py  [照片目录] [张数]
+python gpu/make_imageset.py  [照片目录] [张数]
 
 # 2) GPU 批量提取特征 + 按照片分组训练 + 评估
-python gpu\train_ml_gpu.py            # 输出 models\steg_classifier_gpu.joblib
+python gpu/train_ml_gpu.py            # 输出 models/steg_classifier_gpu.joblib
 
 # 3) 单张图像 GPU 检测
-python gpu\predict_gpu.py <图像> [<图像>...]
+python gpu/predict_gpu.py <图像> [<图像>...]
 ```
 
 ### 实测 (RTX 4060 Laptop, 纯校园照片)
 
-数据源已从 `F:\DCIM\Camera` 中**去除 DIP4E 教材灰度 tif**，改用纯校园照片目录
+数据源已从 `data/campus_jpg` 中**去除 DIP4E 教材灰度 tif**，改用纯校园照片目录
 `data/campus_jpg`（仅 414 张 jpg）作为唯一数据源，CPU 与 GPU 两条管线均已全量重跑。
 
 - **GPU 统计特征管线**：特征 2070 张 512² 灰度约 **5s（≈397 img/s）**，GPU 利用率
@@ -598,7 +609,7 @@ python gpu\predict_gpu.py <图像> [<图像>...]
 - **CPU 特征管线**：2898 样本（414 干净 + 2484 含密，6 档），CV 最佳为
   **LogisticRegression CV-AUC≈0.759**；held-out **AUC≈0.781**、acc≈0.780；
   `matrix p2 d0.80`/`p3 d0.50` 检出≈100%/99%、`nsF5 p2 d0.85`≈95%、弱 `nsF5 p3 d0.25`≈52%。
-- **一致性**：`python gpu\featurize_gpu.py` 自检，GPU 与 CPU 参考特征逐项一致
+- **一致性**：`python gpu/featurize_gpu.py` 自检，GPU 与 CPU 参考特征逐项一致
   （RS 到 bit 级、浮点 ~1e-7）。
 
 ### 参考基准数据集 (BOSSbase 1.01) 重跑
@@ -608,11 +619,11 @@ python gpu\predict_gpu.py <图像> [<图像>...]
 （`make_imageset.py` 已增补 `*.pgm` 支持）。
 
 ```bash
-# 1) 下载解压至 data\BOSSbase_1.01\*.pgm (官方 zip 1.67GB)
+# 1) 下载解压至 data/BOSSbase_1.01\*.pgm (官方 zip 1.67GB)
 # 2) 生成图像集 (本实验取前 2000 张源图 -> 10000 样本, 512x512)
-py gpu\make_imageset.py F:\Steganography\data\BOSSbase_1.01 2000
+py gpu/make_imageset.py nsf5-steganography\data/BOSSbase_1.01 2000
 # 3) 训练 (默认读 imageset.npz, 覆盖 steg_classifier_gpu.joblib)
-py gpu\train_ml_gpu.py
+py gpu/train_ml_gpu.py
 ```
 
 - **数据**：2000 源图 → **10000 样本**（2000 干净 + 8000 含密，1干净+4变体），npz ≈1.57GB。
@@ -635,9 +646,9 @@ py gpu\train_ml_gpu.py
 - **数据生成**：`make_imageset.py` 现以 **memmap 逐张落盘**（`<base>_x.npy`，避免大数组
   一次性堆叠造成 OOM），支持 `--out / --id-offset / -n` 多源分工。
   ```bash
-  py gpu\make_imageset.py data\campus_jpg   --out campus            # 校园 414 源 -> 2070 样本
-  py gpu\make_imageset.py data\BOSSbase_1.01 --out bossbase          # BOSSbase 10000 源 -> 50000 样本
-  py gpu\train_ml_gpu.py                    # 合并两源训练(默认读取两源)
+  py gpu/make_imageset.py data/campus_jpg   --out campus            # 校园 414 源 -> 2070 样本
+  py gpu/make_imageset.py data/BOSSbase_1.01 --out bossbase          # BOSSbase 10000 源 -> 50000 样本
+  py gpu/train_ml_gpu.py                    # 合并两源训练(默认读取两源)
   ```
 - **数据**：校园 2070 + BOSSbase 50000 = **52070 样本**（414+10000 源图，各 1干净+4变体）。
 - **实测 (验证 10430 样本, Youden 阈值 0.795)**：**AUC≈0.712**，acc≈0.690；逐档——
@@ -650,9 +661,9 @@ py gpu\train_ml_gpu.py
 CPU 版同样接入 BOSSbase 全量，与校园照片合并训练，覆盖 10,000 张基准源图。
 
 ```bash
-py src\make_dataset.py data\campus_jpg --out campus       # 校园 414 源 -> 2898 样本(1干净+6变体)
-py src\make_dataset.py data\BOSSbase_1.01 --out bossbase  # BOSSbase 10000 源 -> 70000 样本
-py src\train_model.py                                     # 合并两源训练(默认读取两源)
+py src/make_dataset.py data/campus_jpg --out campus       # 校园 414 源 -> 2898 样本(1干净+6变体)
+py src/make_dataset.py data/BOSSbase_1.01 --out bossbase  # BOSSbase 10000 源 -> 70000 样本
+py src/train_model.py                                     # 合并两源训练(默认读取两源)
 ```
 
 - **数据**：校园 2898 + BOSSbase 70000 = **72898 样本**（10414 clean + 62484 stego，11 维特征）。
@@ -669,7 +680,7 @@ py src\train_model.py                                     # 合并两源训练(�
 > 相互独立**，按图分片交多个子进程并行处理、主进程流式合并。实测 100 张（700 样本）：
 > 单进程 53.5s → 16 核并行 9.5s，**加速约 5.6 倍**，多进程与单进程输出逐行一致。
 > 注意每进程各自加载 `fsfeatures.dll`，内存按核数倍增（单进程约 54MB）。
-> 命令：`python src\make_dataset.py <目录> --out x -j 15`
+> 命令：`python src/make_dataset.py <目录> --out x -j 15`
 
 > 依赖：`torch`(CUDA)、`numpy`、`Pillow`、`scipy`、`scikit-learn`、`joblib`、
 > `nvidia-ml-py`(可选，用于上报 GPU 利用率)。样本数据 `gpu/data/*` 较大(含 `_x.npy`
