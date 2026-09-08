@@ -18,7 +18,7 @@ Assumed starting point - the handbook fills every other gap for you:
 
 - A little programming is helpful but not required - Chapter 2 brings Python up to working level;
 
-- Twelve weeks of 6-8 hours per week.
+- At least 12 weeks of 6-8 hours per week; for a deep 6-12 month track, see Appendix F.
 
 > **Tip |** If you have never installed Python, do not worry: the first two weeks are designed exactly for that situation. The goal is not to become a programmer but to become someone who can read and modify this project.
 
@@ -32,7 +32,7 @@ Assumed starting point - the handbook fills every other gap for you:
 | Think about it | An open question with no single right answer, used to test real understanding |
 | Read the code | Open a specific file and map the concept onto the implementation |
 
-## 0.3 The 12-Week Roadmap
+## 0.3 The 12-Week Quick-Start Roadmap (full 6-12 month track in Appendix F)
 
 The route follows a natural order: carrier basics -> steganography -> steganalysis -> machine learning -> engineering -> capstone. Every week maps to runnable code or a reproducible experiment:
 

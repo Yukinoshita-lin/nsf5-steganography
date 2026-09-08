@@ -41,7 +41,7 @@
           <li data-i18n="hero.tag1">信息隐藏</li>
           <li data-i18n="hero.tag2">隐写分析</li>
           <li data-i18n="hero.tag3">机器学习</li>
-          <li data-i18n="hero.tag4">12 周路线</li>
+          <li data-i18n="hero.tag4">6–12 个月路线</li>
         </ul>
       </div>
       <div class="hero-visual">
@@ -67,7 +67,7 @@
         </div>
         <div class="contents-part">
           <p class="contents-part-head" data-i18n="contents.p3.head">学习路径</p>
-          <a href="#roadmap" data-i18n="contents.p3.i1">⑥ 12 周路线</a>
+          <a href="#roadmap" data-i18n="contents.p3.i1">⑥ 6–12 个月路线</a>
           <a href="#resources" data-i18n="contents.p3.i2">⑦ 手册 · Notebook · 源码</a>
         </div>
         <div class="contents-part">
@@ -100,12 +100,27 @@
 
           <div class="btn-row">
             <button id="lsb-embed" class="btn primary" data-i18n="lsb.embed">嵌入到 LSB</button>
+            <button id="lsb-decode" class="btn ghost" data-i18n="lsb.decode">解码还原</button>
             <button id="lsb-reset" class="btn ghost" data-i18n="lsb.reset">重置</button>
           </div>
+          <p id="lsb-decode-note" class="decode-note mono sm" aria-live="polite"></p>
           <ul class="learn-list">
             <li data-i18n="lsb.li1">灰度值的最低一位叫 LSB；翻转 200↔201 人眼看不出差别。</li>
             <li data-i18n="lsb.li2">直接替换 LSB 会留下统计指纹，可被卡方 / RS 分析发现（第 2 个实验旁有说明）。</li>
           </ul>
+        </div>
+      </div>
+
+      <div class="lab-grid wide-lab">
+        <figure class="canvas-card">
+          <canvas id="lsb-mask-canvas" width="200" height="200" aria-label="Pixels changed by the hidden message"></canvas>
+          <figcaption id="lsb-mask-caption" class="stat-line" data-i18n="lsb.maskIdle">尚未嵌入 —— 改动像素掩码为空</figcaption>
+        </figure>
+        <div class="lab-controls">
+          <p class="eyebrow" data-i18n="detect.eyebrow">自测 · 看懂指纹</p>
+          <h3 data-i18n="detect.title">嵌入后立刻用卡方 / RS 分析它</h3>
+          <p class="hint" data-i18n="detect.sub">点击「嵌入到 LSB」后，这里会用项目同一套统计量对当前图像做卡方检验与 RS 分析，看它是否留下"被嵌过"的指纹。</p>
+          <p id="lsb-detect-note" class="decode-note mono sm" aria-live="polite"></p>
         </div>
       </div>
       <div class="thumb-row">
@@ -286,7 +301,7 @@
           <figcaption id="scan-note" class="mono sm">d=0.00 · chi2 p=… · RS=…% · ML=…%</figcaption>
         </figure>
         <div class="lab-controls">
-          <label data-i18n="pay.label">嵌入密度（占容量百分比，0–35%）</label>
+          <label data-i18n="pay.label">嵌入密度（占容量比例，0–45%）</label>
           <input id="pay-slider" type="range" min="0" max="7" value="0" step="1">
           <div class="range-note" id="pay-value">0.00</div>
           <p class="hint" data-i18n="pay.hint">用项目真实统计量观察“藏得越多越容易被发现”：拖动滑块看三条曲线同步移动。</p>
@@ -312,9 +327,10 @@
     <section id="roadmap" class="section alt">
       <div class="section-head">
         <span class="part-tag" data-i18n="part3">第三部分 · 学习路径</span>
-        <p class="eyebrow" data-i18n="road.eyebrow">12 周学习路线</p>
-        <h2 data-i18n="road.title">每周都有可运行的成果</h2>
+        <p class="eyebrow" data-i18n="road.eyebrow">6–12 个月学习路线</p>
+        <h2 data-i18n="road.title">从入门到研究，逐月进阶</h2>
       </div>
+      <p class="road-note" data-i18n="road.note">下面是 12 周快速入门计划；完整课程为 6–12 个月（基础 / 提高 / 深化 / 实战四段），见手册附录 F。</p>
       <ol id="roadmap-list" class="roadmap"></ol>
     </section>
 
@@ -328,11 +344,11 @@
       <div class="card-row">
         <a class="card link" href="/nsf5-steganography/zh/content/intro.html">
           <h3 data-i18n="res.zh">中文手册（Jupyter Book）</h3>
-          <p data-i18n="res.zhd">94 页完整学习路径，可逐章阅读。</p>
+          <p data-i18n="res.zhd">66 页完整学习路径，可逐章阅读。</p>
         </a>
         <a class="card link" href="/nsf5-steganography/en/content/intro.html">
           <h3 data-i18n="res.en">English Handbook</h3>
-          <p data-i18n="res.end">Full 12-week bilingual learning path.</p>
+          <p data-i18n="res.end">A 6–12 month bilingual learning path (12-week quick-start).</p>
         </a>
         <a class="card link" href="https://github.com/Yukinoshita-lin/nsf5-steganography">
           <h3 data-i18n="res.repo">GitHub 仓库</h3>
@@ -361,7 +377,7 @@
         </article>
         <article class="card small">
           <h3 data-i18n="faq.c3t">能商用吗？</h3>
-          <p data-i18n="faq.c3d">项目采用 BSD-3-Clause 许可，可自由用于教学与研究并保留版权声明。</p>
+          <p data-i18n="faq.c3d">项目采用 Apache-2.0 许可，可自由用于教学、研究与商用，只需保留版权与许可声明（见 LICENSE / NOTICE）。</p>
         </article>
       </div>
     </section>
