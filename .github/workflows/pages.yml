@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "teaching/web/**"
+      - "webapp/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -35,17 +36,10 @@ jobs:
       - name: Assemble static site
         run: |
           rm -rf site
+          cp -r webapp site
           mkdir -p site/zh site/en
           cp -r teaching/web/zh/_build/html/. site/zh/
           cp -r teaching/web/en/_build/html/. site/en/
-          cat > site/index.html <<'EOF'
-          <!doctype html>
-          <meta charset="utf-8">
-          <meta http-equiv="refresh" content="0;url=zh/content/intro.html">
-          <title>nsF5 Steganography - Handbook</title>
-          <p>Redirecting to the <a href="zh/content/intro.html">Chinese handbook</a>
-          or the <a href="en/content/intro.html">English handbook</a>.</p>
-          EOF
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>nsF5 Steganography - Interactive Learning Lab</title>
+  <meta name="description" content="Interactive bilingual lab for image steganography, nsF5 matrix embedding, wet paper coding and ML steganalysis.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕵️</text></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#home" data-i18n="brand">nsF5 · 隐写互动实验室</a>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="#lsb" data-i18n="nav.lsb">LSB 实验</a>
+      <a href="#hamming" data-i18n="nav.hamming">矩阵编码</a>
+      <a href="#pipeline" data-i18n="nav.pipeline">原理</a>
+      <a href="#ml" data-i18n="nav.ml">ML 检测</a>
+      <a href="#roadmap" data-i18n="nav.roadmap">路线图</a>
+      <a href="#resources" data-i18n="nav.resources">资源</a>
+    </nav>
+    <button id="lang-toggle" class="lang-btn" type="button" aria-label="Switch language">EN</button>
+  </header>
+
+  <main>
+    <!-- ============ HERO ============ -->
+    <section id="home" class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow" data-i18n="hero.eyebrow">零基础 · 双语 · 交互式</p>
+        <h1 data-i18n="hero.title">把文字藏进图片，<br>亲眼看见算法如何工作</h1>
+        <p class="lead" data-i18n="hero.lead">在浏览器里动手实验 LSB、汉明伴随式矩阵编码、湿纸编码与机器学习隐写检测。每一步都有即时反馈。</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#lsb" data-i18n="hero.cta1">开始第一个实验</a>
+          <a class="btn ghost" href="#pipeline" data-i18n="hero.cta2">先看工作原理</a>
+        </div>
+        <ul class="hero-tags">
+          <li data-i18n="hero.tag1">信息隐藏</li>
+          <li data-i18n="hero.tag2">隐写分析</li>
+          <li data-i18n="hero.tag3">机器学习</li>
+          <li data-i18n="hero.tag4">12 周路线</li>
+        </ul>
+      </div>
+      <div class="hero-visual">
+        <img src="assets/hero-covers.png" alt="Cover and stego image side by side" width="620" height="360">
+        <div class="hero-caption" data-i18n="hero.caption">原图（左）与藏入秘密后的含密图（右）：肉眼几乎无法区分</div>
+      </div>
+    </section>
+
+    <!-- ============ LSB EXPERIMENT ============ -->
+    <section id="lsb" class="section alt">
+      <div class="section-head">
+        <p class="eyebrow" data-i18n="lsb.eyebrow">实验 1 · 一分钟上手</p>
+        <h2 data-i18n="lsb.title">位平面实验室：在像素 LSB 里藏一句话</h2>
+        <p data-i18n="lsb.sub">拖动位平面滑条观察图像被拆成 8 层；输入消息后，我们只修改最低位并统计被改变的像素。</p>
+      </div>
+      <div class="lab-grid">
+        <figure class="canvas-card">
+          <canvas id="lsb-canvas" width="400" height="400" aria-label="Generated test image"></canvas>
+          <figcaption id="lsb-stats" class="stat-line">LSB=1 比例: 50.0% · 修改像素: 0</figcaption>
+        </figure>
+        <div class="lab-controls">
+          <label for="bitplane" data-i18n="lsb.bitplane">显示位平面</label>
+          <input id="bitplane" type="range" min="-1" max="7" value="-1" step="1">
+          <div class="range-note" id="bitplane-note" data-i18n="lsb.note0">-1 = 原始灰度图</div>
+
+          <label for="lsb-msg" data-i18n="lsb.msg">想藏的消息（ASCII）</label>
+          <input id="lsb-msg" type="text" value="Hello nsF5!" maxlength="24">
+
+          <div class="btn-row">
+            <button id="lsb-embed" class="btn primary" data-i18n="lsb.embed">嵌入到 LSB</button>
+            <button id="lsb-reset" class="btn ghost" data-i18n="lsb.reset">重置</button>
+          </div>
+          <ul class="learn-list">
+            <li data-i18n="lsb.li1">灰度值的最低一位叫 LSB；翻转 200↔201 人眼看不出差别。</li>
+            <li data-i18n="lsb.li2">直接替换 LSB 会留下统计指纹，可被卡方 / RS 分析发现（第 2 个实验旁有说明）。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="thumb-row">
+        <img src="assets/lsb-planes.png" alt="Bit planes of an image">
+        <img src="assets/stego-detect.png" alt="Clean vs stego statistics">
+      </div>
+    </section>
+
+    <!-- ============ HAMMING DEMO ============ -->
+    <section id="hamming" class="section">
+      <div class="section-head">
+        <p class="eyebrow" data-i18n="ham.eyebrow">实验 2 · 项目的核心</p>
+        <h2 data-i18n="ham.title">汉明伴随式编码：7 个位置承载 3 位，只改 1 位</h2>
+        <p data-i18n="ham.sub">点击格子手动翻转 LSB，或让系统自动找出“该翻转哪一个位置”，实时验证 H·x == m。</p>
+      </div>
+      <div class="lab-grid">
+        <div class="lab-controls">
+          <div class="field-row">
+            <label data-i18n="ham.p">参数 p（每块消息位数）</label>
+            <select id="ham-p">
+              <option value="2">p=2 (n=3)</option>
+              <option value="3" selected>p=3 (n=7)</option>
+              <option value="4">p=4 (n=15)</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label data-i18n="ham.m">目标伴随式 m</label>
+            <input id="ham-m" type="text" value="110" maxlength="8">
+          </div>
+          <div class="btn-row">
+            <button id="ham-random" class="btn primary" data-i18n="ham.random">随机块</button>
+            <button id="ham-solve" class="btn ghost" data-i18n="ham.solve">找出应翻转的位置</button>
+          </div>
+          <div id="ham-info" class="mono" role="status">s=000 · m=110 · d=110 → 翻转第 6 位</div>
+          <ul class="learn-list">
+            <li data-i18n="ham.li1">校验矩阵 H 的每一列都不同，所以“差值 d”永远能找到唯一要翻转的位置。</li>
+            <li data-i18n="ham.li2">平均每个块只需改动 0.875 次，就能携带 p=3 位消息——嵌入效率大幅提升。</li>
+          </ul>
+        </div>
+        <figure class="canvas-card">
+          <canvas id="ham-canvas" width="560" height="170" aria-label="Hamming code block"></canvas>
+          <figcaption id="ham-caption" data-i18n="ham.caption">黄格 = 建议翻转的 LSB</figcaption>
+        </figure>
+      </div>
+      <div class="wide-figure">
+        <img src="assets/hamming-illustration.png" alt="Syndrome matrix embedding illustration">
+        <img src="assets/efficiency-curve.png" alt="Embedding efficiency curve">
+      </div>
+    </section>
+
+    <!-- ============ PIPELINE ============ -->
+    <section id="pipeline" class="section alt">
+      <div class="section-head">
+        <p class="eyebrow" data-i18n="pipe.eyebrow">一张图看懂</p>
+        <h2 data-i18n="pipe.title">从“藏”到“查”：完整数据流</h2>
+      </div>
+      <img class="wide-img" src="assets/pipeline-zh.png"
+           data-src-zh="assets/pipeline-zh.png" data-src-en="assets/pipeline-en.png"
+           alt="Embedding, decoding and steganalysis pipeline">
+      <div class="card-row">
+        <article class="card">
+          <h3 data-i18n="pipe.c1t">嵌入端</h3>
+          <p data-i18n="pipe.c1d">消息 → 长度头 + SHA-256 键控 → 汉明/湿纸编码 → 写入 LSB → 含密图。</p>
+        </article>
+        <article class="card">
+          <h3 data-i18n="pipe.c2t">解码端</h3>
+          <p data-i18n="pipe.c2d">重算内容哈希 → 恢复路径 → 提取伴随式 → 还原消息；被篡改会自同步失败。</p>
+        </article>
+        <article class="card">
+          <h3 data-i18n="pipe.c3t">分析端</h3>
+          <p data-i18n="pipe.c3d">卡方 / RS / 11-143 维特征 + 双版本 LGB 模型输出含密概率。</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ ML ============ -->
+    <section id="ml" class="section">
+      <div class="section-head">
+        <p class="eyebrow" data-i18n="ml.eyebrow">机器学习检测</p>
+        <h2 data-i18n="ml.title">机器如何“看出来”图片藏了东西</h2>
+        <p data-i18n="ml.sub">先手工设计能度量 LSB 足迹的特征，再用分类器学一个判别边界；项目同时保留“稳健 143 维”与“可解释 53 维”两套模型。</p>
+      </div>
+      <div class="thumb-row">
+        <img src="assets/roc-illustration.png" alt="ROC curve illustration">
+        <img src="assets/dual-models.png" alt="Dual model comparison chart">
+      </div>
+      <div class="card-row">
+        <article class="card small">
+          <h3 data-i18n="ml.c1t">为什么不用裸像素 CNN？</h3>
+          <p data-i18n="ml.c1d">弱 LSB 信号 + 独立样本只有照片数；特征法在同样小数据上更稳、更可解释。</p>
+        </article>
+        <article class="card small">
+          <h3 data-i18n="ml.c2t">GroupKFold</h3>
+          <p data-i18n="ml.c2d">同一张照片的所有变体只能同进同出，防止“同源泄漏”让 AUC 虚高。</p>
+        </article>
+        <article class="card small">
+          <h3 data-i18n="ml.c3t">双版本策略</h3>
+          <p data-i18n="ml.c3d">143d 更稳（OOD 1/8 误报），53d AUC 更高且每个特征都能解释。</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ ROADMAP ============ -->
+    <section id="roadmap" class="section alt">
+      <div class="section-head">
+        <p class="eyebrow" data-i18n="road.eyebrow">12 周学习路线</p>
+        <h2 data-i18n="road.title">每周都有可运行的成果</h2>
+      </div>
+      <ol id="roadmap-list" class="roadmap"></ol>
+    </section>
+
+    <!-- ============ RESOURCES ============ -->
+    <section id="resources" class="section">
+      <div class="section-head">
+        <p class="eyebrow" data-i18n="res.eyebrow">继续深入</p>
+        <h2 data-i18n="res.title">手册 · Notebook · 源码</h2>
+      </div>
+      <div class="card-row">
+        <a class="card link" href="/nsf5-steganography/zh/content/intro.html">
+          <h3 data-i18n="res.zh">中文手册（Jupyter Book）</h3>
+          <p data-i18n="res.zhd">94 页完整学习路径，可逐章阅读。</p>
+        </a>
+        <a class="card link" href="/nsf5-steganography/en/content/intro.html">
+          <h3 data-i18n="res.en">English Handbook</h3>
+          <p data-i18n="res.end">Full 12-week bilingual learning path.</p>
+        </a>
+        <a class="card link" href="https://github.com/Yukinoshita-lin/nsf5-steganography">
+          <h3 data-i18n="res.repo">GitHub 仓库</h3>
+          <p data-i18n="res.repod">Notebooks、Docker、数据集与全部源码。</p>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p data-i18n="footer.note">互动实验室 · 基于 nsF5 Steganography 项目构建</p>
+    <p><a href="https://github.com/Yukinoshita-lin/nsf5-steganography">GitHub</a> ·
+      <a href="https://doi.org/10.5281/zenodo.22543629">DOI</a></p>
+  </footer>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

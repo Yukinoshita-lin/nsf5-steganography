@@ -64,6 +64,7 @@ Or use the bundled `Makefile`: `make install`, `make test`, `make e2e`,
 - Chinese handbook (PDF):
   [学习手册-从零读懂nsF5隐写项目.pdf](docs/学习手册-从零读懂nsF5隐写项目.pdf)
 - Online bilingual handbook:
+  [Interactive learning lab](https://yukinoshita-lin.github.io/nsf5-steganography/) ·
   [zh](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html) ·
   [en](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
 - Per-chapter Colab/Jupyter notebooks and Docker instructions:
