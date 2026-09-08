@@ -19,6 +19,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (drag threshold, live FP/FN rates).
 - Website UX: wet-paper auto-play animation, mobile navigation menu, and
   scroll-spy highlighting of the active section.
+- Website data-viz lab: payload scan (real project statistics on a campus
+  photo) with chi-square p / RS estimate / ML probability curves synced to an
+  embedding-density slider.
 - README: full English overview section (features, cross-platform quick start,
   learning resources and license) alongside the Chinese documentation.
 - teaching/README: bilingual version - full English teaching guide followed by

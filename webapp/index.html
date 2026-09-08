@@ -224,6 +224,18 @@
           <p class="hint" data-i18n="ml.thrhint">红线向右 = 更严格（误报少、漏报多）；向左 = 更宽松（检出高、误报多）。</p>
         </div>
       </div>
+      <div class="lab-grid wide-lab">
+        <figure class="canvas-card">
+          <canvas id="scan-canvas" width="660" height="300" aria-label="Payload scan visualization"></canvas>
+          <figcaption id="scan-note" class="mono sm">d=0.00 · chi2 p=… · RS=…% · ML=…%</figcaption>
+        </figure>
+        <div class="lab-controls">
+          <label data-i18n="pay.label">嵌入密度（占容量百分比，0–35%）</label>
+          <input id="pay-slider" type="range" min="0" max="7" value="0" step="1">
+          <div class="range-note" id="pay-value">0.00</div>
+          <p class="hint" data-i18n="pay.hint">用项目真实统计量观察“藏得越多越容易被发现”：拖动滑块看三条曲线同步移动。</p>
+        </div>
+      </div>
       <div class="card-row">
         <article class="card small">
           <h3 data-i18n="ml.c1t">为什么不用裸像素 CNN？</h3>

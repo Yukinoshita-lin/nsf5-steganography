@@ -24,6 +24,7 @@ const state = {
   wetChanged: new Set(),
   wetTimer: null,
   wetStop: false,
+  scanData: null,
 };
 
 const els = (id) => document.getElementById(id);
@@ -45,6 +46,7 @@ function applyLang() {
   renderHamming();
   renderWet();
   renderThreshold();
+  renderScan();
 }
 
 /* ---------- image generation ---------- */
@@ -421,6 +423,73 @@ function renderThreshold() {
     "FP=" + (fp * 100).toFixed(1) + "% · FN=" + (fn * 100).toFixed(1) + "%";
 }
 
+/* ---------- Payload scan visualization ---------- */
+const SCAN_FALLBACK = {
+  densities: [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35],
+  chi2_pvalue: [0, 0, 0, 0, 0, 0, 0, 0],
+  rs_rate: [22.25, 22.79, 23.39, 23.92, 24.43, 24.89, 25.48, 25.9],
+  ml_proba: [5.33, 8.54, 23.28, 24.81, 34.49, 64.91, 74.53, 80.89],
+};
+
+function renderScan() {
+  const data = state.scanData || SCAN_FALLBACK;
+  const idx = Math.min(els("pay-slider").value, data.densities.length - 1);
+  const canvas = els("scan-canvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  const rows = [
+    { key: "chi2_pvalue", max: 1, color: "#e08a00", label: t("pay.chi2") },
+    { key: "rs_rate", max: 55, color: "#2e74b5", label: t("pay.rs") },
+    { key: "ml_proba", max: 100, color: "#d63f6c", label: t("pay.ml") },
+  ];
+  const left = 78, right = W - 26, rowH = (H - 34) / rows.length;
+  const xFor = (i) => left + (i / (data.densities.length - 1)) * (right - left);
+  rows.forEach((row, r) => {
+    const yTop = 14 + r * rowH;
+    const yFor = (v) => yTop + rowH - 14 - (Math.min(Math.max(v, 0), row.max) / row.max) * (rowH - 28);
+    ctx.strokeStyle = "#e6ecf3";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(left, yTop + rowH - 14); ctx.lineTo(right, yTop + rowH - 14); ctx.stroke();
+    ctx.fillStyle = "#5b6b7a";
+    ctx.font = "600 12px system-ui";
+    ctx.fillText(row.label, 4, yTop + rowH / 2);
+    ctx.strokeStyle = row.color;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    data.densities.forEach((_, i) => {
+      const y = yFor(data[row.key][i]);
+      if (i === 0) ctx.moveTo(xFor(i), y); else ctx.lineTo(xFor(i), y);
+    });
+    ctx.stroke();
+    const vy = data[row.key][idx];
+    ctx.fillStyle = row.color;
+    ctx.beginPath(); ctx.arc(xFor(idx), yFor(vy), 5, 0, Math.PI * 2); ctx.fill();
+    ctx.font = "11px system-ui";
+    const val = row.key === "chi2_pvalue" ? vy.toFixed(2) : vy.toFixed(1) + "%";
+    ctx.fillText(val, Math.min(xFor(idx) + 8, right - 34), yTop + rowH / 2 - 6);
+  });
+  ctx.strokeStyle = "#d32f2f";
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.moveTo(xFor(idx), 14); ctx.lineTo(xFor(idx), H - 20);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const d = data.densities[idx];
+  els("pay-value").textContent = d.toFixed(2);
+  els("scan-note").textContent =
+    "d=" + d.toFixed(2) + " · chi2 p=" + data.chi2_pvalue[idx].toFixed(2) +
+    " · RS=" + data.rs_rate[idx].toFixed(1) + "% · ML=" + data.ml_proba[idx].toFixed(1) + "%";
+}
+
+function loadScanData() {
+  fetch("data/scan-demo.json")
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("http"))))
+    .then((json) => { state.scanData = json; renderScan(); })
+    .catch(() => { /* fallback array is already used */ });
+}
+
 function renderHammingCanvas() {
   const canvas = els("ham-canvas");
   const ctx = canvas.getContext("2d");
@@ -519,8 +588,10 @@ function init() {
   els("wet-m").addEventListener("change", wetSolve);
   els("wet-canvas").addEventListener("click", wetClick);
   els("thr-slider").addEventListener("input", renderThreshold);
+  els("pay-slider").addEventListener("input", renderScan);
   applyLang();
   spy();
+  loadScanData();
 }
 
 document.addEventListener("DOMContentLoaded", init);
