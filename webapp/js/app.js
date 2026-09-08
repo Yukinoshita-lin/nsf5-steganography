@@ -54,6 +54,7 @@ function applyLang() {
   renderScan();
   renderLayerChips();
   renderLayerCanvas();
+  renderFaq();
 }
 
 /* ---------- image generation ---------- */
@@ -679,6 +680,23 @@ function renderRoadmap() {
   });
 }
 
+/* ---------- FAQ accordion ---------- */
+function renderFaq() {
+  const box = els("faq-list");
+  box.innerHTML = "";
+  const items = t("faq.items");
+  items.forEach(([q, a], i) => {
+    const details = document.createElement("details");
+    details.className = "faq-item";
+    const summary = document.createElement("summary");
+    summary.textContent = q;
+    const p = document.createElement("p");
+    p.textContent = a;
+    details.append(summary, p);
+    box.appendChild(details);
+  });
+}
+
 /* ---------- wire events ---------- */
 function init() {
   state.cover = makeDemoImage();
@@ -694,7 +712,7 @@ function init() {
   document.querySelectorAll("#main-nav a").forEach((a) => {
     a.addEventListener("click", () => els("main-nav").classList.remove("open"));
   });
-  const sections = ["lsb", "hamming", "wetpaper", "pipeline", "ml", "roadmap", "resources"];
+  const sections = ["lsb", "hamming", "wetpaper", "pipeline", "ml", "roadmap", "resources", "faq"];
   const spy = () => {
     let active = sections[0];
     for (const id of sections) {

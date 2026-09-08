@@ -139,6 +139,61 @@ h1 { font-size: clamp(1.9rem, 4.2vw, 3.2rem); line-height: 1.2; margin: 10px 0 1
 .roadmap b { display: block; color: var(--blue-2); }
 .roadmap span { color: var(--ink-2); display: block; }
 
+/* ---------- contents map (on this page) ---------- */
+.contents {
+  padding: 22px 7vw 8px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: 70px;
+}
+.contents-title {
+  font-weight: 800; color: var(--blue-2); letter-spacing: 1px;
+  font-size: .95rem; margin: 0 0 14px; text-transform: uppercase;
+}
+.contents-parts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.contents-part {
+  background: var(--bg-soft); border: 1px solid var(--line);
+  border-radius: 14px; padding: 14px 16px;
+}
+.contents-part-head {
+  font-weight: 800; color: var(--ink); margin: 0 0 10px; font-size: 1rem;
+}
+.contents-part a {
+  display: block; color: var(--blue); text-decoration: none;
+  padding: 5px 0; font-size: .92rem; border-bottom: 1px dashed var(--line);
+}
+.contents-part a:last-child { border-bottom: none; }
+.contents-part a:hover { color: var(--blue-2); }
+
+/* ---------- section part tag ---------- */
+.part-tag {
+  display: inline-flex; align-items: center;
+  background: var(--teal); color: #fff; font-weight: 700;
+  font-size: .8rem; letter-spacing: .5px;
+  padding: 4px 12px; border-radius: 999px; margin-bottom: 12px;
+}
+.section-head { position: relative; }
+
+/* ---------- FAQ accordion ---------- */
+.faq-list { display: grid; gap: 12px; max-width: 880px; }
+.faq-item {
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  overflow: hidden; box-shadow: var(--shadow);
+}
+.faq-item summary {
+  cursor: pointer; padding: 16px 20px; font-weight: 700; color: var(--ink);
+  list-style: none; position: relative; transition: background .15s ease;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after {
+  content: "+"; position: absolute; right: 20px; top: 50%;
+  transform: translateY(-50%); font-size: 1.3rem; color: var(--blue);
+  transition: transform .2s ease;
+}
+.faq-item[open] summary::after { content: "–"; }
+.faq-item summary:hover { background: var(--bg-soft); }
+.faq-item p { padding: 0 20px 18px; margin: 0; color: var(--ink-2); }
+
 footer {
   text-align: center; padding: 26px; color: var(--ink-2);
   border-top: 1px solid var(--line); background: #f7fafd;
@@ -178,4 +233,5 @@ footer p { margin: 4px 0; }
   .menu-btn { display: block; margin-left: auto; }
   .topbar .lang-btn { margin-left: 10px; }
   .thumb-row, .wide-figure, .card-row, .roadmap { grid-template-columns: 1fr; }
+  .contents-parts { grid-template-columns: repeat(2, 1fr); }
 }

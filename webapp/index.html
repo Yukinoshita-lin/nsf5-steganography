@@ -20,6 +20,7 @@
       <a href="#ml" data-i18n="nav.ml">ML 检测</a>
       <a href="#roadmap" data-i18n="nav.roadmap">路线图</a>
       <a href="#resources" data-i18n="nav.resources">资源</a>
+      <a href="#faq" data-i18n="nav.faq">FAQ</a>
     </nav>
     <button id="menu-toggle" class="menu-btn" type="button" aria-label="Menu">☰</button>
     <button id="lang-toggle" class="lang-btn" type="button" aria-label="Switch language">EN</button>
@@ -49,9 +50,37 @@
       </div>
     </section>
 
+    <!-- ============ CONTENTS MAP / ON THIS PAGE ============ -->
+    <nav id="contents" class="contents" aria-label="On this page">
+      <p class="contents-title" data-i18n="contents.title">本页导航</p>
+      <div class="contents-parts">
+        <div class="contents-part">
+          <p class="contents-part-head" data-i18n="contents.p1.head">动手实验</p>
+          <a href="#lsb" data-i18n="contents.p1.i1">① 位平面实验室</a>
+          <a href="#hamming" data-i18n="contents.p1.i2">② 汉明伴随式编码</a>
+          <a href="#wetpaper" data-i18n="contents.p1.i3">③ 湿纸编码求解</a>
+        </div>
+        <div class="contents-part">
+          <p class="contents-part-head" data-i18n="contents.p2.head">原理分析</p>
+          <a href="#pipeline" data-i18n="contents.p2.i1">④ 嵌入/解码数据流</a>
+          <a href="#ml" data-i18n="contents.p2.i2">⑤ 机器学习检测</a>
+        </div>
+        <div class="contents-part">
+          <p class="contents-part-head" data-i18n="contents.p3.head">学习路径</p>
+          <a href="#roadmap" data-i18n="contents.p3.i1">⑥ 12 周路线</a>
+          <a href="#resources" data-i18n="contents.p3.i2">⑦ 手册 · Notebook · 源码</a>
+        </div>
+        <div class="contents-part">
+          <p class="contents-part-head" data-i18n="contents.p4.head">常见问题</p>
+          <a href="#faq" data-i18n="contents.p4.i1">⑧ FAQ 快速答疑</a>
+        </div>
+      </div>
+    </nav>
+
     <!-- ============ LSB EXPERIMENT ============ -->
     <section id="lsb" class="section alt">
       <div class="section-head">
+        <span class="part-tag" data-i18n="part1">第一部分 · 动手实验</span>
         <p class="eyebrow" data-i18n="lsb.eyebrow">实验 1 · 一分钟上手</p>
         <h2 data-i18n="lsb.title">位平面实验室：在像素 LSB 里藏一句话</h2>
         <p data-i18n="lsb.sub">拖动位平面滑条观察图像被拆成 8 层；输入消息后，我们只修改最低位并统计被改变的像素。</p>
@@ -116,6 +145,7 @@
     <!-- ============ HAMMING DEMO ============ -->
     <section id="hamming" class="section">
       <div class="section-head">
+        <span class="part-tag" data-i18n="part1">第一部分 · 动手实验</span>
         <p class="eyebrow" data-i18n="ham.eyebrow">实验 2 · 项目的核心</p>
         <h2 data-i18n="ham.title">汉明伴随式编码：7 个位置承载 3 位，只改 1 位</h2>
         <p data-i18n="ham.sub">点击格子手动翻转 LSB，或让系统自动找出“该翻转哪一个位置”，实时验证 H·x == m。</p>
@@ -158,6 +188,7 @@
     <!-- ============ WET PAPER ============ -->
     <section id="wetpaper" class="section alt">
       <div class="section-head">
+        <span class="part-tag" data-i18n="part1">第一部分 · 动手实验</span>
         <p class="eyebrow" data-i18n="wet.eyebrow">更深入一步</p>
         <h2 data-i18n="wet.title">湿纸编码：把“会变成 0 的位置”划为湿点</h2>
         <p data-i18n="wet.sub">像素减 128 后，|xv|≤1 的像素像“被水浸湿的纸”。nsF5 不碰它们，只在干点上解 GF(2) 方程——无收缩、无重试。</p>
@@ -202,6 +233,7 @@
     <!-- ============ PIPELINE ============ -->
     <section id="pipeline" class="section alt">
       <div class="section-head">
+        <span class="part-tag" data-i18n="part2">第二部分 · 原理分析</span>
         <p class="eyebrow" data-i18n="pipe.eyebrow">一张图看懂</p>
         <h2 data-i18n="pipe.title">从“藏”到“查”：完整数据流</h2>
       </div>
@@ -227,6 +259,7 @@
     <!-- ============ ML ============ -->
     <section id="ml" class="section">
       <div class="section-head">
+        <span class="part-tag" data-i18n="part2">第二部分 · 原理分析</span>
         <p class="eyebrow" data-i18n="ml.eyebrow">机器学习检测</p>
         <h2 data-i18n="ml.title">机器如何“看出来”图片藏了东西</h2>
         <p data-i18n="ml.sub">先手工设计能度量 LSB 足迹的特征，再用分类器学一个判别边界；项目同时保留“稳健 143 维”与“可解释 53 维”两套模型。</p>
@@ -278,6 +311,7 @@
     <!-- ============ ROADMAP ============ -->
     <section id="roadmap" class="section alt">
       <div class="section-head">
+        <span class="part-tag" data-i18n="part3">第三部分 · 学习路径</span>
         <p class="eyebrow" data-i18n="road.eyebrow">12 周学习路线</p>
         <h2 data-i18n="road.title">每周都有可运行的成果</h2>
       </div>
@@ -287,6 +321,7 @@
     <!-- ============ RESOURCES ============ -->
     <section id="resources" class="section">
       <div class="section-head">
+        <span class="part-tag" data-i18n="part3">第三部分 · 学习路径</span>
         <p class="eyebrow" data-i18n="res.eyebrow">继续深入</p>
         <h2 data-i18n="res.title">手册 · Notebook · 源码</h2>
       </div>
@@ -303,6 +338,31 @@
           <h3 data-i18n="res.repo">GitHub 仓库</h3>
           <p data-i18n="res.repod">Notebooks、Docker、数据集与全部源码。</p>
         </a>
+      </div>
+    </section>
+
+    <!-- ============ FAQ ============ -->
+    <section id="faq" class="section alt">
+      <div class="section-head">
+        <span class="part-tag" data-i18n="part4">第四部分 · 常见问题</span>
+        <p class="eyebrow" data-i18n="faq.eyebrow">快速答疑</p>
+        <h2 data-i18n="faq.title">常见问题（FAQ）</h2>
+        <p data-i18n="faq.sub">实验与原理中最高频的疑问，点开逐条查看。</p>
+      </div>
+      <div class="faq-list" id="faq-list"></div>
+      <div class="card-row">
+        <article class="card small">
+          <h3 data-i18n="faq.c1t">还有问题？</h3>
+          <p data-i18n="faq.c1d">先看手册第 3、8 章：LSB 卡方/RS 分析与第 8 章特征工程。</p>
+        </article>
+        <article class="card small">
+          <h3 data-i18n="faq.c2t">想自己算一遍？</h3>
+          <p data-i18n="faq.c2d">仓库附 12 个 Notebook，含汉明矩阵、湿纸求解与 ML 训练全流程。</p>
+        </article>
+        <article class="card small">
+          <h3 data-i18n="faq.c3t">能商用吗？</h3>
+          <p data-i18n="faq.c3d">项目采用 BSD-3-Clause 许可，可自由用于教学与研究并保留版权声明。</p>
+        </article>
       </div>
     </section>
   </main>

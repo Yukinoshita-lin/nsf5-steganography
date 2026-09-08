@@ -7,6 +7,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Website structure/hierarchy: an "on this page" contents map right after the
+  hero groups the whole page into four themed parts (hands-on labs / how it
+  works / learning path / FAQ), and every section carries a matching part badge,
+  giving the single-page lab a clear learning progression.
+- Website FAQ: a bilingual accordion section (8 common questions on PNG vs JPEG,
+  why LSB is invisible, chi-square/RS detection, Hamming matrix coding, nsF5 vs
+  F5, choosing a cover and raw-pixel CNNs), plus a "still stuck / try it /
+  license" card row; added to the top nav and scroll-spy.
 - Bit-plane layering teaching visual (`lsb-layering-{zh,en}.png` in `webapp/assets`
   and `img009.png` in both handbook assets): shows an 8-bit image as eight
   stacked bit planes and proves each must be weighted by `2**k` before they can
