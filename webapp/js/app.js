@@ -22,6 +22,8 @@ const state = {
   wetVals: [130, 129, 126, 133, 128, 124, 127],
   wetForceDry: new Array(7).fill(false),
   wetChanged: new Set(),
+  wetTimer: null,
+  wetStop: false,
 };
 
 const els = (id) => document.getElementById(id);
@@ -227,6 +229,26 @@ function wetRandom() {
   state.wetChanged = new Set();
   renderWetCanvas();
   els("wet-info").textContent = "s=… · m=…";
+}
+
+function wetAutoStop() {
+  state.wetStop = true;
+  if (state.wetTimer) { clearTimeout(state.wetTimer); state.wetTimer = null; }
+}
+
+function wetAutoPlay() {
+  wetAutoStop();
+  state.wetStop = false;
+  const step = () => {
+    if (state.wetStop) return;
+    wetRandom();
+    state.wetTimer = setTimeout(() => {
+      if (state.wetStop) return;
+      wetSolve();
+      state.wetTimer = setTimeout(step, 1500);
+    }, 900);
+  };
+  step();
 }
 
 function wetSolve() {
@@ -464,6 +486,24 @@ function init() {
     localStorage.setItem("nsf5-lang", currentLang);
     applyLang();
   });
+  els("menu-toggle").addEventListener("click", () => {
+    els("main-nav").classList.toggle("open");
+  });
+  document.querySelectorAll("#main-nav a").forEach((a) => {
+    a.addEventListener("click", () => els("main-nav").classList.remove("open"));
+  });
+  const sections = ["lsb", "hamming", "wetpaper", "pipeline", "ml", "roadmap", "resources"];
+  const spy = () => {
+    let active = sections[0];
+    for (const id of sections) {
+      const el = document.getElementById(id);
+      if (el && el.getBoundingClientRect().top <= 130) active = id;
+    }
+    document.querySelectorAll("#main-nav a").forEach((a) => {
+      a.classList.toggle("active", a.getAttribute("href") === "#" + active);
+    });
+  };
+  window.addEventListener("scroll", spy, { passive: true });
   els("lsb-embed").addEventListener("click", embedMessage);
   els("lsb-reset").addEventListener("click", resetDemo);
   els("bitplane").addEventListener("input", redrawLsb);
@@ -474,10 +514,13 @@ function init() {
   els("ham-canvas").addEventListener("click", hamClick);
   els("wet-random").addEventListener("click", wetRandom);
   els("wet-solve").addEventListener("click", wetSolve);
+  els("wet-auto").addEventListener("click", wetAutoPlay);
+  els("wet-stop").addEventListener("click", wetAutoStop);
   els("wet-m").addEventListener("change", wetSolve);
   els("wet-canvas").addEventListener("click", wetClick);
   els("thr-slider").addEventListener("input", renderThreshold);
   applyLang();
+  spy();
 }
 
 document.addEventListener("DOMContentLoaded", init);

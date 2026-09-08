@@ -17,6 +17,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Website labs: interactive wet-paper dry-position solver (toggle wet/dry cells
   and solve syndrome on dry columns) and an ML decision-threshold playground
   (drag threshold, live FP/FN rates).
+- Website UX: wet-paper auto-play animation, mobile navigation menu, and
+  scroll-spy highlighting of the active section.
 - README: full English overview section (features, cross-platform quick start,
   learning resources and license) alongside the Chinese documentation.
 - teaching/README: bilingual version - full English teaching guide followed by

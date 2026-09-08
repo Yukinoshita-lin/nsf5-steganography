@@ -12,7 +12,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="#home" data-i18n="brand">nsF5 · 隐写互动实验室</a>
-    <nav class="nav" aria-label="Main navigation">
+    <nav id="main-nav" class="nav" aria-label="Main navigation">
       <a href="#lsb" data-i18n="nav.lsb">LSB 实验</a>
       <a href="#hamming" data-i18n="nav.hamming">矩阵编码</a>
       <a href="#wetpaper" data-i18n="nav.wetpaper">湿纸</a>
@@ -21,6 +21,7 @@
       <a href="#roadmap" data-i18n="nav.roadmap">路线图</a>
       <a href="#resources" data-i18n="nav.resources">资源</a>
     </nav>
+    <button id="menu-toggle" class="menu-btn" type="button" aria-label="Menu">☰</button>
     <button id="lang-toggle" class="lang-btn" type="button" aria-label="Switch language">EN</button>
   </header>
 
@@ -151,6 +152,10 @@
           <div class="btn-row">
             <button id="wet-random" class="btn primary" data-i18n="wet.random">随机系数块</button>
             <button id="wet-solve" class="btn ghost" data-i18n="wet.solve">在干点求解</button>
+          </div>
+          <div class="btn-row">
+            <button id="wet-auto" class="btn primary" data-i18n="wet.auto">▶ 自动演示</button>
+            <button id="wet-stop" class="btn ghost" data-i18n="wet.stop">■ 停止</button>
           </div>
           <p class="hint" data-i18n="wet.hint">提示：点击格子可在“湿/干”之间切换，观察干点不足时会发生什么。</p>
         </div>
