@@ -38,11 +38,77 @@ class App:
         self.root = root
         root.title("nsF5 隐写工具 — 伴随式矩阵编码 + 湿纸编码 + 盲隐写分析")
         root.geometry("1120x720")
+        root.minsize(900, 560)
+        self._center(root)
         self.cover_path = None
         self.stego_path = None
         self.cover_img = None
         self.stego_img = None
         self._build_ui()
+        self._build_menu()
+        self._bind_shortcuts()
+
+    # ------------------------------------------------------- 窗口基础
+    def _center(self, root):
+        root.update_idletasks()
+        w, h = 1120, 720
+        x = (root.winfo_screenwidth() - w) // 2
+        y = (root.winfo_screenheight() - h) // 2
+        root.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
+
+    def _build_menu(self):
+        menubar = tk.Menu(self.root)
+        mfile = tk.Menu(menubar, tearoff=0)
+        mfile.add_command(label="载入原始图 / 含密图…", accelerator="Ctrl+O", command=self._load)
+        mfile.add_command(label="保存含密图…", accelerator="Ctrl+S", command=self._save_stego)
+        mfile.add_separator()
+        mfile.add_command(label="打开输出目录", command=self._open_output)
+        mfile.add_separator()
+        mfile.add_command(label="退出", accelerator="Esc", command=self.root.destroy)
+        menubar.add_cascade(label="文件", menu=mfile)
+        mhelp = tk.Menu(menubar, tearoff=0)
+        mhelp.add_command(label="关于", command=self._about)
+        menubar.add_cascade(label="帮助", menu=mhelp)
+        self.root.config(menu=menubar)
+
+    def _bind_shortcuts(self):
+        self.root.bind("<Control-o>", lambda e: self._load())
+        self.root.bind("<Control-e>", lambda e: self._embed())
+        self.root.bind("<Control-d>", lambda e: self._decode())
+        self.root.bind("<Control-a>", lambda e: self._analyze())
+        self.root.bind("<Control-s>", lambda e: self._save_stego())
+
+    def _about(self):
+        messagebox.showinfo(
+            "关于",
+            "nsF5 隐写工具\n\n"
+            "伴随式矩阵编码 + 湿纸编码 + 盲隐写分析\n"
+            "算法核心: ns5_core.py  |  分析: steganalysis.py  |  ML: ml_predict.py\n\n"
+            "快捷键: Ctrl+O 载入 · Ctrl+E 嵌入 · Ctrl+D 解码 · Ctrl+A 分析 · Ctrl+S 保存含密图")
+
+    def _save_stego(self):
+        if self.stego_img is None:
+            messagebox.showwarning("提示", "请先嵌入生成含密图"); return
+        path = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("PNG 图像", "*.png"), ("BMP 图像", "*.bmp")],
+            initialfile=os.path.basename(self.stego_path or "stego.png"))
+        if not path:
+            return
+        try:
+            IO.save_image(self.stego_img, path)
+            self._log("含密图已保存: " + path)
+            self._wait("已保存")
+        except Exception as e:
+            messagebox.showerror("保存失败", str(e))
+
+    def _open_output(self):
+        outdir = os.path.join(PROJECT_DIR, "output")
+        os.makedirs(outdir, exist_ok=True)
+        try:
+            os.startfile(outdir)
+        except Exception as e:
+            self._log("无法打开输出目录: " + str(e))
 
     # ------------------------------------------------------- UI 构建
     def _build_ui(self):
@@ -54,6 +120,10 @@ class App:
 
         self.left = self._build_left(mf)
         self.right = self._build_right(mf)
+        prog = ttk.Frame(mf)
+        prog.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+        self.progress = ttk.Progressbar(prog, mode="indeterminate")
+        self.progress.pack(fill="x")
         self._log("就绪。请载入图片进行操作。")
 
     def _build_left(self, parent):
@@ -132,16 +202,39 @@ class App:
         f.rowconfigure(1, weight=1)
 
         ttk.Label(f, text="原始 / 封面").grid(row=0, column=0)
-        ttk.Label(f, text="含密图").grid(row=0, column=1)
+        self.lbl_stego_hdr = ttk.Label(f, text="含密图")
+        self.lbl_stego_hdr.grid(row=0, column=1)
         self.lbl_cover = ttk.Label(f, text="(未载入)", anchor="center")
         self.lbl_cover.grid(row=1, column=0, sticky="nsew")
         self.lbl_stego = ttk.Label(f, text="(未生成)", anchor="center")
         self.lbl_stego.grid(row=1, column=1, sticky="nsew")
 
-        ttk.Label(f, text="分析结果与解码输出:").grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 2))
+        # 差异图切换
+        ctrl = ttk.Frame(f); ctrl.grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 0))
+        self.var_diff = tk.BooleanVar(value=False)
+        self.cb_diff = ttk.Checkbutton(ctrl, text="查看差异(×255)", variable=self.var_diff,
+                                       command=self._toggle_diff, state="disabled")
+        self.cb_diff.pack(side="left")
+        ttk.Label(ctrl, text="  仅在有含密图时可用", foreground="#888").pack(side="left", padx=6)
+
+        ttk.Label(f, text="分析结果与解码输出:").grid(row=3, column=0, columnspan=2, sticky="w", pady=(6, 2))
         self.out = tk.Text(f, height=9, state="disabled", wrap="word")
-        self.out.grid(row=3, column=0, columnspan=2, sticky="nsew")
+        self.out.grid(row=4, column=0, columnspan=2, sticky="nsew")
         return f
+
+    def _toggle_diff(self):
+        """在 含密图 与 |cover-stego|*255 之间切换右侧预览。"""
+        if self.cover_img is None or self.stego_img is None:
+            self.var_diff.set(False)
+            self.cb_diff.configure(state="disabled")
+            return
+        if self.var_diff.get():
+            diff = np.abs(self.cover_img.astype(np.int16) - self.stego_img.astype(np.int16)).clip(0, 255).astype(np.uint8)
+            self.lbl_stego_hdr.configure(text="差异(×255)")
+            self._show_in(self.lbl_stego, diff)
+        else:
+            self.lbl_stego_hdr.configure(text="含密图")
+            self._show_in(self.lbl_stego, self.stego_img)
 
     # ------------------------------------------------------- 工具
     def _log(self, msg: str):
@@ -171,8 +264,9 @@ class App:
         widget.image = ph
 
     def _busy(self, fn, on_done, *args, **kwargs):
-        """后台线程执行, 完成后通过 after 回主线程。"""
+        """后台线程执行, 完成后通过 after 回主线程。带进度指示。"""
         self._wait("处理中…")
+        self.progress.start(12)
         def worker():
             try:
                 res = fn(*args, **kwargs)
@@ -181,6 +275,8 @@ class App:
                 traceback.print_exc()
                 self.root.after(0, lambda: (self._set_out(f"出错: {e}"),
                                             self._wait("失败")))
+            finally:
+                self.root.after(0, lambda: self.progress.stop())
         threading.Thread(target=worker, daemon=True).start()
 
     def _load(self):
@@ -199,6 +295,9 @@ class App:
         self.stego = None
         self._show_in(self.lbl_cover, gray)
         self.lbl_stego.configure(text="(未生成)")
+        self.lbl_stego_hdr.configure(text="含密图")
+        self.var_diff.set(False)
+        self.cb_diff.configure(state="disabled")
         self._log(f"载入: {path}  尺寸 {gray.shape[1]}x{gray.shape[0]}  "
                   f"SHA256={get_image_hash(gray)[:12]}…")
 
@@ -231,10 +330,13 @@ class App:
             self.stego = stego
             self.stego_path = out
             self._show_in(self.lbl_stego, stego)
+            self.lbl_stego_hdr.configure(text="含密图")
+            self.var_diff.set(False)
+            self.cb_diff.configure(state="normal")
             self._set_out(
                 f"嵌入成功\n保存: {out}\n"
                 f"算法: {method}  p={self.var_p.get()}\n"
-                f"嵌入比特: {nbits}  改动像素: {changed}\n"
+                f"嵌入比特: {nbits}  改动像素: {changed} ({changed/self.cover_img.size*100:.1f}%)\n"
                 f"封面SHA256: {report['cover_hash']}\n\n"
                 "提示: 解码时需使用相同的 方法/p/口令。")
             self._log("嵌入完成, 含密图已保存 " + out)
@@ -245,13 +347,19 @@ class App:
         if self.stego is None and self.cover_img is None:
             messagebox.showwarning("提示", "请先载入图片"); return
         method, p, pwd = self._params()
-        image = self.cover_img  # 当前载入图像即待解读图
+        # 解码/分析的对象是"当前待解读图": 优先用刚嵌入生成的含密图 (stego),
+        # 否则用载入的图。G1: 之前恒用 cover_img, 导致"嵌入→解码"必然失败。
+        image = self.stego if self.stego is not None else self.cover_img
 
         def work():
             return extract_string(image, method=method, p=p, password=pwd)
 
         def done(text):
-            self._set_out(f"解码成功 (方法={method}, p={p}):\n\n{text}")
+            text = (text or "").strip()
+            if text:
+                self._set_out(f"解码成功 (方法={method}, p={p}):\n\n{text}")
+            else:
+                self._set_out(f"未提取到内容 (方法={method}, p={p})。\n请确认: 待解读的图片/方法/p/口令 与嵌入时一致。")
             self._log("解码完成")
             self._wait("解码完成")
         self._busy(work, done)
@@ -259,7 +367,8 @@ class App:
     def _analyze(self):
         if self.stego is None and self.cover_img is None:
             messagebox.showwarning("提示", "请先载入图片"); return
-        image = self.cover_img
+        # 优先分析"当前待检图" = stego (若已嵌入), 否则载入的图。
+        image = self.stego if self.stego is not None else self.cover_img
         sens = self.var_sens.get()
         def work():
             return (SA.analyze(image, sensitivity=sens), get_image_hash(image),
