@@ -10,7 +10,7 @@
 用法: python teaching/gen_ch02_figures.py
 """
 from __future__ import annotations
-import os, shutil
+import os
 import numpy as np
 from PIL import Image
 import matplotlib
@@ -36,6 +36,29 @@ plt.rcParams["savefig.bbox"] = "tight"
 plt.rcParams["figure.dpi"] = 150
 plt.rcParams["savefig.dpi"] = 150
 
+L = {
+    "zh": {
+        "panels": ["原图 (RGB)", "R 通道", "G 通道", "B 通道", "转灰度 (L)"],
+        "ch_title": "图 2-1  一张图 = 一个数组: 彩色是 (H,W,3), 灰度是 (H,W), 类型都是 uint8\n(真实相机照片, 原尺寸 {}×{}×3)",
+        "dtype_titles": [
+            "① np.zeros((8,8),uint8) + 画方块\n元素类型 uint8 (0-255)",
+            "② uint8 溢出回绕: 200+100={} (不是 300)\n所以改位用 ^1 而不是 ±1",
+            "③ 转置/切片得『视图』, 内存不连续:\n   b = a.T          # 视图, shape=(8,8)\n   np.ascontiguousarray(b)  # 拷贝成连续\n很多底层库(如 PIL/PyTorch/ctypes)喜欢连续数组, 保存前要转一下。",
+        ],
+        "dtype_title": "图 2-2  dtype 与内存布局: 两条最容易被绕进去的坑",
+    },
+    "en": {
+        "panels": ["original (RGB)", "R channel", "G channel", "B channel", "grayscale (L)"],
+        "ch_title": "Fig. 2-1  an image is an array: color is (H,W,3), grayscale is (H,W), both uint8\n(real camera photo, original {}×{}×{})",
+        "dtype_titles": [
+            "(1) np.zeros((8,8),uint8) + a square\n element type uint8 (0-255)",
+            "(2) uint8 overflow wraparound: 200+100={} (not 300)\n hence flipping bits uses ^1 not ±1",
+            "(3) transpose/slice gives a 'view', non-contiguous memory:\n   b = a.T          # view, shape=(8,8)\n   np.ascontiguousarray(b)  # copy to contiguous\nmany low-level libs (PIL/PyTorch/ctypes) want contiguous arrays; convert before saving.",
+        ],
+        "dtype_title": "Fig. 2-2  dtype and memory layout: two easy pitfalls",
+    },
+}
+
 
 def setstyle():
     for s in ["seaborn-v0_8-whitegrid", "seaborn-whitegrid", "ggplot"]:
@@ -50,23 +73,19 @@ def setstyle():
             plt.rcParams["font.family"] = [_c, "DejaVu Sans"]; break
 
 
-def out(name):
-    p = os.path.join(ZH, name); plt.savefig(p); plt.close("all")
-    shutil.copy(p, os.path.join(EN, name))
-    print(f"  [ok] {name}  {os.path.getsize(p)//1024} KB")
+def out(name, lang):
+    p = os.path.join(ZH if lang == "zh" else EN, name)
+    plt.savefig(p); plt.close("all")
+    print(f"  [ok] {lang}/{name}  {os.path.getsize(p)//1024} KB")
 
 
-def fig_channels(img_rgb):
+def fig_channels(img_rgb, lang):
+    S = L[lang]
     h, w, _ = img_rgb.shape
-    gray = np.asarray(Image.fromarray(img_rgb).convert("L"), np.uint8)
-    # 缩到便于展示
     disp = Image.fromarray(img_rgb); disp.thumbnail((200, 200))
     d = np.asarray(disp, np.uint8)
-    panels = [("原图 (RGB)", d),
-              (f"R 通道", d[..., 0]),
-              (f"G 通道", d[..., 1]),
-              (f"B 通道", d[..., 2]),
-              (f"转灰度 (L)", np.asarray(Image.fromarray(d).convert("L"), np.uint8))]
+    panels = [(S["panels"][0], d), (S["panels"][1], d[..., 0]), (S["panels"][2], d[..., 1]),
+              (S["panels"][3], d[..., 2]), (S["panels"][4], np.asarray(Image.fromarray(d).convert("L"), np.uint8))]
     fig, axes = plt.subplots(1, 5, figsize=(15.5, 3.6))
     for ax, (t, im) in zip(axes, panels):
         if im.ndim == 3:
@@ -75,33 +94,28 @@ def fig_channels(img_rgb):
             ax.imshow(im, cmap="gray", vmin=0, vmax=255)
         ax.set_title(t, fontsize=9)
         ax.axis("off")
-    fig.suptitle(f"图 2-1  一张图 = 一个数组: 彩色是 (H,W,3), 灰度是 (H,W), 类型都是 uint8\n"
-                 f"(真实相机照片, 原尺寸 {h}×{w}×3)", fontsize=11)
+    fig.suptitle(S["ch_title"].format(h, w, 3), fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.86])
-    out("py_image_array.png")
+    out("py_image_array.png", lang)
 
 
-def fig_dtype():
-    # 演示 uint8 溢出回绕 与 视图/连续数组
+def fig_dtype(lang):
+    S = L[lang]
     a = np.zeros((8, 8), dtype=np.uint8)
-    a[2:6, 2:6] = 255                      # 白色方块
+    a[2:6, 2:6] = 255
     val = np.uint8(200)
-    wrap = val + np.uint8(100)             # 200+100 -> 44 (uint8 回绕)
+    wrap = val + np.uint8(100)
     fig, axes = plt.subplots(1, 3, figsize=(12.5, 3.8))
     axes[0].imshow(a, cmap="gray", vmin=0, vmax=255)
-    axes[0].set_title("① np.zeros((8,8),uint8) + 画方块\n元素类型 uint8 (0~255)", fontsize=9)
-    axes[1].bar(["200", "+100", "=结果"], [200, 100, int(wrap)], color=["#1f77b4", "#1f77b4", "#d62728"])
-    axes[1].set_title(f"② uint8 溢出回绕: 200+100={int(wrap)} (不是 300)\n所以改位用 ^1 而不是 ±1", fontsize=9)
+    axes[0].set_title(S["dtype_titles"][0], fontsize=9)
+    axes[1].bar(["200", "+100", "=result"], [200, 100, int(wrap)], color=["#1f77b4", "#1f77b4", "#d62728"])
+    axes[1].set_title(S["dtype_titles"][1].format(int(wrap)), fontsize=9)
     axes[1].set_ylim(0, 320)
     axes[2].axis("off")
-    axes[2].text(0.05, 0.8, "③ 转置/切片得『视图』, 内存不连续:\n"
-                            "   b = a.T          # 视图, shape=(8,8)\n"
-                            "   np.ascontiguousarray(b)  # 拷贝成连续\n"
-                            "很多底层库(如 PIL/PyTorch/ctypes)喜欢连续数组, 保存前要转一下。",
-                 fontsize=9, va="top")
-    fig.suptitle("图 2-2  dtype 与内存布局: 两条最容易被绕进去的坑", fontsize=11)
+    axes[2].text(0.05, 0.8, S["dtype_titles"][2], fontsize=9, va="top")
+    fig.suptitle(S["dtype_title"], fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.86])
-    out("py_dtype_culprit.png")
+    out("py_dtype_culprit.png", lang)
 
 
 def main():
@@ -112,8 +126,9 @@ def main():
     else:
         img_rgb = np.asarray(Image.open(CANDIDATES[0]).convert("RGB"), np.uint8)
     print("源图", CANDIDATES[0] if CANDIDATES else "cover", img_rgb.shape)
-    fig_channels(img_rgb)
-    fig_dtype()
+    for lang in ("zh", "en"):
+        fig_channels(img_rgb, lang)
+        fig_dtype(lang)
     print("完成 → ", ZH)
 
 

@@ -112,7 +112,7 @@ def md_to_tex(text: str) -> str:
         if mm:
             lvl = len(mm.group(1)); title = inline(mm.group(2))
             if lvl == 1:
-                out.append("\\chapter*{%s}\\addcontentsline{toc}{chapter}{%s}" % (title, title))
+                out.append("\\chapter*{%s}\\markboth{%s}{%s}\\addcontentsline{toc}{chapter}{%s}" % (title, title, title, title))
             elif lvl == 2:
                 out.append("\\section*{%s}\\addcontentsline{toc}{section}{%s}" % (title, title))
             elif lvl == 3:
@@ -211,7 +211,7 @@ def main():
     body_tex = "\n\n".join(body)
 
     title = "项目学习手册 · 从零读懂 nsF5 隐写" if LANG == "zh" else "Learning Handbook: From Zero to nsF5 Steganography"
-    doc = r"""\documentclass[UTF8,11pt]{ctexbook}
+    doc = r"""\documentclass[openany,UTF8,11pt]{ctexbook}
 \usepackage[margin=2.2cm]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -247,6 +247,7 @@ def main():
 \graphicspath{{@@P@@}}
 \setCJKmainfont{Microsoft YaHei}
 \lstset{basicstyle=\ttfamily\small,breaklines=true,frame=single,keywordstyle=\color{blue!70!black},commentstyle=\color{green!50!black}}
+@@EN@@
 \title{@@TITLE@@}
 \author{nsF5 Steganography Project}
 \begin{document}
@@ -257,7 +258,11 @@ def main():
 @@BODY@@
 \end{document}
 """
+    enpreamble = (r"\renewcommand{\figurename}{Figure}" +
+                  r"\renewcommand{\contentsname}{Contents}" +
+                  r"\renewcommand{\listfigurename}{List of Figures}") if LANG == "en" else ""
     doc = (doc.replace("@@P@@", os.path.join(BUILD, "assets").replace("\\", "/"))
+              .replace("@@EN@@", enpreamble)
               .replace("@@TITLE@@", title)
               .replace("@@BODY@@", body_tex))
 

@@ -32,6 +32,32 @@ plt.rcParams["figure.dpi"] = 150
 plt.rcParams["savefig.dpi"] = 150
 ACCENT, WARM, GREEN, GREY, PURPLE = "#1f77b4", "#d62728", "#2ca02c", "#7f7f7f", "#9467bd"
 
+# 双语标签
+L = {
+    "zh": {
+        "title": "图 6-1  嵌入位置是「由密钥决定的伪随机顺序」：两张不同口令给出完全不同的路径",
+        "seed_a": "seed = 0x1234ABCD (口令 A)",
+        "seed_b": "seed = 0x9F00BEEF (口令 B)",
+        "cbar": "访问次序 (1 = 最先, 最大 = 最后)",
+        "scatter_title": "图 6-2  键控置换: 同样是置换(每点一次), 但不同口令顺序完全不同",
+        "xlabel": "像素位置 index", "ylabel": "访问次序 rank",
+        "order_note": "不置乱(顺序) = 可预测=危险",
+        "pw_a": "口令 A", "pw_b": "口令 B",
+        "legend": "位置→次序",
+    },
+    "en": {
+        "title": "Fig. 6-1  Embedding positions follow a keyed pseudo-random order: two passwords give completely different paths",
+        "seed_a": "seed = 0x1234ABCD (password A)",
+        "seed_b": "seed = 0x9F00BEEF (password B)",
+        "cbar": "visit order (1 = first, max = last)",
+        "scatter_title": "Fig. 6-2  Keyed permutation: the same permutation (each point once), but a different password gives a completely different order",
+        "xlabel": "pixel index", "ylabel": "visit rank",
+        "order_note": "no shuffle (sequential) = predictable = dangerous",
+        "pw_a": "password A", "pw_b": "password B",
+        "legend": "pos -> order",
+    },
+}
+
 
 def setstyle():
     for s in ["seaborn-v0_8-whitegrid", "seaborn-whitegrid", "ggplot"]:
@@ -46,10 +72,11 @@ def setstyle():
             plt.rcParams["font.family"] = [_c, "DejaVu Sans"]; break
 
 
-def out(name):
-    p = os.path.join(ZH, name); plt.savefig(p); plt.close("all")
-    shutil.copy(p, os.path.join(EN, name))
-    print(f"  [ok] {name}  {os.path.getsize(p)//1024} KB")
+def out(name, lang):
+    p = os.path.join(ZH if lang == "zh" else EN, name)
+    plt.savefig(p)
+    plt.close("all")
+    print(f"  [ok] {lang}/{name}  {os.path.getsize(p)//1024} KB")
 
 
 def permute_index(total: int, seed: int) -> np.ndarray:
@@ -70,51 +97,55 @@ def permute_index(total: int, seed: int) -> np.ndarray:
     return a
 
 
-def fig_path():
+def fig_path(lang):
     side = 64
     n = side * side
-    # 用彩色热图显示"访问顺序": 位置(index) -> 次序(rank=perm+1)
     def rank_img(seed):
         perm = permute_index(n, seed)
         img = np.zeros((side, side), np.int64)
         img[np.unravel_index(np.arange(n), (side, side))] = perm + 1
         return img
     fig, axes = plt.subplots(1, 2, figsize=(9.4, 5.0))
-    imgs = [(rank_img(0x1234ABCD), "seed = 0x1234ABCD (口令 A)"),
-            (rank_img(0x9F00BEEF), "seed = 0x9F00BEEF (口令 B)")]
+    imgs = [(rank_img(0x1234ABCD), L[lang]["seed_a"]),
+            (rank_img(0x9F00BEEF), L[lang]["seed_b"])]
+    im_ = None
     for ax, (im, t) in zip(axes, imgs):
         im_ = ax.imshow(im, cmap="viridis")
         ax.set_title(t, fontsize=9.5)
         ax.axis("off")
-    fig.colorbar(im_, ax=axes, fraction=0.03, pad=0.02).set_label("访问次序 (1 = 最先, 最大 = 最后)")
-    fig.suptitle("图 6-1  嵌入位置是「由密钥决定的伪随机顺序」：两张不同口令给出完全不同的路径", fontsize=11)
+    # 色条只挂在第二个子图右侧, 避免遮挡右侧热图(勘误: 图例渐变色条应右移)
+    cax = fig.colorbar(im_, ax=axes[1], fraction=0.046, pad=0.04)
+    cax.set_label(L[lang]["cbar"], fontsize=9)
+    fig.suptitle(L[lang]["title"], fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.90])
-    out("hash_permute_path.png")
+    out("hash_permute_path.png", lang)
 
 
-def fig_scatter():
+def fig_scatter(lang):
     n = 400
-    seeds = {"口令 A": 0x1234ABCD, "口令 B": 0x9F00BEEF}
+    seeds = {L[lang]["pw_a"]: 0x1234ABCD, L[lang]["pw_b"]: 0x9F00BEEF}
     fig, ax = plt.subplots(figsize=(7.6, 5.2))
-    colors = {"口令 A": ACCENT, "口令 B": WARM}
+    colors = {L[lang]["pw_a"]: ACCENT, L[lang]["pw_b"]: WARM}
     for name, seed in seeds.items():
         perm = permute_index(n, seed)
-        rank = np.argsort(perm) + 1            # rank[p] = 位置 p 的访问次序
-        ax.scatter(np.arange(n), rank, s=4, alpha=0.6, color=colors[name], label=f"{name}  (位置→次序)")
+        rank = np.argsort(perm) + 1
+        ax.scatter(np.arange(n), rank, s=4, alpha=0.6, color=colors[name],
+                   label=f"{name}  ({L[lang]['legend']})")
     ax.plot(np.arange(n), np.arange(n) + 1, ls="--", color=GREY, lw=1.2,
-            label="不置乱(顺序) = 可预测=危险")
-    ax.set_xlabel("像素位置 index"); ax.set_ylabel("访问次序 rank")
-    ax.set_title("图 6-2  键控置换: 同样是置换(每点一次), 但不同口令顺序完全不同", fontsize=10.5)
+            label=L[lang]["order_note"])
+    ax.set_xlabel(L[lang]["xlabel"]); ax.set_ylabel(L[lang]["ylabel"])
+    ax.set_title(L[lang]["scatter_title"], fontsize=10.5)
     ax.legend(fontsize=8)
-    out("hash_permute_scatter.png")
+    out("hash_permute_scatter.png", lang)
 
 
 def main():
     setstyle()
     print("生成哈希键控相关图...")
-    fig_path()
-    fig_scatter()
-    print("完成 → ", ZH)
+    for lang in ("zh", "en"):
+        fig_path(lang)
+        fig_scatter(lang)
+    print("完成 → ", ZH, "和", EN)
 
 
 if __name__ == "__main__":

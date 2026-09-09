@@ -10,7 +10,7 @@
 用法: python teaching/gen_ch01_figures.py
 """
 from __future__ import annotations
-import os, shutil
+import os
 import numpy as np
 from PIL import Image
 import matplotlib
@@ -33,6 +33,21 @@ plt.rcParams["savefig.bbox"] = "tight"
 plt.rcParams["figure.dpi"] = 150
 plt.rcParams["savefig.dpi"] = 150
 
+L = {
+    "zh": {
+        "orig": "原图\n0-255",
+        "planes_title": "图 1-1  一张 8bit 灰度图拆成 8 个位平面 (bit7=最高位, bit0=最低位/LSB)",
+        "recon_layers": "已加 {}/8 层\n最高 {} 位",
+        "recon_title": "图 1-2  从最高位逐层累加: 加得越多越清晰, 8 层全加 = 精确还原原图\n原图 = Σ (bit_k)×2^k, 每一层必须乘其权重再相加",
+    },
+    "en": {
+        "orig": "original\n0-255",
+        "planes_title": "Fig. 1-1  an 8-bit grayscale image split into 8 bit planes (bit7 = MSB, bit0 = LSB)",
+        "recon_layers": "{}/8 layers\nhigh {} bits",
+        "recon_title": "Fig. 1-2  accumulating from the MSB: more layers = clearer, all 8 = exact reconstruction\noriginal = sum (bit_k) x 2^k, each layer must be weighted before summing",
+    },
+}
+
 
 def setstyle():
     for s in ["seaborn-v0_8-whitegrid", "seaborn-whitegrid", "ggplot"]:
@@ -47,10 +62,10 @@ def setstyle():
             plt.rcParams["font.family"] = [_c, "DejaVu Sans"]; break
 
 
-def out(name):
-    p = os.path.join(ZH, name); plt.savefig(p); plt.close("all")
-    shutil.copy(p, os.path.join(EN, name))
-    print(f"  [ok] {name}  {os.path.getsize(p)//1024} KB")
+def out(name, lang):
+    p = os.path.join(ZH if lang == "zh" else EN, name)
+    plt.savefig(p); plt.close("all")
+    print(f"  [ok] {lang}/{name}  {os.path.getsize(p)//1024} KB")
 
 
 def load_cover():
@@ -60,23 +75,25 @@ def load_cover():
     return np.asarray(im, np.uint8)
 
 
-def fig_planes(img):
+def fig_planes(img, lang):
+    S = L[lang]
     fig, axes = plt.subplots(1, 9, figsize=(16.5, 3.2))
     plt.rcParams["image.interpolation"] = "nearest"
     axes[0].imshow(img, cmap="gray", vmin=0, vmax=255)
-    axes[0].set_title("原图\n0~255", fontsize=9)
+    axes[0].set_title(S["orig"], fontsize=9)
     for k in range(8):
         plane = ((img >> k) & 1) * 255
         axes[k + 1].imshow(plane, cmap="gray", vmin=0, vmax=255)
         axes[k + 1].set_title(f"bit {k}\n×{2**k}", fontsize=9)
     for ax in axes:
         ax.axis("off")
-    fig.suptitle("图 1-1  一张 8bit 灰度图拆成 8 个位平面 (bit7=最高位, bit0=最低位/LSB)", fontsize=11.5)
+    fig.suptitle(S["planes_title"], fontsize=11.5)
     fig.tight_layout(rect=[0, 0, 1, 0.82])
-    out("bit_planes.png")
+    out("bit_planes.png", lang)
 
 
-def fig_reconstruct(img):
+def fig_reconstruct(img, lang):
+    S = L[lang]
     fig, axes = plt.subplots(1, 8, figsize=(16.5, 3.4))
     plt.rcParams["image.interpolation"] = "nearest"
     acc = np.zeros_like(img, dtype=np.int32)
@@ -85,20 +102,21 @@ def fig_reconstruct(img):
         acc = acc + (((img >> b) & 1) * (2**b))
         axes[8 - k].imshow(np.clip(acc, 0, 255), cmap="gray", vmin=0, vmax=255)
         n_layers = 8 - b
-        axes[8 - k].set_title(f"已加 {n_layers}/8 层\n最高 {n_layers} 位", fontsize=8.5)
+        axes[8 - k].set_title(S["recon_layers"].format(n_layers, n_layers), fontsize=8.5)
     for ax in axes:
         ax.axis("off")
-    fig.suptitle("图 1-2  从最高位逐层累加: 加得越多越清晰, 8 层全加 = 精确还原原图\n原图 = Σ (bit_k)×2^k, 每一层必须乘其权重再相加", fontsize=11)
+    fig.suptitle(S["recon_title"], fontsize=11)
     fig.tight_layout(rect=[0, 0, 1, 0.84])
-    out("bit_reconstruct.png")
+    out("bit_reconstruct.png", lang)
 
 
 def main():
     setstyle()
     img = load_cover()
     print("cover", img.shape, img.dtype)
-    fig_planes(img)
-    fig_reconstruct(img)
+    for lang in ("zh", "en"):
+        fig_planes(img, lang)
+        fig_reconstruct(img, lang)
     print("完成 → ", ZH)
 
 
