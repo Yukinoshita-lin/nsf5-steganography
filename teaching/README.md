@@ -207,13 +207,19 @@ python src/gui.py      # 需要带 tkinter 的 Python
 python src/test_gui.py # GUI 冒烟测试（含教学动画）
 ```
 
-## 5) 网页版手册（进行中）
+## 5) 网页版手册（双语，Jupyter Book + GitHub Pages）
 
-`teaching/web/` 正在构建 Jupyter Book 双语静态站：
+`teaching/web/` 用 Jupyter Book 构建双语静态手册：
 
 - `zh/` — 中文手册
 - `en/` — English handbook
-- 部署到 GitHub Pages 的 workflow 见 `.github/workflows/pages.yml`
+- 构建/部署：`.github/workflows/pages.yml`（推送到 `teaching/web/**` 时自动构建并发布 GitHub Pages）
 
-状态：站点脚手架与 DOCX → Markdown 转换器已就位，章节内容将同步自
-`docs/` 目录下的 PDF 源文档（以 DOCX 为母本）。
+**内容来源与同步**：`teaching/web/{zh,en}/content/*.md` 是手册的唯一内容源（初次由
+`docx2md.py` 从 DOCX 母本导入并提交）。`build_handbook_pdf.py` 用同一份 Markdown 编译出
+`docs/` 下的单册 PDF，Jupyter Book 用同一份 Markdown 生成网页版。**因此改正文只需改
+Markdown，PDF 与网页会同步**；若只改 PDF 或网页，则二者会不一致。
+
+- 本地构建网页：`pip install -r teaching/web/requirements.txt && jupyter-book build teaching/web/zh`（en 同理）
+- 打开：`teaching/web/{zh,en}/_build/html/index.html`
+- 在线：zh `.../zh/content/intro.html`、en `.../en/content/intro.html`

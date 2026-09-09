@@ -19,7 +19,7 @@ PDF_OUT = os.path.join(ROOT, "docs",
 
 TOC_ORDER = ["intro", "ch01", "ch02", "ch03", "ch04", "ch05", "ch06",
              "ch07", "ch08", "ch09", "ch10", "ch11",
-             "appA", "appB", "appC", "appD", "appE", "appF"]
+             "appA", "appB", "appC", "appD", "appE", "appF", "appG"]
 
 
 def esc(t: str) -> str:
@@ -86,6 +86,15 @@ def md_to_tex(text: str) -> str:
         if not stripped:
             i += 1
             continue
+        # 可折叠答案块(附录 G 自测): <details>/</details> 跳过, <summary>X</summary> 转成粗体题头
+        if stripped in ("<details>", "</details>"):
+            i += 1
+            continue
+        sm = re.match(r'^<summary>(.*)</summary>\s*$', stripped)
+        if sm:
+            out.append("\\par\\noindent\\textbf{" + inline(sm.group(1)) + "：}")
+            i += 1
+            continue
         # 代码块
         if stripped.startswith("```"):
             lang = stripped[3:].strip()
@@ -94,8 +103,10 @@ def md_to_tex(text: str) -> str:
             while i < n and not lines[i].strip().startswith("```"):
                 code.append(lines[i]); i += 1
             i += 1  # 跳过结束```
-            out.append("\\begin{lstlisting}[language=%s,breaklines=true]\n%s\n\\end{lstlisting}"
-                       % (lang if lang else "Python", "\n".join(code)))
+            lst_lang = "" if lang in ("text", "none", "plain", "") else (lang if lang else "Python")
+            lst_opts = ("language=%s," % lst_lang) if lst_lang else ""
+            out.append("\\begin{lstlisting}[%sbreaklines=true]\n%s\n\\end{lstlisting}"
+                       % (lst_opts, "\n".join(code)))
             continue
         # 显示数学
         if stripped.startswith("$$"):

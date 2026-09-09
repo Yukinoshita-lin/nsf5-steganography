@@ -55,6 +55,9 @@ function applyLang() {
   renderLayerChips();
   renderLayerCanvas();
   renderFaq();
+  renderQuiz();
+  renderMask();
+  runDetector();
 }
 
 /* ---------- image generation ---------- */
@@ -110,7 +113,30 @@ function embedMessage() {
   state.embedChanged = changed;
   els("bitplane").value = "-1";
   els("bitplane-note").textContent = t("lsb.note0");
+  els("lsb-decode-note").textContent = t("lsb.decoded").replace("{msg}", msg);
+  els("lsb-decode-note").classList.remove("err");
   redrawLsb();
+}
+
+function extractMessage() {
+  const source = state.stego || state.cover; // decode whatever LSBs are in the canvas
+  // read the 16-bit little-endian length header, then the payload bytes
+  let length = 0;
+  for (let i = 0; i < 16; i++) length |= (source[i] & 1) << i;
+  if (length === 0 || length > 64) {
+    els("lsb-decode-note").textContent = t("lsb.noMsg");
+    els("lsb-decode-note").classList.add("err");
+    return;
+  }
+  let out = "";
+  for (let b = 0; b < length; b++) {
+    let code = 0;
+    const base = 16 + b * 8;
+    for (let i = 0; i < 8; i++) code |= (source[base + i] & 1) << i;
+    out += String.fromCharCode(code);
+  }
+  els("lsb-decode-note").textContent = t("lsb.decoded").replace("{msg}", out);
+  els("lsb-decode-note").classList.remove("err");
 }
 
 function resetDemo() {
@@ -119,6 +145,8 @@ function resetDemo() {
   els("lsb-msg").value = "Hello nsF5!";
   els("bitplane").value = "-1";
   els("bitplane-note").textContent = t("lsb.note0");
+  els("lsb-decode-note").textContent = "";
+  els("lsb-decode-note").classList.remove("err");
   redrawLsb();
 }
 
@@ -133,7 +161,9 @@ function redrawLsb() {
     for (let i = 0; i < n * n; i++) out[i] = ((source[i] >> plane) & 1) * 255;
     drawGray(els("lsb-canvas"), out);
   }
+  renderMask();
   refreshLsbStats();
+  if (els("lsb-detect-note")) runDetector();
 }
 
 function refreshLsbStats() {
@@ -144,6 +174,108 @@ function refreshLsbStats() {
   els("lsb-stats").textContent = t("stats")
     .replace("{p}", (ones / (n * n) * 100).toFixed(1) + "%")
     .replace("{c}", String(state.embedChanged || 0));
+}
+
+/* ---------- LSB embed round-trip: changed-pixel mask ---------- */
+function renderMask() {
+  const mask = els("lsb-mask-canvas");
+  if (!mask) return;
+  const n = state.size;
+  const out = new Uint8Array(n * n);
+  if (state.stego) {
+    for (let i = 0; i < n * n; i++) out[i] = state.cover[i] === state.stego[i] ? 0 : 255;
+  }
+  drawGray(mask, out);
+  const cap = document.getElementById("lsb-mask-caption");
+  if (cap) {
+    cap.textContent = state.stego
+      ? t("lsb.mask").replace("{c}", String(state.embedChanged || 0))
+      : t("lsb.maskIdle");
+  }
+}
+
+/* ---------- Real-time chi-square + RS steganalysis (in-browser) ---------- */
+function chi2Pvalue(counts) {
+  // Westfeld chi-square on gray pairs (2i, 2i+1). Return p via incomplete gamma.
+  let stat = 0, dof = 0;
+  for (let i = 0; i < 128; i++) {
+    const s = counts[2 * i] + counts[2 * i + 1];
+    if (s > 0) { const d = counts[2 * i] - counts[2 * i + 1]; stat += (d * d) / s; dof++; }
+  }
+  if (dof <= 1) return 1.0;
+  // regularized upper incomplete gamma Q(a, x), a = dof/2, x = stat/2
+  return gammaQ(dof / 2, stat / 2);
+}
+
+function gammaQ(a, x) {
+  // Abramowitz-Stegun gammaincc via series/continued fraction (GSL-style)
+  const EPS = 1e-14, FPMIN = 1e-300;
+  if (x <= 0) return 1.0;
+  function gser() {
+    let ap = a, sum = 1 / a, del = 1 / a;
+    for (let n = 0; n < 200; n++) { ap++; del *= x / ap; sum += del; if (Math.abs(del) < Math.abs(sum) * EPS) break; }
+    return sum * Math.exp(-x + a * Math.log(x) - lgamma(a));
+  }
+  function gcf() {
+    let b = x + 1 - a, c = 1 / FPMIN, d = 1 / b, h = d;
+    for (let i = 1; i <= 200; i++) {
+      const an = -i * (i - a); b += 2; d = an * d + b; if (Math.abs(d) < FPMIN) d = FPMIN;
+      c = b + an / c; if (Math.abs(c) < FPMIN) c = FPMIN; d = 1 / d;
+      const del = d * c; h *= del; if (Math.abs(del - 1) < EPS) break;
+    }
+    return Math.exp(-x + a * Math.log(x) - lgamma(a)) * h;
+  }
+  return x < a + 1 ? 1 - gser() : gcf();
+}
+
+function lgamma(x) {
+  // Lanczos approximation
+  const g = 7, C = [
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7,
+  ];
+  if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - lgamma(1 - x);
+  let z = x - 1, acc = C[0];
+  for (let i = 1; i < g + 2; i++) acc += C[i] / (z + i);
+  const t = z + g + 0.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(acc);
+}
+
+function rsMetrics(src) {
+  // RS analysis: groups of 4, masks M=[0,1,1,0] and 1-M. Return Rn, Sn, Gn.
+  const m = src.length - (src.length % 4);
+  let Rn = 0, Sn = 0, Rm = 0, Sm = 0;
+  const M = [0, 1, 1, 0];
+  for (let i = 0; i < m; i += 4) {
+    const g = [src[i], src[i + 1], src[i + 2], src[i + 3]];
+    const f = Math.abs(g[0] - g[1]) + Math.abs(g[1] - g[2]) + Math.abs(g[2] - g[3]);
+    const pos = g.map((v, k) => (v ^ M[k]) & 0x1ff);
+    const neg = g.map((v, k) => (v ^ (1 - M[k])) & 0x1ff);
+    const fM = Math.abs(pos[0] - pos[1]) + Math.abs(pos[1] - pos[2]) + Math.abs(pos[2] - pos[3]);
+    const fN = Math.abs(neg[0] - neg[1]) + Math.abs(neg[1] - neg[2]) + Math.abs(neg[2] - neg[3]);
+    if (fM > f) Rm++; else if (fM < f) Sm++;
+    if (fN > f) Rn++; else if (fN < f) Sn++;
+  }
+  return { Rm, Sm, Rn, Sn, Gn: (Rn - Sn) / (m / 4), Gr: (Rm - Sm) / (m / 4) };
+}
+
+function runDetector() {
+  const note = els("lsb-detect-note");
+  if (!note) return;
+  const data = state.stego || state.cover;
+  const counts = new Array(256).fill(0);
+  for (let i = 0; i < data.length; i++) counts[data[i]]++;
+  const p = chi2Pvalue(counts);
+  const rs = rsMetrics(data);
+  const embedded = !!state.stego;
+  const verdict = embedded
+    ? (rs.Gn < 0.35 || p > 0.3 ? t("detect.likely") : t("detect.unclear"))
+    : (rs.Gn > 0.35 && p < 0.3 ? t("detect.clean") : t("detect.unclear"));
+  note.textContent = t("detect.line")
+    .replace("{gn}", rs.Gn.toFixed(3))
+    .replace("{p}", p.toFixed(3))
+    .replace("{v}", verdict);
 }
 
 /* ---------- LSB bit-plane layering explorer ---------- */
@@ -544,6 +676,7 @@ function renderThreshold() {
 /* ---------- Payload scan visualization ---------- */
 const SCAN_FALLBACK = {
   densities: [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35],
+  changed_pixels: [0, 0.006, 0.013, 0.019, 0.025, 0.031, 0.038, 0.044],
   chi2_pvalue: [0, 0, 0, 0, 0, 0, 0, 0],
   rs_rate: [22.25, 22.79, 23.39, 23.92, 24.43, 24.89, 25.48, 25.9],
   ml_proba: [5.33, 8.54, 23.28, 24.81, 34.49, 64.91, 74.53, 80.89],
@@ -595,9 +728,11 @@ function renderScan() {
   ctx.stroke();
   ctx.setLineDash([]);
   const d = data.densities[idx];
+  const pix = data.changed_pixels ? data.changed_pixels[idx] : null;
   els("pay-value").textContent = d.toFixed(2);
   els("scan-note").textContent =
-    "d=" + d.toFixed(2) + " · chi2 p=" + data.chi2_pvalue[idx].toFixed(2) +
+    "d=" + d.toFixed(2) + (pix !== null ? " · 改动像素≈" + (pix * 100).toFixed(1) + "%" : "") +
+    " · chi2 p=" + data.chi2_pvalue[idx].toFixed(2) +
     " · RS=" + data.rs_rate[idx].toFixed(1) + "% · ML=" + data.ml_proba[idx].toFixed(1) + "%";
 }
 
@@ -697,6 +832,71 @@ function renderFaq() {
   });
 }
 
+/* ---------- self-test quiz ---------- */
+function renderQuiz() {
+  const box = els("quiz-box");
+  const scoreEl = els("quiz-score-val");
+  if (!box) return;
+  box.innerHTML = "";
+  const questions = t("quiz.questions");
+  const results = new Array(questions.length).fill(null);
+  let score = 0;
+  const updateScore = () => { if (scoreEl) scoreEl.textContent = score + " / " + questions.length; };
+  updateScore();
+  questions.forEach((item, qi) => {
+    const card = document.createElement("div");
+    card.className = "quiz-item";
+    const qh = document.createElement("h3");
+    qh.className = "quiz-q";
+    qh.textContent = (qi + 1) + ". " + item.q;
+    card.appendChild(qh);
+    const optsBox = document.createElement("div");
+    optsBox.className = "quiz-opts";
+    item.opts.forEach((opt, oi) => {
+      const label = document.createElement("button");
+      label.type = "button";
+      label.className = "quiz-opt";
+      label.textContent = opt;
+      label.addEventListener("click", () => {
+        if (results[qi] !== null) return;
+        optsBox.querySelectorAll(".quiz-opt").forEach((b) => b.classList.remove("sel"));
+        label.classList.add("sel");
+        card.dataset.chosen = String(oi);
+      });
+      optsBox.appendChild(label);
+    });
+    card.appendChild(optsBox);
+    const checkBtn = document.createElement("button");
+    checkBtn.type = "button";
+    checkBtn.className = "btn primary small quiz-check";
+    checkBtn.textContent = t("quiz.check");
+    const fb = document.createElement("p");
+    fb.className = "quiz-fb";
+    fb.style.display = "none";
+    checkBtn.addEventListener("click", () => {
+      if (results[qi] !== null || card.dataset.chosen === undefined) return;
+      const chosenIdx = parseInt(card.dataset.chosen, 10);
+      const correct = item.ans === chosenIdx;
+      optsBox.querySelectorAll(".quiz-opt").forEach((b, i) => {
+        b.disabled = true;
+        if (i === item.ans) b.classList.add("right");
+        else if (i === chosenIdx) b.classList.add("wrong");
+      });
+      results[qi] = correct;
+      if (correct) score++;
+      updateScore();
+      fb.style.display = "block";
+      fb.classList.add(correct ? "fb-right" : "fb-wrong");
+      fb.textContent = (correct ? "✓ " + t("quiz.correct") : "✗ " + t("quiz.wrong")) + " — " + item.why;
+    });
+    card.appendChild(checkBtn);
+    card.appendChild(fb);
+    box.appendChild(card);
+  });
+  const resetBtn = els("quiz-reset");
+  if (resetBtn) resetBtn.onclick = () => renderQuiz();
+}
+
 /* ---------- wire events ---------- */
 function init() {
   state.cover = makeDemoImage();
@@ -712,7 +912,7 @@ function init() {
   document.querySelectorAll("#main-nav a").forEach((a) => {
     a.addEventListener("click", () => els("main-nav").classList.remove("open"));
   });
-  const sections = ["lsb", "hamming", "wetpaper", "pipeline", "ml", "roadmap", "resources", "faq"];
+  const sections = ["lsb", "hamming", "wetpaper", "pipeline", "ml", "roadmap", "resources", "faq", "quiz"];
   const spy = () => {
     let active = sections[0];
     for (const id of sections) {
@@ -725,6 +925,7 @@ function init() {
   };
   window.addEventListener("scroll", spy, { passive: true });
   els("lsb-embed").addEventListener("click", embedMessage);
+  els("lsb-decode").addEventListener("click", extractMessage);
   els("lsb-reset").addEventListener("click", resetDemo);
   els("bitplane").addEventListener("input", redrawLsb);
   els("layer-mode-extract").addEventListener("click", () => setLayerMode("extract"));

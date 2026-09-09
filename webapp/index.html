@@ -21,6 +21,7 @@
       <a href="#roadmap" data-i18n="nav.roadmap">路线图</a>
       <a href="#resources" data-i18n="nav.resources">资源</a>
       <a href="#faq" data-i18n="nav.faq">FAQ</a>
+      <a href="#quiz" data-i18n="nav.quiz">自测</a>
     </nav>
     <button id="menu-toggle" class="menu-btn" type="button" aria-label="Menu">☰</button>
     <button id="lang-toggle" class="lang-btn" type="button" aria-label="Switch language">EN</button>
@@ -379,6 +380,22 @@
           <h3 data-i18n="faq.c3t">能商用吗？</h3>
           <p data-i18n="faq.c3d">项目采用 Apache-2.0 许可，可自由用于教学、研究与商用，只需保留版权与许可声明（见 LICENSE / NOTICE）。</p>
         </article>
+      </div>
+    </section>
+
+    <!-- ============ SELF-TEST QUIZ ============ -->
+    <section id="quiz" class="section">
+      <div class="section-head">
+        <span class="part-tag" data-i18n="part5">第五部分 · 自测</span>
+        <p class="eyebrow" data-i18n="quiz.eyebrow">学完自查</p>
+        <h2 data-i18n="quiz.title">自测一下：选一选 + 对答案</h2>
+        <p data-i18n="quiz.sub">每题选出你认为正确的选项，点“检查答案”看对错与解析；全部答完可累计得分。</p>
+      </div>
+      <div id="quiz-box" class="quiz-box"></div>
+      <div class="quiz-score">
+        <span data-i18n="quiz.score">得分</span>
+        <strong id="quiz-score-val">0 / 0</strong>
+        <button id="quiz-reset" class="btn ghost small" type="button" data-i18n="quiz.reset">重新开始</button>
       </div>
     </section>
   </main>

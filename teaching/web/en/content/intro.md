@@ -48,6 +48,8 @@ The route follows a natural order: carrier basics -> steganography -> steganalys
 | 10 | C++ / GPU / data engineering | Ch. 9 | Understand acceleration, self-checks, multi-source data |
 | 11-12 | Capstone and presentation | Ch. 10-11 | Complete and present a small improvement experiment |
 
+![Fig. - 12-week quick start: four stages](../assets/learning_path.png)
+
 > **Try it |** Copy this table into a weekly checklist (Appendix C has a ready-made one). Tick a row every weekend and answer that chapter's "Think about it" question.
 
 > **Want to go deeper and produce results?** The above is the 12-week "get started" route; if you have 6-12 months, see **Appendix F's in-depth roadmap** - the same content, but slowed and deepened over "Foundation / Intermediate / Advanced / Project" phases, with an optional "algorithm / detection / engineering / research" track.
