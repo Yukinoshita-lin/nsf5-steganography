@@ -137,6 +137,7 @@ const I18N = {
     ],
   },
   en: {
+    skip: "Skip to main content",
     brand: "nsF5 · Interactive Learning Lab",
     "nav.lsb": "LSB Lab", "nav.hamming": "Matrix Coding", "nav.wetpaper": "Wet paper", "nav.pipeline": "How it works",
     "nav.ml": "ML Detection", "nav.roadmap": "Roadmap", "nav.resources": "Resources", "nav.faq": "FAQ", "nav.quiz": "Self-test",

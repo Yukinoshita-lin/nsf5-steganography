@@ -181,11 +181,13 @@ function renderMask() {
   const mask = els("lsb-mask-canvas");
   if (!mask) return;
   const n = state.size;
-  const out = new Uint8Array(n * n);
-  if (state.stego) {
+  if (!state.stego) {
+    mask.getContext("2d").clearRect(0, 0, mask.width, mask.height);
+  } else {
+    const out = new Uint8Array(n * n);
     for (let i = 0; i < n * n; i++) out[i] = state.cover[i] === state.stego[i] ? 0 : 255;
+    drawGray(mask, out);
   }
-  drawGray(mask, out);
   const cap = document.getElementById("lsb-mask-caption");
   if (cap) {
     cap.textContent = state.stego
