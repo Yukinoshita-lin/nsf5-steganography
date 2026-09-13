@@ -42,11 +42,8 @@ cpp/*.so
 cpp/*.dylib
 cpp/*.o
 
-# 论文: 源码/实验脚本/数据入库, 排版成品与可重建的图不入库
-thesis/*.pdf
-thesis/*.docx
-thesis/figs/
-thesis/exp/_*.log
+# 论文及其实验脚本/数据: 整体不入库 (学位论文、期刊稿、综述、figs、exp、data)
+thesis/
 
 # JOSE 论文 (paper.md/paper.bib 在仓库根, 排版稿与 PDF 在 paper/):
 # 保留 PDF 成品, 排除 LaTeX 中间产物。
@@ -66,6 +63,7 @@ gpu/data/*.npz
 gpu/data/*_x.npy
 gpu/data/pr_*.png
 gpu/data/_*.py
+gpu/data/*.json
 
 # 训练模型产物 (二进制, 可重新训练)
 # 例外: 两个可部署模型随仓库分发, 否则 clone 后 ML 功能不可用
@@ -74,9 +72,7 @@ models/*.joblib
 !models/stego_classifier.joblib
 !models/stego_classifier_v2_jpeg_lgb_51d.joblib
 
-# CNN 训练检查点: 体积大 (Xu-Net 33MB) 且可由 run_cnn_sota.py 重训。
-# 论文需要的指标已落进 thesis/data/cnn_checkpoint_eval.csv (小文件, 入库),
-# 因此检查点本身不入库。
+# CNN 训练检查点: 体积大 (Xu-Net 33MB) 且可由 gpu/train_cnn.py 重训, 不入库。
 models/*.pt
 
 # 本地数据集与训练日志 (体积大或可再生, 归档见 D:\Users\32403\.zcode\archive)

@@ -353,10 +353,10 @@ GUI 新增 **判定灵敏度** 下拉框（严格 / 均衡 / 宽松），作用�
 clone 之后 ML 判定即可用（需要 `lightgbm`，已列为依赖）。
 
 但请注意：**仓库里目前没有能产出这两个文件的脚本**。`src/train_model.py` 训练的是
-LR/RF/GB/XGB 家族，`thesis/exp/` 下的 LGB 脚本都只训练+评估、不落盘。也就是说模型
-可用但**不可复现**——这一点记录在 [`thesis/data/PROVENANCE.md`](thesis/data/PROVENANCE.md)。
-若要自己训练一个同量级的 LGB，可参考 `thesis/exp/sota_compare.py` 的超参与
-`thesis/exp/` 的评测协议。
+LR/RF/GB/XGB 家族，产不出这两个 LGB 模型。也就是说模型可用但**不可复现**。
+训练与评测脚本（本地的 `thesis/exp/`，按项目约定不入库）用的是
+`learning_rate=0.03, num_leaves=31, n_estimators=800, min_child_samples=10`，
+并按**源图**分组做交叉验证；照这套超参自己训一个同量级的 LGB 是可行路径。
 
 ```bash
 # 单独用 ML 判定单张图
@@ -743,7 +743,8 @@ git tag v1.1 && git push origin main --tags
     按源图划分与同一套按源图 bootstrap 的置信区间。实测（BOSSbase，按源图
     holdout）：Ye-Net 0.9541、LGB-143d 0.7529、LGB-53d 0.7172、LGB-11d 0.7128、
     Xu-Net 0.5007（**未收敛**，训练集 AUC 也是 0.50，故不构成"CNN 不如手工
-    特征"的证据）。详见 [`thesis/exp/README.md`](thesis/exp/README.md)。
+    特征"的证据）。CNN 的实现与训练入口在 `gpu/train_cnn.py` 与
+    `gpu/models/`；实验编排脚本按项目约定随 `thesis/` 一并留在本地。
   - **两个部署模型入库**：`models/stego_classifier.joblib`(143d) 与
     `models/stego_classifier_v2_jpeg_lgb_51d.joblib`(53d)，并补上此前缺失的
     `lightgbm` 依赖 —— 否则 clone 后 ML 判定仍是 `available=False`。
@@ -757,10 +758,10 @@ git tag v1.1 && git push origin main --tags
     也会因 `python` 命令与 npmmirror 镜像源而失败。
   - **教学视频质检修复**：两张质检图不可用（一张 33 字节空图、一张缺失），
     根因是 `qa_sheet()` 在无抽帧时间时静默写出零高度 PNG 并中断后续章节。
-  - **论文源码入库**：`thesis/` 此前被整体 gitignore，源码零版本控制。
   - 已知缺口（如实记录）：两个部署模型**没有仓库内的生产者**，
-    `src/train_model.py` 训不出它们 —— 见
-    [`thesis/data/PROVENANCE.md`](thesis/data/PROVENANCE.md)。
+    `src/train_model.py` 训不出它们。
+  - 注：学位论文、期刊稿、实验脚本与实验数据按项目约定**不入库**（`thesis/`
+    整体忽略）。本版新增的 CNN 实现放在 `gpu/`，是因为它属于工具链而非论文。
 
 - **v1.5.0 — 学习手册发布 + Zenodo DOI**
   - 发布中英文学习手册(PDF)至 `docs/`:

@@ -20,8 +20,9 @@ corrected rather than kept.
   what distinguishes "did not converge" from "overfit". Measured on BOSSbase:
   Ye-Net 0.9541 [0.9463, 0.9630]; LGB-143d 0.7529; LGB-53d 0.7172; LGB-11d
   0.7128; Xu-Net 0.5007 with chance-level *training* AUC, i.e. not converged.
-- `thesis/exp/featurize_bossbase_npz.py`, `merge_sota_table.py`,
-  `eval_cnn_checkpoint.py`, and `thesis/exp/README.md`: the experiment runbook.
+- `gpu/models/{xunet,yenet}.py` are joined by `gpu/train_cnn.py`, which lives in
+  `gpu/` rather than under the (untracked) thesis directory because the CNN
+  belongs to the toolkit, not to a paper.
 - `scripts/build_cpp.py` plus `make cpp` / `make cpp-clean`.
 - `src/cpplib.py`, resolving the accelerator filename per platform.
 - `src/test_pipeline.py`: feature contracts, SRM kernels (numpy vs torch),
@@ -33,9 +34,6 @@ corrected rather than kept.
 
 ### Changed
 
-- `thesis/` is tracked (source, experiment scripts, data CSVs, 0.5 MB). Only
-  rendered PDFs/DOCX, rebuildable figures, and run logs stay ignored. The thesis
-  source previously had no version control at all.
 - C++ accelerators are built from source on all three platforms instead of
   shipping a Windows-only `.dll`; no binaries are committed.
 - `sota_compare.py` raises on missing feature columns instead of silently
@@ -70,18 +68,17 @@ corrected rather than kept.
   now derives from a hash of the inputs.
 - `encode_string()`/`decode_string()` used ASCII with `errors="replace"`, so any
   non-ASCII message silently decoded as `?`. Now UTF-8.
-- `thesis/tools/gen_figs.py` hardcoded a personal path
-  (`F:\DCIM\Camera\*.jpg`) and would `IndexError` for anyone else.
 - `cross-platform.yml` used `python` in a job with no Python setup step.
 
 ### Known gaps
 
 - The two shipped models have **no in-repo producer**: `src/train_model.py`
-  trains an LR/RF/GB/XGB family, and `thesis/exp/`'s LGB scripts train and
-  evaluate without persisting. They work, but they are not reproducible from
-  this repository. Recorded in `thesis/data/PROVENANCE.md`.
-- Two CSVs (`ood_jpeg_eval.csv`, `gain_importance_53d.csv`) cannot be
-  regenerated; the plotting code now says so instead of silently omitting them.
+  trains an LR/RF/GB/XGB family, and the LightGBM runs that produced them were
+  never scripted. They work, but they are not reproducible from this repository.
+- The thesis, its experiment scripts, and its result CSVs are deliberately not
+  in this repository (`thesis/` is ignored in full). The CNN implementation that
+  the paper's comparison depends on therefore lives in `gpu/`, so that the
+  toolkit does not depend on an untracked directory.
 
 ## [Unreleased] - Teaching project
 

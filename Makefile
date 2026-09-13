@@ -88,6 +88,10 @@ dataset:
 
 # 论文实验: 先出数据(含 CNN 训练, 约 2 小时), 再出图。
 # 只要已有 thesis/data/*.csv, 单独跑 `make thesis-figs` 即可。
+#
+# ⚠ 这两个目标依赖本地的 thesis/ 目录, 而该目录按项目约定**不入库**
+#   (.gitignore 整体忽略)。在别人 clone 出来的仓库里它们会直接失败 —— 这是
+#   有意为之: 实验编排随论文走, 不随工具链走。CNN 本体在 gpu/train_cnn.py。
 thesis-figs:
 	$(PY) thesis/exp/gen_figs.py
 
