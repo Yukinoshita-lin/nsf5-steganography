@@ -48,6 +48,16 @@ thesis/*.docx
 thesis/figs/
 thesis/exp/_*.log
 
+# JOSE 论文 (paper.md/paper.bib 在仓库根, 排版稿与 PDF 在 paper/):
+# 保留 PDF 成品, 排除 LaTeX 中间产物。
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.toc
+paper/*.synctex.gz
+
 # 报告模板, 不入库
 _tpl/
 
