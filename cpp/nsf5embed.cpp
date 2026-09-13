@@ -5,9 +5,9 @@
 // 遍历顺序与 ns5_core.py 的 _embed 完全一致。
 //
 // 编译 (跨平台, 见 Makefile 的 `make cpp`):
-//   Windows (MinGW): g++ -O2 -shared -static -o nsf5embed.dll  nsf5embed.cpp
-//   Linux:           g++ -O2 -shared -fPIC -o nsf5embed.so      nsf5embed.cpp
-//   macOS:           g++ -O2 -shared -fPIC -o nsf5embed.dylib   nsf5embed.cpp
+//   Windows (MinGW): g++ -std=c++17 -O2 -shared -static -o nsf5embed.dll  nsf5embed.cpp
+//   Linux:           g++ -std=c++17 -O2 -shared -fPIC -o nsf5embed.so      nsf5embed.cpp
+//   macOS:           g++ -std=c++17 -O2 -shared -fPIC -o nsf5embed.dylib   nsf5embed.cpp
 // 本文件除 NS5_EXPORT 外全是标准库, 无 windows.h / 无线程 / 无平台分支。
 #include <cstdint>
 #include <cstdlib>

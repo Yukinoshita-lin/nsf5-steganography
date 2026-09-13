@@ -35,9 +35,17 @@ notebooks/.ipynb_checkpoints/
 webapp/tests/node_modules/
 yccstego/
 
-# 模型: 只带两个部署模型进镜像。其余是备份/废弃/旧 xgboost 产物 (其中两个在
-# 当前环境已无法反序列化), 以及体积大且可重训的 CNN 检查点。
-models/*.joblib
+# 模型: 逐条排除不需要的备份/废弃产物, **不用否定规则**。
+# 曾经写成 `models/*.joblib` + `!models/stego_classifier.joblib` 这种白名单,
+# 结果那个例外没有生效 (Docker 的 .dockerignore 否定语义与 .gitignore 并不完全
+# 一致), 两个部署模型被挡在构建上下文外, 镜像构建在 test_pipeline.py 的
+# "模型未能加载" 断言上失败。教训: 排除模式绝不应该有可能命中必需文件 ——
+# 用黑名单逐条排, 漏排最多是上下文大一点, 永远不会是功能不可用。
 models/*.pt
-!models/stego_classifier.joblib
-!models/stego_classifier_v2_jpeg_lgb_51d.joblib
+models/*_weak*.joblib
+models/*_gpu*.joblib
+models/*_campus_srm.joblib
+models/*_tuned*.joblib
+models/*.bak.joblib
+models/stego_classifier_v2_jpeg.joblib
+models/stego_classifier_v2_jpeg_olddefault*
