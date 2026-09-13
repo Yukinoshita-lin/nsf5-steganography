@@ -468,6 +468,14 @@ def build_video(deck, out_path, voice="zh-CN-YunxiNeural", rate="-4%",
 
 
 def qa_sheet(mp4, times, out_png):
+    # 没有抽帧时间点时必须报错, 不能静默写出空图: times 为空会让 rows=0,
+    # 于是 Image.new(..., (1936, 0)).save() 先落一个 33 字节的坏 PNG 再抛
+    # ValueError —— 磁盘上会留下一个"看起来存在"的质检图, 误导后续检查。
+    if not times:
+        raise RuntimeError(
+            f"qa_sheet: 没有抽帧时间点, 拒绝写出空图 ({out_png.name}); "
+            f"说明 {mp4.name} 没有产出任何 beat 时间戳")
+
     frames = []
     tmp = out_png.parent / "_qa_f.png"
     for t in times:
@@ -481,3 +489,31 @@ def qa_sheet(mp4, times, out_png):
     for i, fr in enumerate(frames):
         sheet.paste(fr, ((i % cols) * 484 + 2, (i // cols) * 274 + 2))
     sheet.save(out_png)
+
+
+def probe_duration(mp4) -> float:
+    """用 ffmpeg 读视频时长(秒)。ffprobe 不一定随 ffmpeg 一起分发, 故从
+    `ffmpeg -i` 的 stderr 里解析 `Duration: HH:MM:SS.ss`。"""
+    r = subprocess.run([get_ffmpeg(), "-i", str(mp4)],
+                       capture_output=True, text=True)
+    m = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", r.stderr)
+    if not m:
+        raise RuntimeError(f"无法从 {mp4} 读出时长")
+    h, mm, ss = m.group(1), m.group(2), m.group(3)
+    return int(h) * 3600 + int(mm) * 60 + float(ss)
+
+
+def qa_sheet_from_video(mp4, out_png, n_frames: int = 12):
+    """从**已渲染好的** mp4 按均匀间隔抽帧做质检图, 不需要 beat 时间戳。
+
+    用途: 视频还在、但质检图坏了或被漏掉时补图。它按等间隔采样, 与
+    build_video 的"每个 beat 一帧"不是同一套采样策略 —— 只用来看渲染是否
+    正常, 不要用它反推节奏。重编码整章仍然走 build_video + qa_sheet。
+    """
+    dur = probe_duration(mp4)
+    n = max(1, min(n_frames, int(dur)))  # 每秒最多一帧
+    pad = 0.5
+    span = max(dur - 2 * pad, 0.0)
+    times = [pad + span * (i + 0.5) / n for i in range(n)]
+    qa_sheet(mp4, times, out_png)
+    return times
