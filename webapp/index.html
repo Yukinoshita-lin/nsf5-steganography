@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>nsF5 Steganography - Interactive Learning Lab</title>
   <meta name="description" content="Interactive bilingual lab for image steganography, nsF5 matrix embedding, wet paper coding and ML steganalysis.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕵️</text></svg>">
 </head>
@@ -17,6 +16,7 @@
       <a href="#lsb" data-i18n="nav.lsb">LSB 实验</a>
       <a href="#hamming" data-i18n="nav.hamming">矩阵编码</a>
       <a href="#wetpaper" data-i18n="nav.wetpaper">湿纸</a>
+      <a href="#nsf5" data-i18n="nav.nsf5">nsF5 对比</a>
       <a href="#pipeline" data-i18n="nav.pipeline">原理</a>
       <a href="#ml" data-i18n="nav.ml">ML 检测</a>
       <a href="#roadmap" data-i18n="nav.roadmap">路线图</a>
@@ -61,6 +61,7 @@
           <a href="#lsb" data-i18n="contents.p1.i1">① 位平面实验室</a>
           <a href="#hamming" data-i18n="contents.p1.i2">② 汉明伴随式编码</a>
           <a href="#wetpaper" data-i18n="contents.p1.i3">③ 湿纸编码求解</a>
+          <a href="#nsf5" data-i18n="contents.p1.i4">④ nsF5 全流程对比</a>
         </div>
         <div class="contents-part">
           <p class="contents-part-head" data-i18n="contents.p2.head">原理分析</p>
@@ -74,7 +75,8 @@
         </div>
         <div class="contents-part">
           <p class="contents-part-head" data-i18n="contents.p4.head">常见问题</p>
-          <a href="#faq" data-i18n="contents.p4.i1">⑧ FAQ 快速答疑</a>
+          <a href="#faq" data-i18n="contents.p4.i1">⑨ FAQ 快速答疑</a>
+          <a href="#quiz" data-i18n="contents.p4.i2">⑩ 知识自测</a>
         </div>
       </div>
     </nav>
@@ -247,6 +249,66 @@
       </div>
     </section>
 
+    <!-- ============ NSF5 FULL-PIPELINE COMPARISON ============ -->
+    <section id="nsf5" class="section">
+      <div class="section-head">
+        <span class="part-tag" data-i18n="part1">第一部分 · 动手实验</span>
+        <p class="eyebrow" data-i18n="nf.eyebrow">实验 4 · 项目真正的算法</p>
+        <h2 data-i18n="nf.title">nsF5 对比实验室：矩阵编码 + 减幅修改 + 跳过湿点</h2>
+        <p data-i18n="nf.sub">同一句话、同一张图：分别用“朴素 LSB 替换”与项目真实的 nsF5 算法（对应 ns5_core.py 的 nsF5Pixel._embed）嵌入，对比改动数量、分布与统计指纹。</p>
+      </div>
+      <div class="lab-grid">
+        <figure class="canvas-card">
+          <canvas id="nf-canvas" width="200" height="200" aria-label="Stego result of the selected method"></canvas>
+          <figcaption id="nf-stats" class="stat-line" aria-live="polite">尚未嵌入 —— 画布显示原图</figcaption>
+        </figure>
+        <div class="lab-controls">
+          <label for="nf-msg" data-i18n="nf.msg">想藏的消息（ASCII）</label>
+          <input id="nf-msg" type="text" value="Hello nsF5!" maxlength="24">
+
+          <label for="nf-method" data-i18n="nf.method">嵌入方法</label>
+          <select id="nf-method">
+            <option value="lsb" data-i18n="nf.mLsb">朴素 LSB 替换</option>
+            <option value="nsf5" selected data-i18n="nf.mNsf5">nsF5：伴随式编码 + 减幅 + 湿点</option>
+          </select>
+
+          <div class="field-row">
+            <label for="nf-p" data-i18n="nf.p">汉明参数 p</label>
+            <select id="nf-p">
+              <option value="2">p=2 (n=3)</option>
+              <option value="3" selected>p=3 (n=7)</option>
+              <option value="4">p=4 (n=15)</option>
+            </select>
+          </div>
+
+          <div class="btn-row">
+            <button id="nf-embed" class="btn primary" data-i18n="nf.embed">嵌入</button>
+            <button id="nf-decode" class="btn ghost" data-i18n="nf.decode">解码还原</button>
+            <button id="nf-reset" class="btn ghost" data-i18n="nf.reset">重置</button>
+          </div>
+          <p id="nf-note" class="decode-note mono sm" aria-live="polite"></p>
+          <ul class="learn-list">
+            <li data-i18n="nf.li1">nsF5 把像素按 n=2^p−1 分块，每块用伴随式编码装 p bit：通常只需改 1 个像素，嵌入效率从 1 bit/改动 升到约 3.4 bit/改动（p=3）。</li>
+            <li data-i18n="nf.li2">修改方式不是“翻转 LSB”而是“减幅”（133→132、126→127），且 127/128/129 这类湿点交给湿纸方程避开——所以 LSB 结构更难被卡方/RS 抓住。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="lab-grid wide-lab">
+        <figure class="canvas-card">
+          <canvas id="nf-diff-canvas" width="200" height="200" aria-label="Pixels changed by the selected method"></canvas>
+          <figcaption id="nf-diff-caption" class="stat-line">尚未嵌入 —— 差异图为空（白 = 被修改像素）</figcaption>
+        </figure>
+        <div class="lab-controls">
+          <p class="eyebrow" data-i18n="nfd.eyebrow">读数 · 谁的指纹更弱</p>
+          <h3 data-i18n="nfd.title">改动统计 × 同一套卡方 / RS 检测器</h3>
+          <p class="hint" data-i18n="nfd.sub">嵌入后读两行数：上面是改动统计（含 PSNR），下面是检测器的判定。两种方法各嵌一次，对比指纹强弱——这就是矩阵编码的意义。</p>
+          <p id="nf-report" class="mono" aria-live="polite"></p>
+          <p id="nf-detect" class="mono sm" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
+
     <!-- ============ PIPELINE ============ -->
     <section id="pipeline" class="section alt">
       <div class="section-head">
@@ -375,7 +437,7 @@
         </article>
         <article class="card small">
           <h3 data-i18n="faq.c2t">想自己算一遍？</h3>
-          <p data-i18n="faq.c2d">仓库附 12 个 Notebook，含汉明矩阵、湿纸求解与 ML 训练全流程。</p>
+          <p data-i18n="faq.c2d">仓库附 10 个章节 Notebook（对应第 1–10 章），含汉明矩阵、湿纸求解与 ML 特征/推理全流程。</p>
         </article>
         <article class="card small">
           <h3 data-i18n="faq.c3t">能商用吗？</h3>

@@ -26,6 +26,7 @@ const state = {
   wetFocus: 0,
   wetTimer: null,
   wetStop: false,
+  nf: null,          // last nsF5-lab embed: {out, mark, method, p, numBits, changed, ...}
   scanData: null,
   layerMode: "extract",        // "extract" (single plane) | "stack" (weighted sum)
   layerOn: new Array(8).fill(true),  // index k = bit k (bit 0 at index 0)
@@ -58,6 +59,10 @@ function applyLang() {
   renderQuiz();
   renderMask();
   runDetector();
+  nfStatsLine();
+  nfReportLine();
+  renderNfDiff();
+  if (state.nf) runNfDetector();
 }
 
 /* ---------- image generation ---------- */
@@ -605,6 +610,279 @@ function wetKey(ev) {
   renderWetCanvas();
 }
 
+/* ---------- nsF5 full-pipeline comparison lab ----------
+ * Mirrors ns5_core.py nsF5Pixel._embed on the pixel domain:
+ * syndrome coding per Hamming block, magnitude-decrement modification,
+ * wet pixels (|xv|<=1, i.e. 127/128/129) handed to the wet-paper solver.
+ * Block positions follow a seeded permutation of the pixel pool, mirroring
+ * _pool_positions over permute_index (the project keys that seed with the
+ * cover hash + passphrase; this demo uses a fixed one). */
+const NF_PERM_SEED = 20260912;
+
+function nfPermutedIndices(total, seed) {
+  const a = new Uint32Array(total);
+  for (let i = 0; i < total; i++) a[i] = i;
+  const rnd = mulberry32(seed);
+  for (let i = total - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+function syndromeOf(H, bits) {
+  const s = new Array(H[0].length).fill(0); // one entry per ROW (p), H is column-major
+  bits.forEach((b, j) => {
+    if (!b) return;
+    for (let r = 0; r < s.length; r++) s[r] ^= H[j][r];
+  });
+  return s;
+}
+
+function eqBits(a, b) {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+function nfEmbedLsb(cover, bits) {
+  const out = cover.slice();
+  const mark = new Uint8Array(out.length);
+  let changed = 0;
+  const limit = Math.min(bits.length, out.length);
+  for (let i = 0; i < limit; i++) {
+    if ((out[i] & 1) !== bits[i]) {
+      out[i] = (out[i] & 0xfe) | bits[i];
+      mark[i] = 1;
+      changed++;
+    }
+  }
+  return { out, mark, changed, blocks: 0, wetAvoided: 0, fallbacks: 0 };
+}
+
+function nfEmbedNsf5(cover, bits, p) {
+  const n = (1 << p) - 1;
+  const H = hammingMatrix(p);
+  const out = cover.slice();
+  const mark = new Uint8Array(out.length);
+  const perm = nfPermutedIndices(out.length, NF_PERM_SEED);
+  const totalBlocks = Math.min(Math.floor(out.length / n), Math.ceil(bits.length / p));
+  let changed = 0, wetAvoided = 0, fallbacks = 0;
+  for (let bi = 0; bi < totalBlocks; bi++) {
+    const pos = new Array(n);
+    for (let j = 0; j < n; j++) pos[j] = perm[bi * n + j]; // within-block order is
+    // arbitrary but MUST match the extractor's, so both use the raw perm order
+    const xv = new Array(n), xl = new Array(n);
+    for (let j = 0; j < n; j++) {
+      xv[j] = out[pos[j]] - 128;
+      xl[j] = xv[j] & 1;
+    }
+    const m = bits.slice(bi * p, bi * p + p);
+    const s = syndromeOf(H, xl);
+    if (eqBits(s, m)) continue;
+    const dVal = intLE(s) ^ intLE(m);
+    const tc = dVal - 1; // unique H column matching d (see solveHamming)
+    const hit = (j) => {
+      // magnitude decrement: 133->132, 126->127 ... always flips the LSB
+      out[pos[j]] = xv[j] > 0 ? out[pos[j]] - 1 : out[pos[j]] + 1;
+      mark[pos[j]] = 1;
+      changed++;
+    };
+    if (Math.abs(xv[tc]) > 1) {
+      hit(tc);
+    } else {
+      wetAvoided++;
+      const dry = [];
+      for (let j = 0; j < n; j++) if (Math.abs(xv[j]) > 1) dry.push(j);
+      let sol = null;
+      for (const j of dry) if (intLE(H[j]) === dVal) { sol = [j]; break; }
+      if (!sol) {
+        outer:
+        for (const a of dry) for (const b of dry) {
+          if (a === b) continue;
+          if ((intLE(H[a]) ^ intLE(H[b])) === dVal) { sol = [a, b]; break outer; }
+        }
+      }
+      if (sol) sol.forEach(hit);
+      // documented fallback in ns5_core.py: flip the suggested position's LSB
+      else { out[pos[tc]] ^= 1; mark[pos[tc]] = 1; changed++; fallbacks++; }
+    }
+  }
+  return { out, mark, changed, blocks: totalBlocks, wetAvoided, fallbacks };
+}
+
+function nfDecodeBits(data, method, p, numBits) {
+  if (method === "lsb") {
+    const bits = [];
+    for (let i = 0; i < numBits; i++) bits.push(data[i] & 1);
+    return bits;
+  }
+  // extraction needs no wet/dry knowledge: every block's syndrome over all n
+  // positions already equals the message (invariant guaranteed at embed time)
+  const n = (1 << p) - 1;
+  const H = hammingMatrix(p);
+  const perm = nfPermutedIndices(data.length, NF_PERM_SEED);
+  const need = Math.ceil(numBits / p);
+  const bits = [];
+  for (let bi = 0; bi < need; bi++) {
+    if ((bi + 1) * n > perm.length) break;
+    const xl = [];
+    for (let j = 0; j < n; j++) xl.push(data[perm[bi * n + j]] & 1);
+    syndromeOf(H, xl).forEach((b) => bits.push(b));
+  }  return bits.slice(0, numBits);
+}
+
+function bitsToText(bits) {
+  let length = 0;
+  for (let i = 0; i < 16; i++) length |= bits[i] << i;
+  if (length <= 0 || length > 64) return null;
+  let out = "";
+  for (let b = 0; b < length; b++) {
+    let code = 0;
+    for (let i = 0; i < 8; i++) code |= bits[16 + b * 8 + i] << i;
+    out += String.fromCharCode(code);
+  }
+  return out;
+}
+
+function psnrDb(a, b) {
+  let mse = 0;
+  for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; mse += d * d; }
+  mse /= a.length;
+  return mse === 0 ? Infinity : 10 * Math.log10(255 * 255 / mse);
+}
+
+function fmtNum(v, digits) {
+  return v === Infinity ? "∞" : v.toFixed(digits);
+}
+
+function nfStatsLine() {
+  const cap = els("nf-stats");
+  if (!cap) return;
+  const nf = state.nf;
+  cap.textContent = nf
+    ? t("nf.stats")
+      .replace("{m}", nf.method === "nsf5" ? t("nf.mNsf5") : t("nf.mLsb"))
+      .replace("{b}", String(nf.numBits)).replace("{c}", String(nf.changed))
+    : t("nf.idle");
+}
+
+function nfReportLine() {
+  const report = els("nf-report");
+  const nf = state.nf;
+  if (!report) return;
+  if (!nf) { report.textContent = ""; return; }
+  const eff = nf.changed ? nf.numBits / nf.changed : Infinity;
+  const db = psnrDb(state.cover, nf.out);
+  report.textContent = nf.method === "nsf5"
+    ? t("nf.repNsf5")
+      .replace("{p}", String(nf.p)).replace("{b}", String(nf.numBits))
+      .replace("{k}", String(nf.blocks)).replace("{c}", String(nf.changed))
+      .replace("{w}", String(nf.wetAvoided)).replace("{e}", fmtNum(eff, 2))
+      .replace("{d}", fmtNum(db, 1)) +
+      (nf.fallbacks ? " " + t("nf.repNsf5Fb").replace("{f}", String(nf.fallbacks)) : "")
+    : t("nf.repLsb")
+      .replace("{b}", String(nf.numBits)).replace("{c}", String(nf.changed))
+      .replace("{e}", fmtNum(eff, 2)).replace("{d}", fmtNum(db, 1));
+  // language-independent hooks for the browser tests
+  report.dataset.method = nf.method;
+  report.dataset.changed = String(nf.changed);
+  report.dataset.eff = eff === Infinity ? "inf" : eff.toFixed(2);
+  report.dataset.psnr = db === Infinity ? "inf" : db.toFixed(1);
+}
+
+function renderNfDiff() {
+  const canvas = els("nf-diff-canvas");
+  if (!canvas) return;
+  const nf = state.nf;
+  const cap = els("nf-diff-caption");
+  if (!nf) {
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    if (cap) cap.textContent = t("nf.dcapIdle");
+    return;
+  }
+  const out = new Uint8Array(nf.mark.length);
+  for (let i = 0; i < out.length; i++) out[i] = nf.mark[i] ? 255 : 0;
+  drawGray(canvas, out);
+  if (cap) cap.textContent = t("nf.dcap").replace("{c}", String(nf.changed));
+}
+
+function runNfDetector() {
+  const note = els("nf-detect");
+  if (!note || !state.nf) return;
+  const data = state.nf.out;
+  const counts = new Array(256).fill(0);
+  for (let i = 0; i < data.length; i++) counts[data[i]]++;
+  const p = chi2Pvalue(counts);
+  const rs = rsMetrics(data);
+  const verdict = rs.Gn < 0.35 || p > 0.3
+    ? t("detect.likely")
+    : (rs.Gn > 0.35 && p < 0.3 ? t("detect.clean") : t("detect.unclear"));
+  // clean-image baseline: a short payload touches so few pixels that the global
+  // statistics barely move - showing the baseline turns that non-result into a
+  // lesson about low-density steganography
+  const baseCounts = new Array(256).fill(0);
+  for (let i = 0; i < state.cover.length; i++) baseCounts[state.cover[i]]++;
+  const base = rsMetrics(state.cover);
+  const baseP = chi2Pvalue(baseCounts);
+  const ratio = (state.nf.numBits / data.length * 100).toFixed(2);
+  note.textContent = t("nf.detect")
+    .replace("{gn}", rs.Gn.toFixed(3))
+    .replace("{p}", p.toFixed(3))
+    .replace("{basegn}", base.Gn.toFixed(3))
+    .replace("{basep}", baseP.toFixed(3))
+    .replace("{r}", ratio)
+    .replace("{v}", verdict);
+}
+
+function nfEmbed() {
+  const msg = els("nf-msg").value || "Hi";
+  const bits = textToBits(msg.slice(0, 24));
+  const method = els("nf-method").value;
+  const p = parseInt(els("nf-p").value, 10);
+  const res = method === "nsf5"
+    ? nfEmbedNsf5(state.cover, bits, p)
+    : nfEmbedLsb(state.cover, bits);
+  state.nf = { ...res, method, p, numBits: bits.length };
+  els("nf-note").textContent = "";
+  els("nf-note").classList.remove("err");
+  drawGray(els("nf-canvas"), res.out);
+  nfStatsLine();
+  nfReportLine();
+  renderNfDiff();
+  runNfDetector();
+}
+
+function nfDecode() {
+  const note = els("nf-note");
+  if (!state.nf) {
+    note.textContent = t("nf.noInfo");
+    note.classList.add("err");
+    return;
+  }
+  const nf = state.nf;
+  const bits = nfDecodeBits(nf.out, nf.method, nf.p, nf.numBits);
+  const out = bitsToText(bits);
+  if (out === null) {
+    note.textContent = t("lsb.noMsg");
+    note.classList.add("err");
+  } else {
+    note.textContent = t("nf.decoded").replace("{msg}", out);
+    note.classList.remove("err");
+  }
+}
+
+function nfReset() {
+  state.nf = null;
+  const note = els("nf-note");
+  if (note) { note.textContent = ""; note.classList.remove("err"); }
+  const report = els("nf-report");
+  if (report) { report.textContent = ""; delete report.dataset.method; delete report.dataset.changed; }
+  const detect = els("nf-detect");
+  if (detect) detect.textContent = "";
+  if (state.cover && els("nf-canvas")) drawGray(els("nf-canvas"), state.cover);
+  nfStatsLine();
+  renderNfDiff();
+}
+
 /* ---------- ML threshold playground ---------- */
 function gauss(x, mu, sigma) {
   return Math.exp(-((x - mu) ** 2) / (2 * sigma * sigma)) / (sigma * Math.sqrt(2 * Math.PI));
@@ -914,7 +1192,7 @@ function init() {
   document.querySelectorAll("#main-nav a").forEach((a) => {
     a.addEventListener("click", () => els("main-nav").classList.remove("open"));
   });
-  const sections = ["lsb", "hamming", "wetpaper", "pipeline", "ml", "roadmap", "resources", "faq", "quiz"];
+  const sections = ["lsb", "hamming", "wetpaper", "nsf5", "pipeline", "ml", "roadmap", "resources", "faq", "quiz"];
   const spy = () => {
     let active = sections[0];
     for (const id of sections) {
@@ -948,7 +1226,13 @@ function init() {
   els("wet-canvas").addEventListener("keydown", wetKey);
   els("thr-slider").addEventListener("input", renderThreshold);
   els("pay-slider").addEventListener("input", renderScan);
+  els("nf-embed").addEventListener("click", nfEmbed);
+  els("nf-decode").addEventListener("click", nfDecode);
+  els("nf-reset").addEventListener("click", nfReset);
+  els("nf-method").addEventListener("change", nfReset);
+  els("nf-p").addEventListener("change", nfReset);
   applyLang();
+  nfReset();
   spy();
   loadScanData();
   document.querySelectorAll("main img").forEach((img) => {

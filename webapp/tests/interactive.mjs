@@ -80,6 +80,36 @@ await page.waitForTimeout(120);
 const scanNote = await page.textContent("#scan-note");
 if (!scanNote.includes("ML=")) errors.push("Payload stats missing: " + scanNote);
 
+// 7b) nsF5 comparison lab: embed (default nsf5 method), decode round-trip,
+//     then embed with naive LSB and compare changed-pixel counts via data hooks
+await page.fill("#nf-msg", "SECRET");
+await page.click("#nf-embed");
+await page.waitForTimeout(80);
+const nfReport = await page.textContent("#nf-report");
+if (!nfReport.includes("PSNR")) errors.push("nsF5 report missing: " + nfReport);
+const nfData = await page.$eval("#nf-report", (el) => ({
+  method: el.dataset.method, changed: Number(el.dataset.changed),
+}));
+if (nfData.method !== "nsf5" || !(nfData.changed > 0)) {
+  errors.push("nsF5 data hooks invalid: " + JSON.stringify(nfData));
+}
+await page.click("#nf-decode");
+await page.waitForTimeout(40);
+const nfNote = await page.textContent("#nf-note");
+if (!nfNote.includes("SECRET")) errors.push("nsF5 decode round-trip failed: " + nfNote);
+await page.selectOption("#nf-method", "lsb");
+await page.click("#nf-embed");
+await page.waitForTimeout(80);
+const lsbData = await page.$eval("#nf-report", (el) => ({
+  method: el.dataset.method, changed: Number(el.dataset.changed),
+}));
+if (lsbData.method !== "lsb" || !(lsbData.changed > 0)) {
+  errors.push("naive LSB data hooks invalid: " + JSON.stringify(lsbData));
+}
+if (!(nfData.changed < lsbData.changed)) {
+  errors.push(`nsF5 (${nfData.changed}) should change fewer pixels than naive LSB (${lsbData.changed})`);
+}
+
 // 8) mobile menu
 await page.setViewportSize({ width: 390, height: 844 });
 await page.reload({ waitUntil: "networkidle" });

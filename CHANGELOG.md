@@ -7,6 +7,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Website nsF5 comparison lab (Lab 4, `#nsf5`): embeds the same message into the
+  demo image with either naive LSB replacement or the project's real nsF5
+  strategy ported to JS (per-block Hamming syndrome coding, magnitude-decrement
+  modification, wet pixels 127/128/129 handed to the wet-paper solver, seeded
+  permutation of the block path mirroring `permute_index`/`_pool_positions`).
+  The lab shows changed-pixel count, embedding efficiency (bits per change),
+  PSNR, a difference map and the same in-browser chi-square/RS detector, so
+  learners can see that nsF5 both changes fewer pixels and leaves a weaker
+  statistical fingerprint; includes a decode round-trip and `data-*` test hooks.
+
 - Website structure/hierarchy: an "on this page" contents map right after the
   hero groups the whole page into four themed parts (hands-on labs / how it
   works / learning path / FAQ), and every section carries a matching part badge,
@@ -85,6 +95,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   workflow building both books into one site.
 
 ### Fixed
+
+- Website i18n: the self-test section's part badge showed the raw key `part5`
+  (the key was missing from both dictionaries); the "on this page" contents map
+  now also lists the nsF5 lab and the self-test quiz, and the static fallback
+  for the FAQ notebook count says 10 (matching the dictionaries and the repo).
+
+- Website: removed a dead `preconnect` to fonts.googleapis.com (no webfont is
+  loaded; the design system uses local font stacks).
 
 - README Zenodo DOI badge pointed to an unrelated record
   (10.5281/zenodo.14851234); corrected to the project's actual archive

@@ -8,6 +8,9 @@ real browser (Chrome or Edge) and checks:
 - Hamming random/solve
 - wet-paper auto-play cycle
 - keyboard operation of Hamming and wet-paper canvases
+- nsF5 comparison lab: embed + decode round-trip, and nsF5 must change
+  fewer pixels than naive LSB for the same message (data-hook based,
+  language independent)
 - decision-threshold slider
 - payload-scan slider
 - mobile menu
