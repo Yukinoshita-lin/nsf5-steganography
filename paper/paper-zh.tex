@@ -1,0 +1,132 @@
+% paper-zh.tex —— paper.md 的中文渲染版, 便于作者与导师阅读。
+%
+% paper.md + paper.bib 是 JOSE 投稿的**唯一源**; 本文件与 paper-en.tex 都是
+% 同一份内容的排版, 改动正文时请改 paper.md 再同步两处。
+%
+% 编译: xelatex paper-zh && bibtex paper-zh && xelatex paper-zh && xelatex paper-zh
+\documentclass[11pt,a4paper,fontset=windows]{ctexart}
+
+\usepackage[margin=2.4cm]{geometry}
+\usepackage[authoryear,round]{natbib}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep,leftmargin=1.6em}
+\titlespacing*{\section}{0pt}{1.1em}{0.45em}
+\titleformat{\section}{\normalfont\large\bfseries}{}{0em}{}
+\linespread{1.15}
+
+\title{\vspace{-1.4cm}\bfseries 从比特到自举：\\[3pt]
+一套面向 nsF5 隐写与检测教学的双语动手工具包}
+\author{林丰杰\thanks{齐鲁工业大学。
+  ORCID：\texttt{0000-0000-0000-0000}（占位符，投稿前需替换为真实 ORCID）。}}
+\date{2026 年 9 月 13 日}
+
+\begin{document}
+\maketitle
+\vspace{-1.0em}
+
+\section*{概述}
+
+\texttt{nsf5stego} 是一套面向图像隐写与隐写分析的开源教学与研究工具包。它完整实现了
+nsF5 算法——汉明伴随式矩阵编码结合湿纸编码 \citep{westfeld2001f5,fridrich2005wet}——
+并配套 SHA-256 内容键控嵌入、基于卡方与 RS 分析的盲隐写分析
+\citep{westfeld1999,fridrich2001rs}，以及基于梯度提升分类器的有监督检测
+\citep{ke2017lightgbm}。围绕这套核心，项目还提供中英双语学习手册（中文 66 页、
+英文 72 页）、十个可直接运行的 notebook、一个交互式浏览器实验台，以及一个桌面 GUI。
+
+设计前提是：真正让现代隐写成立的三个概念——伴随式编码、湿纸模型、以及嵌入留下的
+统计足印——是靠"亲手造出来、再亲手攻破"学会的，而不是靠读出来的。因此工具包把每个
+算法都暴露成学习者可以检视、可以在中间步骤上修改的对象，而不是一次返回 stego 图的
+库函数调用。
+
+\section*{需求陈述}
+
+隐写教学材料往往落在两个极端。教科书把它当数学处理：伴随式方程与湿纸模型推导
+严谨，但读者读完手里没有一个能跑的流程 \citep{fridrich2009book,provos2003hide}。
+而提供代码的课程模块又大多止步于 LSB 替换——偏偏这是整个领域二十年前就已经跨过去
+的方法，原因正是它太容易被检出。结果是：学生往往能解释清楚汉明界，却说不出湿纸编码
+到底换来了什么、F5 为什么会"缩水"、以及"每改动一次嵌入 4 比特"这个效率值实际代价
+是什么。
+
+还有一层更隐蔽的缺口。检测性能的汇报绝大多数建立在为此专门构建的基准语料上
+\citep{bas2011boss}——源图被仔细划分、cover/stego 配对有严格构造
+\citep{pevny2010spam,fridrich2012rich}。而学习者若拿自己的照片训练，或者把同一张源图
+派生的干净图与含密图分到了训练集和测试集两侧，会得到好看但毫无意义的数字。
+\texttt{nsf5stego} 的设计让这个错误既不容易犯、也容易看见：数据集构建器为每个样本
+生成 \texttt{photo\_id}，所有评测路径默认按它分组。对项目自身实验的一次核查就发现，
+一个被当作 53 维结果汇报的对比，实际是用 11 维特征算出来的——而这正是工具包现在用
+硬断言、而非静默降级所防范的那一类错误。
+
+\section*{目标读者与教学场景}
+
+材料面向安全、信号处理或应用机器学习方向的高年级本科生与低年级研究生。前置要求
+只有 Python 入门，不需要任何信息隐藏基础——手册从像素与二进制表示讲起。它可按一学期
+选修课设计，也可作为毕业设计的实现主线：既提供十二周快速入门路线，也为继续做研究的
+学生提供六到十二个月的深入路线。
+
+\section*{工具包内容}
+
+整个包的编排原则是让理论、实现与验证彼此相邻：
+
+\begin{itemize}
+\item \textbf{参考实现}：nsF5 的二元汉明码 $[n = 2^p - 1,\, k,\, 3]$、减幅修改，以及
+  按深度递进搜索干位的 GF(2) 湿纸求解器。可选的 C++ 加速库在 Windows、macOS、
+  Linux 上从源码编译；缺失时自动走等价的纯 Python 路径，因此 notebook 与容器
+  无需任何构建步骤即可运行。
+\item \textbf{攻破你刚造出来的东西}：卡方与 RS 分析直接在嵌入后的图上实时运行，浏览器
+  实验台把"被改动的像素掩码"和检测器判读并排画出来——于是"这些 LSB 动了"与
+  "这个检测器报警了"之间的因果是看得见的，而不是被告知的。
+\item \textbf{交互式浏览器实验台}：涵盖位平面抽取与加权叠加还原、带实时检测的
+  嵌入/解码闭环、伴随式编码逐步演示、湿纸干点求解器、朴素 LSB 与项目真实 nsF5 的
+  并排对比、机器学习判决阈值调参，以及基于项目自身统计量的载荷扫描。
+\item \textbf{十个 notebook}：可作为 Colab 或 Jupyter 会话直接执行，与手册章节一一对应
+  \citep{perez2007ipython}。
+\item \textbf{中文讲解视频}：十一章、总时长约 36 分钟，供先接触文字材料、后补数学的
+  学生使用。
+\item \textbf{数据集构建器}：生成带源图标识的 cover/stego 语料，并提供 BOSSbase 1.01
+  基准的下载脚本 \citep{bas2011boss}。
+\end{itemize}
+
+\section*{学习产出}
+
+完成这套材料后，学生应当能够：实现并反解汉明伴随式矩阵编码，并计算其嵌入效率；
+解释 F5 为什么会缩水、nsF5 如何以更密的搜索为代价消除缩水；对给定的干位集合推导
+并求解湿纸方程组；实现卡方与 RS 检测器并解释二者判读不一致的含义；构建有监督
+隐写分析分类器，用分组交叉验证评估并以置信区间汇报；以及——项目最看重的产出——
+识别出一个检测结论究竟是检测器的性质，还是评测设计的产物。
+
+最后一点是通过一个真实的负面案例来教的。仓库里的一份 CNN 复现在**验证集和训练集
+上**都只拿到 0.50 的 AUC；工具包的汇报方式让这件事一眼可读为"没有收敛"，而不是
+"卷积网络不行"的证据——否则它本来会被当成一个误导性的对比发表出去。
+
+\section*{与现有资源的关系}
+
+通用导论 \citep{provos2003hide} 与标准专著 \citep{fridrich2009book} 给出了理论，但
+没有给出流程。攻击实现主要以论文配套的研究代码形式存在
+\citep{pevny2010spam,fridrich2012rich}，它们为吞吐量而非可读性优化。深度学习隐写分析
+有很好的参考架构 \citep{xu2016xunet,ye2017yenet}，但它们预设了本工具包所提供的那部分
+经典基础。\texttt{nsf5stego} 的不同之处在于：把整条链路——像素表示、嵌入、键控、
+检测、分类器评测——放在一份可检视的代码里，并且把评测协议本身也当作教学内容。
+
+\section*{验证与使用现状}
+
+软件以 Apache-2.0 许可发布并已归档获得 DOI。24 项自动化测试在 Ubuntu、macOS、
+Windows 三平台持续集成下运行，另有容器构建与浏览器回归套件覆盖交互实验台。C++ 与
+Python 两条嵌入路径经互操作性验证；两者确有差异之处，项目如实记录，而不是宣称等价。
+
+目前这套材料**尚未在正式课程中采用**。现阶段的验证证据针对的是软件正确性，而非教学
+效果。作者欢迎愿意试用它的教师合作，尤其希望能收到学生实际持有的错误概念——那正是
+项目目前所缺的证据。
+
+\section*{致谢}
+
+本工具包建立在上述隐写与隐写分析文献之上，并依赖 NumPy 与 Matplotlib 科学计算栈
+\citep{harris2020numpy}。参考基准采用 BOSSbase 1.01 \citep{bas2011boss}。
+
+\bibliographystyle{plainnat}
+\bibliography{paper}
+
+\end{document}
