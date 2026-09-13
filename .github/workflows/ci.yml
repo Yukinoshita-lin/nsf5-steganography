@@ -29,6 +29,42 @@ jobs:
         run: python src/test_core.py
       - name: 盲隐写分析测试 (区分 干净/含密)
         run: python src/test_steg.py
+      - name: 假阳性回归测试 (干净图不得判为高概率隐写)
+        run: python src/test_false_positive.py
+
+  pytest:
+    name: pytest (完整依赖)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          # lightgbm 是必需的: 随仓库分发的两个部署模型就是 LGBMClassifier,
+          # 缺它 ml_predict 会静默退回 available=False。
+          python -m pip install numpy pillow matplotlib joblib \
+            scikit-learn pandas lightgbm pytest
+      - name: 全部测试
+        run: python -m pytest -q
+
+  gui:
+    name: GUI 冒烟测试 (xvfb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 安装依赖与虚拟显示
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow matplotlib
+          sudo apt-get update && sudo apt-get install -y xvfb
+      - name: 无头运行 GUI 冒烟测试
+        run: xvfb-run -a python src/test_gui.py
 
   build:
     name: 构建 wheel + sdist
