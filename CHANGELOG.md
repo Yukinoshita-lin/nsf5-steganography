@@ -16,7 +16,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   PSNR, a difference map and the same in-browser chi-square/RS detector, so
   learners can see that nsF5 both changes fewer pixels and leaves a weaker
   statistical fingerprint; includes a decode round-trip and `data-*` test hooks.
-
+- Handbook ch05 (zh + en): a hand-worked GF(2) example for the wet-paper solver
+  (single-column hit, two-column XOR, and when Gaussian elimination is actually
+  needed), plus the solvability criterion (dry columns must span GF(2)^p) and
+  why free variables are set to 0 to minimize changes.
+- Handbook ch03 (zh + en): reused the webapp's chi-square pair-count and
+  clean-vs-stego bar figures so the "visual statistics" chapter has concrete
+  imagery matching the theory.
+- Website payload-scan honesty: `scan-demo.json` now records the real
+  changed-pixel footprint (`changed_pixels`) alongside the nominal capacity
+  fraction, and the scan note shows "改动像素≈N%" so the density axis is no
+  longer misleading.
+- Website LSB live steganalysis: after embedding, the page runs real chi-square
+  (Westfeld) and RS analysis in JavaScript on the current image and shows
+  `chi2 p · RS Gn → verdict`, plus a **changed-pixel mask** canvas (white =
+  modified LSB) - so learners can embed a sentence and immediately see the
+  statistical fingerprint that detection catches.
+- Website a11y/conventions: label `for`/id association for the Hamming / wet-paper
+  / ML / payload controls, `aria-live` on result readouts, and a live decode
+  note. (Details in the reference-removal note below.)
+- Website LSB lab round-trip: a **Decode it back** button that reads the length
+  header and payload straight out of the current canvas LSBs and shows the
+  recovered message, so learners can embed a sentence and see it come back (the
+  format matches `ns5_core.encode_string`); a live decode note replaces the
+  change count.
 - Website structure/hierarchy: an "on this page" contents map right after the
   hero groups the whole page into four themed parts (hands-on labs / how it
   works / learning path / FAQ), and every section carries a matching part badge,
@@ -24,7 +47,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Website FAQ: a bilingual accordion section (8 common questions on PNG vs JPEG,
   why LSB is invisible, chi-square/RS detection, Hamming matrix coding, nsF5 vs
   F5, choosing a cover and raw-pixel CNNs), plus a "still stuck / try it /
-  license" card row; added to the top nav and scroll-spy.
+  license" card row; added to the top nav and scroll-spy. The license FAQ entry
+  states the correct **Apache-2.0** terms (matching LICENSE/NOTICE).
 - Bit-plane layering teaching visual (`lsb-layering-{zh,en}.png` in `webapp/assets`
   and `img009.png` in both handbook assets): shows an 8-bit image as eight
   stacked bit planes and proves each must be weighted by `2**k` before they can
@@ -96,14 +120,50 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Repo hygiene: `data/` generated datasets (`dataset_*.csv`), `campus_jpg/` and
+  `data/_*.log` training logs, plus `webapp/tests/node_modules/.npm-cache` are
+  now gitignored (kept locally; 7.8 GB historical backup moved out of the repo
+  tree to external storage).
 - Website i18n: the self-test section's part badge showed the raw key `part5`
   (the key was missing from both dictionaries); the "on this page" contents map
   now also lists the nsF5 lab and the self-test quiz, and the static fallback
   for the FAQ notebook count says 10 (matching the dictionaries and the repo).
-
 - Website: removed a dead `preconnect` to fonts.googleapis.com (no webfont is
   loaded; the design system uses local font stacks).
-
+- Core: `ns5_core._embed_into_image` no longer silently truncates an over-capacity
+  message; it now validates the payload against the image's body-pool size and
+  raises a clear `ValueError` with the number of Hamming blocks needed vs
+  available.
+- Core: RGB images no longer report `cover_changed = 0` - the `stego` buffer was
+  re-bound to the source image so the clean/stego comparison was a self-comparison;
+  the copy is kept independent now (also fixes the `efficiency.py` measured curve
+  when fed RGB data).
+- Core: message encoding switched from ASCII `errors="replace"` to UTF-8, so
+  non-ASCII text (e.g. Chinese) is preserved instead of silently becoming `?`.
+- Core: wet-paper pair-search seeding is deterministic (derived from the dry cols
+  and target), no longer perturbs the global NumPy RNG, so identical inputs give
+  identical stego images.
+- Core: `efficiency.measured_efficiency` now sizes the test message within the
+  real body-pool capacity (it previously filled to an over-estimated capacity and
+  would overflow once embed validation was added).
+- Assets: `stego_detect` and `scan_curves` demo messages clamped to fit the 256x256
+  / 512x512 cover capacities (previously over-capacity and silently failing).
+- GUI: "Decode" and "Analyze" now operate on the generated stego image instead of
+  always the loaded cover, fixing the embed -> decode/analyze flow.
+- Tests: added coverage for `get_image_hash`, `derive_seed`, `solve_wet_paper`,
+  `gauss_solve_GF2` and `permute_index` (previously untested), plus regression
+  tests for the UTF-8 round-trip, RGB `cover_changed`, capacity error and wet-paper
+  determinism.
+- Packaging: `pyproject.toml` `py-modules` now includes `featurize_v2`,
+  `py_features` and `srm_filter` (they were missing from the wheel, which broke
+  `import make_dataset` and the `ml_predict`/GUI feature path), and declares
+  `xgboost` as a dependency.
+- Docs: corrected stale handbook page counts (Chinese 94 -> 66, English 80 -> 72),
+  fixed the webapp FAQ license statement to Apache-2.0, and corrected the
+  notebook count (12 -> 10).
+- CI: added `webapp-tests.yml` that serves the webapp and runs the Playwright
+  interactive + layout tests (previously these were never wired into any workflow),
+  and added a missing `workflow_dispatch` trigger to `ci.yml`.
 - README Zenodo DOI badge pointed to an unrelated record
   (10.5281/zenodo.14851234); corrected to the project's actual archive
   10.5281/zenodo.22543629.
