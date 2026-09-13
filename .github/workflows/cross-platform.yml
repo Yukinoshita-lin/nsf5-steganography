@@ -3,11 +3,16 @@ name: Cross-platform tests (Linux / macOS / Windows)
 on:
   push:
     branches: [main]
-    paths:
+    paths: &paths
       - "src/**"
       - "scripts/**"
+      - "cpp/**"
       - "teaching/build_notebooks.py"
       - ".github/workflows/cross-platform.yml"
+  # 必须在 PR 上也跑: 这是唯一会编译 C++ 加速库并验证其一致性的地方, 只挂在
+  # main 上的话, 编译或回退路径坏了要等合并之后才发现。
+  pull_request:
+    paths: *paths
   workflow_dispatch:
 
 jobs:
