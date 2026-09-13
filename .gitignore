@@ -64,6 +64,11 @@ models/*.joblib
 !models/stego_classifier.joblib
 !models/stego_classifier_v2_jpeg_lgb_51d.joblib
 
+# CNN 训练检查点: 体积大 (Xu-Net 33MB) 且可由 run_cnn_sota.py 重训。
+# 论文需要的指标已落进 thesis/data/cnn_checkpoint_eval.csv (小文件, 入库),
+# 因此检查点本身不入库。
+models/*.pt
+
 # 本地数据集与训练日志 (体积大或可再生, 归档见 D:\Users\32403\.zcode\archive)
 data/dataset_*.csv
 data/campus_jpg/

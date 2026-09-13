@@ -41,13 +41,22 @@ def run():
         abstain = r["verdict"].startswith("无法可靠判定")
         flag = "误报!" if bad else ("abstain" if abstain else "ok")
         if bad:
-            ok = ok
+            # 这里原本写的是 `ok = ok`, 一个恒真赋值 —— 循环里累积的失败信号被
+            # 静默丢弃, 整个测试只剩下面那条 assert 在兜底。
+            ok = False
         print(f"  {name:<12} Gn={r['RS_Gn']:.3f} LSB熵={r['lsb_diff_entropy']:.3f} "
               f"prob={p:.2f} {r['verdict']}  [{flag}]")
     # 允许 abstain, 但绝不允许把未隐写图判为高概率隐写
     assert all(SA.analyze(img)["stego_probability"] < 0.65
                for img in clean_images().values()), "存在干净图被误判为高概率隐写"
+    assert ok, "存在干净图被误判为高概率隐写 (见上表 误报! 行)"
     print("[OK] 干净图均未被误判为高概率隐写")
+
+
+def test_clean_images_are_not_flagged_as_stego():
+    """pytest 入口。`python src/test_false_positive.py` 仍然可用。"""
+    run()
+
 
 if __name__ == "__main__":
     run()

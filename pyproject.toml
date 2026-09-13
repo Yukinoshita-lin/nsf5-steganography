@@ -22,8 +22,15 @@ dependencies = [
     "Pillow",
     "matplotlib",
     "joblib",
-    "scikit-learn",
+    # 两个随仓库分发的部署模型是 lightgbm.sklearn.LGBMClassifier 的 pickle;
+    # 缺 lightgbm 时 ml_predict 会静默退回 available=False, 等于没发布模型。
+    "lightgbm",
+    # 模型由 scikit-learn 1.7 序列化; 上限留到 2.x, 跨大版本的 pickle 不保证
+    # 可加载 (会报 InconsistentVersionWarning)。
+    "scikit-learn>=1.5,<2",
     "pandas",
+    # 仅在训练 XGB 变体 (src/train_model.py --models XGB / gpu/train_ml_gpu.py)
+    # 时用到, 且是函数内延迟导入。
     "xgboost",
 ]
 
@@ -31,6 +38,15 @@ dependencies = [
 gpu = ["torch"]
 dev = ["pytest", "build"]
 notebooks = ["jupyter", "ipykernel"]
+# thesis/exp 的实验脚本额外需要 seaborn (两张热图) 与 lightgbm (LGB 基线)
+thesis = ["seaborn", "lightgbm", "torch", "pandas", "scikit-learn"]
+
+[tool.pytest.ini_options]
+testpaths = ["src"]
+pythonpath = ["src"]
+# 模型 pickle 由 scikit-learn 1.7 生成; 升级环境会报 InconsistentVersionWarning。
+# 它是提示而非错误, 但不该淹没真实失败 —— 见 test_pipeline.py 的加载断言。
+filterwarnings = ["ignore::UserWarning:sklearn"]
 
 [project.urls]
 Homepage = "https://github.com/Yukinoshita-lin/nsf5-steganography"
@@ -43,6 +59,7 @@ nsf5stego = "gui:main"
 package-dir = { "" = "src" }
 py-modules = [
     "ns5_core", "steganalysis", "efficiency", "image_io", "gui",
-    "cppembed", "fsfeatures", "ml_predict", "make_dataset", "train_model",
-    "matrix_demo", "scan_panel", "featurize_v2", "py_features", "srm_filter",
+    "cppembed", "cpplib", "fsfeatures", "ml_predict", "make_dataset",
+    "train_model", "matrix_demo", "scan_panel", "featurize_v2",
+    "py_features", "srm_filter",
 ]
