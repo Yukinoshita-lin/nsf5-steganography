@@ -50,7 +50,8 @@ jobs:
         run: python src/fsfeatures.py
 
       - name: C++ embed round-trip self-check
-        run: python src/cppembed.py
+        # -u 关闭缓冲: 若扩展崩溃, 未刷新的 stdout 会被丢掉, 看不到崩在哪一例
+        run: python -u src/cppembed.py
 
       # Now remove the binaries and prove the fallback path still holds: every
       # call site must degrade to the equivalent pure-Python implementation

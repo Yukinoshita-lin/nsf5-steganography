@@ -235,4 +235,9 @@ def selfcheck(verbose: bool = False):
 
 
 if __name__ == "__main__":
+    # ctypes 调用 C 代码时若发生段错误/abort, Python 默认什么都不打印, 只留一个
+    # "Abort trap: 6" —— 无从知道崩在哪一次调用。faulthandler 会给出崩溃时的
+    # Python 栈, 这是在 macOS arm64 上定位问题的前提。
+    import faulthandler
+    faulthandler.enable()
     selfcheck(verbose=True)

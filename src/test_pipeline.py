@@ -118,9 +118,11 @@ def test_ml_model_is_loadable():
     import ml_predict as MP
     pred = MP.MLPredictor()
     assert pred.available, (
-        f"ML 模型未能加载: {MP.MODEL_PATH}\n"
-        "  该文件应随仓库分发 (见 .gitignore 的白名单); "
-        "若确实缺失, 用 `DS_FILES=... python src/train_model.py` 重新训练。")
+        f"ML 模型未能加载: {pred.model_path}\n"
+        f"  原因: {pred.load_error}\n"
+        "  该文件应随仓库分发 (.gitignore 白名单 / Dockerfile 的 COPY models); "
+        "若确实缺失, 需重新训练 (注意 src/train_model.py 训练的是 "
+        "LR/RF/GB/XGB 家族, 不是仓库里这两个 LGB 模型)。")
     print(f"[OK] 部署模型可加载: {os.path.basename(MP.MODEL_PATH)}")
 
 
