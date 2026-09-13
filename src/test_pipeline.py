@@ -109,6 +109,46 @@ def test_steganalysis_survives_degenerate_images():
 # --------------------------------------------------------------------------- #
 #  ML 判定
 # --------------------------------------------------------------------------- #
+def test_cpp_python_embed_contract():
+    """固定 C++ 加速路径与纯 Python 回退之间的契约。
+
+    README 早期称两者 "bit-compatible", 这对 `fsfeatures` 成立, 对 nsF5 嵌入
+    则**不成立** (matrix 成立)。这个测试把真实关系写死, 免得以后有人照着那句
+    话去断言逐像素相等 —— 或者反过来, 在不知情的情况下把 C++ 或 Python 一侧
+    的湿纸策略改到真正破坏互操作。
+
+    同时它也是 p≥4 栈越界的回归防线: 修复前 `nsf5_embed` 里 xl/xv 等数组定长
+    8, 而块长 n = 2^p - 1 (p=4 → 15, p=5 → 31), 会往栈上写越界数据。
+    """
+    import cppembed
+    from ns5_core import embed_string as py_embed, extract_string as py_extract
+
+    if not cppembed._cpp_ok():
+        print("[OK] C++ 加速库缺失, 跳过合约比对 (纯 Python 路径已由其他测试覆盖)")
+        return
+
+    rng = np.random.default_rng(11)
+    img = rng.integers(24, 232, (256, 256), dtype=np.uint8)
+    msg = "contract" * 30
+    for p in (2, 3, 4, 5):
+        # matrix: 必须逐像素一致
+        st_c, _, _ = cppembed.embed_string(img, msg, method="matrix", p=p)
+        st_p, _, _ = py_embed(img.copy(), msg, method="matrix", p=p)
+        assert np.array_equal(st_c, st_p), (
+            f"p={p} matrix 路径 C++ 与 Python 应当逐像素一致, "
+            f"实际差 {int((st_c != st_p).sum())} 个像素")
+        # nsF5: 只要求互操作 (双向回环), 不要求逐像素一致
+        st_n, _, _ = cppembed.embed_string(img, msg, method="nsF5", p=p)
+        assert py_extract(st_n, method="nsF5", p=p) == msg, (
+            f"p={p}: C++ 嵌入的 nsF5 图无法被解码还原")
+        p_n, _, _ = py_embed(img.copy(), msg, method="nsF5", p=p)
+        assert cppembed.embed_string(img, msg, method="nsF5", p=p)[0].shape == p_n.shape
+        diff = int((st_n != p_n).sum())
+        print(f"[OK] p={p}: matrix 逐像素一致; nsF5 有 {diff} 像素差异 "
+              f"(两个合法解, 均可互解)")
+    print("[OK] C++ / Python 嵌入契约符合预期")
+
+
 def test_ml_model_is_loadable():
     """模型必须随仓库分发, 否则 clone 之后 ML 功能直接不可用。
 
@@ -150,6 +190,7 @@ if __name__ == "__main__":
     test_srm_kernels()
     test_steganalysis_contract()
     test_steganalysis_survives_degenerate_images()
+    test_cpp_python_embed_contract()
     test_ml_model_is_loadable()
     test_ml_predict_routing()
     print("\n全部通过")

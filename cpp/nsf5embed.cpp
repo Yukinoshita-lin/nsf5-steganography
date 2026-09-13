@@ -23,6 +23,15 @@
 
 extern "C" {
 
+// 块长 n = 2^p - 1, 因此栈上那些"每系数一个"的数组必须按 p 的上限来定尺寸。
+// 它们原先是写死的 8 —— 那只够 p ≤ 3 (n=7)。p=4 时 n=15, 会往栈上多写 7 个
+// 元素; p=5 时 n=31, 多写 23 个。这是**已存在于仓库中的既成 bug**: Windows 与
+// Linux 上属于未定义行为但恰好没表现出错, macOS arm64 的栈保护直接 abort, 于是
+// 只有在真的去编译、运行这个库的平台上才暴露出来。
+#define NS5_MAX_P 8
+#define NS5_MAX_N 255              // (1 << NS5_MAX_P) - 1
+#define NS5_P_OK(p) ((p) >= 1 && (p) <= NS5_MAX_P)
+
 // 汉明校验矩阵列向量: 第 j 列(= 1..n) 的二进制 GF(2)^p 表示
 // 预计算一次缓存 (p 上限 8)
 static const unsigned char* hamming(int p) {
@@ -63,21 +72,22 @@ static inline int find_col(const unsigned char* H, int p, int n, const unsigned 
 NS5_EXPORT void nsf5_debug_first(
     const unsigned char* c, const int* pos, int n, int p,
     const unsigned char* bits, int* s_out, int* tc_out) {
+    if (!NS5_P_OK(p) || n < 1 || n > NS5_MAX_N) return;
     static const unsigned char* H = NULL;
     (void)H;
     const unsigned char* Hh = hamming(p);
-    unsigned char xl[8];
+    unsigned char xl[NS5_MAX_N];
     for (int y = 0; y < n; ++y) {
         int xv = (int)c[pos[y]] - 128;
         xl[y] = (unsigned char)(xv & 1);
     }
-    unsigned char s[8];
+    unsigned char s[NS5_MAX_P];
     for (int r = 0; r < p; ++r) {
         int acc = 0;
         for (int y = 0; y < n; ++y) acc ^= Hh[r * 256 + y] & xl[y];
         s[r] = (unsigned char)acc;
     }
-    unsigned char m[8], d[8];
+    unsigned char m[NS5_MAX_P], d[NS5_MAX_P];
     for (int r = 0; r < p; ++r) m[r] = bits[r];
     for (int r = 0; r < p; ++r) d[r] = s[r] ^ m[r];
     int tc = find_col(Hh, p, n, d);
@@ -93,15 +103,16 @@ NS5_EXPORT void nsf5_embed(
     const unsigned char* bits, int nbits,
     int method) {
 
+    if (!NS5_P_OK(p) || n < 1 || n > NS5_MAX_N) return;
     const unsigned char* H = hamming(p);
     int nblocks_use = std::min(num_blocks, nbits / p);
-    unsigned char xl[8], s[8], m[8], d[8];
+    unsigned char xl[NS5_MAX_N], s[NS5_MAX_P], m[NS5_MAX_P], d[NS5_MAX_P];
 
     for (int bi = 0; bi < nblocks_use; ++bi) {
         const int* pos = order + (size_t)bi * n;
         for (int r = 0; r < p; ++r) m[r] = bits[bi * p + r];
 
-        int xv[8];
+        int xv[NS5_MAX_N];
         for (int y = 0; y < n; ++y) {
             xv[y] = (int)c[pos[y]] - 128;
             xl[y] = (unsigned char)(xv[y] & 1);
