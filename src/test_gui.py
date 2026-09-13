@@ -80,9 +80,23 @@ def main():
 
 
 def test_gui_smoke():
-    """pytest 入口。需要能创建 Tk 窗口: 无显示环境请用 xvfb-run
-    (`xvfb-run -a python src/test_gui.py`), 否则 TclError 是预期行为。"""
-    main()
+    """pytest 入口。
+
+    Tk 需要显示环境。无显示时 `TclError: no display name and no $DISPLAY` 是
+    环境限制而非缺陷, 所以这种情况下跳过 —— 否则 `pytest -q` 在任何无头机器
+    上都会红, 而它本来只是没跑 GUI 而已。
+
+    但不能因此让 GUI 测试悄悄消失: CI 的 `GUI 冒烟测试 (xvfb)` job 会设
+    `NSF5_REQUIRE_GUI=1`, 那时跳过会变成失败。也就是说"跳过"必须在别处被
+    真正跑过, 不允许两边都不跑。
+    """
+    try:
+        main()
+    except tk.TclError as exc:
+        if "display" in str(exc).lower() and not os.environ.get("NSF5_REQUIRE_GUI"):
+            import pytest
+            pytest.skip(f"无显示环境, GUI 冒烟测试由 CI 的 xvfb job 负责: {exc}")
+        raise
 
 
 if __name__ == "__main__":

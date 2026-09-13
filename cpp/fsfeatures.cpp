@@ -10,9 +10,9 @@
 //   lsb_diff_entropy LSB 位平面差分熵 (0~1)
 //
 // 编译 (跨平台, 见 Makefile 的 `make cpp`):
-//   Windows (MinGW): g++ -O2 -shared -static -o fsfeatures.dll  fsfeatures.cpp
-//   Linux:           g++ -O2 -shared -fPIC -o fsfeatures.so      fsfeatures.cpp
-//   macOS:           g++ -O2 -shared -fPIC -o fsfeatures.dylib   fsfeatures.cpp
+//   Windows (MinGW): g++ -std=c++17 -O2 -shared -static -o fsfeatures.dll  fsfeatures.cpp
+//   Linux:           g++ -std=c++17 -O2 -shared -fPIC -o fsfeatures.so      fsfeatures.cpp
+//   macOS:           g++ -std=c++17 -O2 -shared -fPIC -o fsfeatures.dylib   fsfeatures.cpp
 // 本文件除 NS5_EXPORT 外全是标准库, 无 windows.h / 无线程 / 无平台分支。
 #include <cmath>
 #include <cstdint>

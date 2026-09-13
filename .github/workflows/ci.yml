@@ -53,6 +53,10 @@ jobs:
   gui:
     name: GUI 冒烟测试 (xvfb)
     runs-on: ubuntu-latest
+    env:
+      # pytest 里的 test_gui_smoke 在无显示时跳过 (否则任何无头机器跑 pytest
+      # 都会红)。这个 job 的职责就是让"跳过"必须真的跑一次, 所以把跳过转成失败。
+      NSF5_REQUIRE_GUI: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -5,10 +5,10 @@ scripts/build_cpp.py —— 编译 cpp/ 下的 C++ 加速库 (跨平台)。
 而且 Windows-only 的 .dll 会让 Linux/macOS 用户以为"没有加速可用"。这里按平台
 现场编译, 编译失败了调用方也能靠纯 Python 回退继续工作。
 
-后缀/编译器选择:
-    Windows : g++ (MinGW)        -O2 -shared -static  -> nsf5embed.dll
-    macOS   : g++/clang++        -O2 -shared -fPIC    -> nsf5embed.dylib
-    Linux   : g++/clang++        -O2 -shared -fPIC    -> nsf5embed.so
+后缀/编译器选择 (三者都带 -std=c++17, 见 CXX_STD):
+    Windows : g++ (MinGW)        -std=c++17 -O2 -shared -static  -> nsf5embed.dll
+    macOS   : g++/clang++        -std=c++17 -O2 -shared -fPIC    -> nsf5embed.dylib
+    Linux   : g++/clang++        -std=c++17 -O2 -shared -fPIC    -> nsf5embed.so
 
 用法:
     python scripts/build_cpp.py            # 编译两个库
@@ -40,10 +40,17 @@ def compiler() -> str:
         "macOS 上 `xcode-select --install`。")
 
 
+# nsf5embed.cpp 用了 std::clamp, 那是 C++17 的。必须显式声明标准: MinGW 的
+# g++ 15 默认就是 gnu++17, 于是 Windows 上一直编得过; 而 macOS 的 g++
+# 实为 clang++, 默认 gnu++14, 直接就 "no member named 'clamp' in namespace
+# 'std'"。这正是"只提交 Windows 二进制、从不编译其他平台"会掩盖的问题。
+CXX_STD = ["-std=c++17"]
+
+
 def flags() -> list:
     if sys.platform == "win32":
-        return ["-O2", "-shared", "-static"]
-    return ["-O2", "-shared", "-fPIC"]
+        return [*CXX_STD, "-O2", "-shared", "-static"]
+    return [*CXX_STD, "-O2", "-shared", "-fPIC"]
 
 
 def suffix() -> str:
