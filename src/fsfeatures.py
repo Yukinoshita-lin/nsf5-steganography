@@ -7,7 +7,9 @@ import os
 import ctypes
 import numpy as np
 
-DLL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cpp", "fsfeatures.dll")
+from cpplib import find as _find_lib  # noqa: E402
+
+DLL_PATH = _find_lib("fsfeatures")   # .dll / .so / .dylib 按平台自动选
 
 
 class FSFeatures:

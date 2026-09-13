@@ -15,8 +15,9 @@ import numpy as np
 from ns5_core import (encode_string, COVER_HASH_BYTES, derive_seed, permute_index,
                       MatrixEmbedding, MSG_HEADER_BITS, build_hamming)
 
-DLL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                        "cpp", "nsf5embed.dll")
+from cpplib import find as _find_lib
+
+DLL_PATH = _find_lib("nsf5embed")   # .dll / .so / .dylib 按平台自动选
 
 _lib = None
 _cpp_available = None
