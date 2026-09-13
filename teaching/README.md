@@ -127,10 +127,22 @@ python -m pip install pillow edge-tts
 python teaching/gen_videos_v2.py                 # build missing chapters
 python teaching/gen_videos_v2.py --ch 3,5        # rebuild selected chapters
 python teaching/gen_videos_v2.py --ch all --voice zh-CN-XiaoxiaoNeural
+python teaching/gen_videos_v2.py --ch 2,7 --sheets-only   # rebuild contact
+                                                          # sheets only (offline)
 ```
 
 - Outputs: `teaching/videos/zh/chNN.mp4` (official), `index.html`,
   `durations.json`; QA contact sheets in `teaching/videos/qa/v2_*.png`
+- **Do not rename the mp4 files.** `index.html` and `durations.json` address
+  them as `chNN.mp4`; renaming them to their chapter titles silently breaks
+  local playback (the page 404s every video).
+- `--sheets-only` re-samples a contact sheet from an already-rendered mp4 at
+  even intervals, so it works without network or a re-encode. Use it to
+  recover a missing/damaged sheet; use a full rebuild when you want the
+  sheet's "one frame per narration beat" sampling.
+- A chapter that fails is reported and skipped, not fatal: it does not write
+  its metadata, so it stays *missing* and the next `--ch missing` run picks it
+  up again. The run exits non-zero and prints the retry command.
 - Narration needs network access to the edge-tts service; encoding uses the
   NVIDIA GPU when present and falls back to libx264 elsewhere.
 - ffmpeg is resolved in this order: `NSF5_FFMPEG` env var →
