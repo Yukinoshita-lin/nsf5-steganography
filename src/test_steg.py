@@ -12,8 +12,12 @@ def smooth(shape=(256, 256)):
 
 def run():
     clean = smooth()
-    # 较高密度嵌入, 使 RS 缺口可检测
-    stego, rep, nb = embed_string(clean, "S" * 5000, method="nsF5", p=3)
+    # 较高密度嵌入, 使 RS 缺口可检测。消息长度须在容量内 (B2: 超载会明确报错)。
+    # 256x256 p=3 的正文容量约 3494 字节, 用 2500 字符既接近容量又被安全容纳。
+    stego, rep, nb = embed_string(clean, "S" * 2500, method="nsF5", p=3)
+    # 校验往返一致, 避免之前"静默截断 -> 解码失败"的假阳性测试。
+    from ns5_core import extract_string
+    assert extract_string(stego, method="nsF5", p=3) == "S" * 2500
     ch = int((stego != clean).sum())
     print(f"嵌入比特 {nb}, 改动像素 {ch} ({ch/clean.size:.3f})")
     rc = SA.analyze(clean)
