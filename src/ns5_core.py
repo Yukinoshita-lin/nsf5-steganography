@@ -117,13 +117,13 @@ def permute_index(total: int, seed: int) -> np.ndarray:
 
 
 # --------------------------------------------------------------------------- #
-#  消息编码: ASCII → 比特 (16 位长度头)
+#  消息编码: UTF-8 → 比特 (16 位长度头)                  (B7: 不再 errors="replace")
 # --------------------------------------------------------------------------- #
 def encode_string(text: str) -> np.ndarray:
-    raw = text.encode("ascii", errors="replace")
-    length = len(raw)
+    raw = text.encode("utf-8")          # 支持含中文的多字节字符, 不再静默替换成 "?"
+    length = len(raw)                    # 长度头单位 = 字节
     if length > 0xFFFF:
-        raise ValueError("ASCII 文本过长(≤65535 字节)")
+        raise ValueError("UTF-8 文本过长(≤65535 字节)")
     head = np.array([(length >> i) & 1 for i in range(MSG_HEADER_BITS)], np.uint8)
     body = np.unpackbits(np.frombuffer(raw, dtype=np.uint8))
     return np.concatenate([head, body])
@@ -136,13 +136,19 @@ def decode_string(bits: np.ndarray) -> str:
     body = bits[MSG_HEADER_BITS:MSG_HEADER_BITS + length * 8]
     if body.size < length * 8:
         raise ValueError("有效载荷不足, 消息可能被截断或被破坏")
-    return bytes(np.packbits(body[:length * 8])).decode("ascii", errors="replace")
+    return bytes(np.packbits(body[:length * 8])).decode("utf-8", errors="replace")
 
 
 # --------------------------------------------------------------------------- #
 #  湿纸求解: 在"干"列上找尽量稀疏的解 H[:,dry]·y = target
 # --------------------------------------------------------------------------- #
-def solve_wet_paper(H, dry_cols: Sequence[int], target, max_weight: int = 2):
+def solve_wet_paper(H, dry_cols: Sequence[int], target, max_weight: int = 2, seed: int | None = None):
+    """在"干"列上找尽量稀疏的解 H[:,dry]·y = target。
+
+    返回只在若干干列上为 1 的向量 e (长度 = H 列数), 使 H·e = target (mod 2)。
+    无解或干列不足时返回 None。seed 用于确定"成对异或"的遍历顺序:
+    由 dry_cols 与 target 派生, 保证相同输入 → 相同输出 (可复现)。
+    """
     dry = np.asarray(list(dry_cols), dtype=np.int64)
     if dry.size == 0:
         return None
@@ -154,7 +160,12 @@ def solve_wet_paper(H, dry_cols: Sequence[int], target, max_weight: int = 2):
             e = np.zeros(n, np.uint8); e[ci] = 1; return e
     # 权重 2: 成对干列异或命中
     if max_weight >= 2 and dry.size >= 2:
-        rng = np.random.default_rng(int(np.random.randint(0, 1 << 30)))
+        # 由输入派生种子: 相同干列/目标 → 相同遍历顺序 (B4: 不再污染全局 RNG)
+        if seed is None:
+            seed = int(hashlib.sha256(
+                np.ascontiguousarray(dry).tobytes() +
+                np.ascontiguousarray(target).tobytes()).hexdigest(), 16) & ((1 << 32) - 1)
+        rng = np.random.default_rng(seed)
         order = rng.permutation(dry.size)
         limit = min(dry.size, 600)
         for a in range(limit):
@@ -316,10 +327,11 @@ def _channel(image, ch: int):
 def _embed_into_image(image, head_bits, body_bits, method, p, password):
     """head_bits: 认证头(图像哈希)比特; body_bits: 正文比特。返回 (stego, 报告)。"""
     img0 = np.ascontiguousarray(image).astype(np.uint8)
-    ok_head = False
     stego = img0.copy()
+    # RGB: 只改主轴 R 通道; 灰度: 直接改整张。stego 必须独立于 img0 (copy),
+    # 否则 `stego != img0` 自我比较恒为 0, 改动像素统计失真 (B1)。
     if img0.ndim == 3:
-        stego = img0; stego[..., 0] = stego[..., 0]  # 仅主轴 R 通道_
+        stego[..., 0] = stego[..., 0]
         channel = stego[..., 0]
     else:
         channel = stego
@@ -343,6 +355,15 @@ def _embed_into_image(image, head_bits, body_bits, method, p, password):
     body_pad = (-body_bits.size) % p
     body_full = np.pad(body_bits, (0, body_pad))
     body_pool = total - N_h
+
+    # 容量校验: 正文是否真的放得下 (B2)。放不下应明确报错, 而非静默截断。
+    max_body_blocks = body_pool // n
+    need_body_blocks = body_full.size // p
+    if need_body_blocks > max_body_blocks:
+        raise ValueError(
+            f"消息过长: 需要 {need_body_blocks} 个汉明块, 图像正文池只有 "
+            f"{max_body_blocks} 块 (约 {max_body_blocks * p // 8} 字节)。"
+            f"请放大图像、减小 p 或缩短消息。")
 
     # 头部池: seed0 = 仅口令
     seed0 = derive_seed(b"", password)

@@ -38,13 +38,24 @@ def theoretical_code_family(p_max=8):
 
 
 def measured_efficiency(p, img_size=(256, 256), rng=None):
-    """实测 nsF5 嵌入效率 = 嵌入比特 / 改动系数 (经高层哈希自同步流程)。"""
+    """实测 nsF5 嵌入效率 = 嵌入比特 / 改动系数 (经高层哈希自同步流程)。
+
+    消息长度要留在真实容量内: 正文池 = 总像素 - 头部池, 每块 n 个系数装 p 位,
+    还要扣除消息自身的 16 位长度头。按此计算, 避免 fill-to-capacity 超载
+    (容量校验会让 embed_string 明确报错)。
+    """
     if rng is None:
         rng = np.random.default_rng(p)
     img = rng.integers(0, 256, img_size, dtype=np.uint8)
     n = (1 << p) - 1
-    capacity = (img.size // n) * p
-    text = "A" * max(1, min(55000, (capacity // 8) - 8))  # 填充至接近容量(受ASCII长度限制)
+    total = img.size
+    hdr_blocks = max(2, int(np.ceil((16 * 8) / p)))       # 头部池所需块数
+    N_h = hdr_blocks * n
+    body_pool = total - N_h
+    max_body_blocks = body_pool // n
+    max_body_bits = max_body_blocks * p - 16              # 扣除 16 位长度头
+    max_bytes = max(1, max_body_bits // 8)
+    text = "A" * max_bytes
     stego, report, nb = embed_string(img, text, method="nsF5", p=p)
     changed = report["cover_changed"]
     eff = nb / changed if changed else 0.0
