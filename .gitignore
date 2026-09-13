@@ -34,16 +34,26 @@ src/_dbg_*.py
 src/_diff_*.py
 src/_single_*.py
 
+# C++ 加速库产物: 不入库。二进制随平台而异, 且 Windows-only 的 .dll 会让
+# Linux/macOS 用户以为"没有加速可用"。用 `make cpp` 或 scripts/build_cpp.py
+# 现场编译, 缺失时 Python 侧自动回退到等价实现。
+cpp/*.dll
+cpp/*.so
+cpp/*.dylib
+cpp/*.o
+
 # 论文: 源码/实验脚本/数据入库, 排版成品与可重建的图不入库
 thesis/*.pdf
 thesis/*.docx
 thesis/figs/
+thesis/exp/_*.log
 
 # 报告模板, 不入库
 _tpl/
 
 # GPU 版：大规模数据集 / 临时样本不提交 (可重新生成)
 gpu/data/*.npz
+gpu/data/*_x.npy
 gpu/data/pr_*.png
 gpu/data/_*.py
 
