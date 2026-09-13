@@ -66,15 +66,16 @@ _perm_checked = False
 
 
 def _load_cpp_permute():
-    """惰性加载 cpp/nsf5embed.dll 的 nsf5_permute(仅一次)。缺失/失败返回 None。"""
+    """惰性加载 cpp/ 下 nsf5embed 库的 nsf5_permute(仅一次)。缺失/失败返回
+    None, 由调用方回退到同算法的纯 Python 实现。后缀按平台自动选
+    (.dll / .so / .dylib), 见 cpplib。"""
     global _perm_fn, _perm_checked
     if not _perm_checked:
         _perm_checked = True
         try:
             import ctypes
-            import os
-            dll = os.path.join(os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__))), "cpp", "nsf5embed.dll")
+            from cpplib import find as _find_lib
+            dll = _find_lib("nsf5embed")
             fn = ctypes.CDLL(dll).nsf5_permute
             fn.argtypes = [ctypes.c_longlong, ctypes.c_ulonglong,
                            ctypes.POINTER(ctypes.c_longlong)]

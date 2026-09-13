@@ -4,12 +4,22 @@
 // 编码消息比特、头部/正文池划分。本函数只做逐块伴随式编码,
 // 遍历顺序与 ns5_core.py 的 _embed 完全一致。
 //
-// 编译 (MinGW):
-//   g++ -O2 -shared -o nsf5embed.dll nsf5embed.cpp -static
+// 编译 (跨平台, 见 Makefile 的 `make cpp`):
+//   Windows (MinGW): g++ -O2 -shared -static -o nsf5embed.dll  nsf5embed.cpp
+//   Linux:           g++ -O2 -shared -fPIC -o nsf5embed.so      nsf5embed.cpp
+//   macOS:           g++ -O2 -shared -fPIC -o nsf5embed.dylib   nsf5embed.cpp
+// 本文件除 NS5_EXPORT 外全是标准库, 无 windows.h / 无线程 / 无平台分支。
 #include <cstdint>
 #include <cstdlib>
 #include <algorithm>
 #include <vector>
+
+#if defined(_WIN32)
+#define NS5_EXPORT __declspec(dllexport)
+#else
+#define NS5_EXPORT __attribute__((visibility("default")))
+#endif
+
 
 extern "C" {
 
@@ -50,7 +60,7 @@ static inline int find_col(const unsigned char* H, int p, int n, const unsigned 
 // method: 0=matrix(LSB 翻转), 1=nsF5(减幅+湿纸)
 // c: 整幅通道像素(会被原地修改); order: num_blocks*n 个全局像素索引;
 // bits: nbits 个 0/1 (已对齐为 p 的倍数); 复用最前面 min(num_blocks, nbits/p) 块。
-__declspec(dllexport) void nsf5_debug_first(
+NS5_EXPORT void nsf5_debug_first(
     const unsigned char* c, const int* pos, int n, int p,
     const unsigned char* bits, int* s_out, int* tc_out) {
     static const unsigned char* H = NULL;
@@ -76,7 +86,7 @@ __declspec(dllexport) void nsf5_debug_first(
     for (int r = 0; r < p; ++r) s_out[p + r] = d[r];
 }
 
-__declspec(dllexport) void nsf5_embed(
+NS5_EXPORT void nsf5_embed(
     unsigned char* c, int npix,
     const int* order, int num_blocks,
     int n, int p,
@@ -157,7 +167,7 @@ static inline uint64_t splitmix64(uint64_t* x) {
     return z ^ (z >> 31);
 }
 
-__declspec(dllexport) void nsf5_permute(long long total, unsigned long long seed, long long* out) {
+NS5_EXPORT void nsf5_permute(long long total, unsigned long long seed, long long* out) {
     if (total <= 0) return;
     for (long long i = 0; i < total; ++i) out[i] = i;
     uint64_t state = seed;

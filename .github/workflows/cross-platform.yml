@@ -35,8 +35,25 @@ jobs:
           python src/test_core.py
           python src/test_steg.py
           python src/test_false_positive.py
-      - name: Pure-Python feature fallback
+      # The C++ accelerators are built from source here rather than shipped as
+      # binaries: a committed .dll is useless on Linux/macOS, and until now
+      # nothing in CI ever compiled or exercised this code at all.
+      - name: Build the C++ accelerators
+        run: python scripts/build_cpp.py
+
+      - name: C++ feature extraction matches the Python reference
+        run: python src/fsfeatures.py
+
+      - name: C++ embed round-trip self-check
+        run: python src/cppembed.py
+
+      # Now remove the binaries and prove the fallback path still holds: every
+      # call site must degrade to the equivalent pure-Python implementation
+      # instead of failing. This is the path Linux/macOS/Colab users get.
+      - name: Pure-Python feature fallback (no C++ library present)
+        shell: bash
         run: |
+          rm -f cpp/*.dll cpp/*.so cpp/*.dylib
           python -c "import sys; sys.path.insert(0, 'src'); \
           import numpy as np; \
           from py_features import features; \

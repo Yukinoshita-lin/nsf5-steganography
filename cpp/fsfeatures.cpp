@@ -9,14 +9,24 @@
 //   diff_entropy   相邻像素差分熵 (0~8)
 //   lsb_diff_entropy LSB 位平面差分熵 (0~1)
 //
-// 编译 (MinGW):
-//   g++ -O2 -shared -o fsfeatures.dll fsfeatures.cpp -static
+// 编译 (跨平台, 见 Makefile 的 `make cpp`):
+//   Windows (MinGW): g++ -O2 -shared -static -o fsfeatures.dll  fsfeatures.cpp
+//   Linux:           g++ -O2 -shared -fPIC -o fsfeatures.so      fsfeatures.cpp
+//   macOS:           g++ -O2 -shared -fPIC -o fsfeatures.dylib   fsfeatures.cpp
+// 本文件除 NS5_EXPORT 外全是标准库, 无 windows.h / 无线程 / 无平台分支。
 #include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <vector>
 #include <numeric>
 #include <algorithm>
+
+#if defined(_WIN32)
+#define NS5_EXPORT __declspec(dllexport)
+#else
+#define NS5_EXPORT __attribute__((visibility("default")))
+#endif
+
 
 extern "C" {
 
@@ -60,7 +70,7 @@ static double chi2_sf(double x, double df) {
 
 // ---------- 特征计算 (单通道 8bit, row 主序) ----------
 // idx0..idx2: 输出指针
-__declspec(dllexport) void fs_features(
+NS5_EXPORT void fs_features(
     const unsigned char* img, int W, int H,
     double* out /* 顺序见头注释 */) {
 
