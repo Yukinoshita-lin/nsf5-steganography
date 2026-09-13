@@ -3,12 +3,18 @@ name: Docker teaching image
 on:
   push:
     branches: [main]
-    paths:
+    paths: &paths
       - "docker/**"
       - "docker-compose.yml"
       - "src/**"
+      - "models/**"
+      - "pyproject.toml"
       - "teaching/**"
       - "notebooks/**"
+  # 镜像构建很慢, 但依赖/模型改动 (pyproject.toml, models/) 只能靠它验证;
+  # 只挂 main 的话坏了要等合并后才发现。
+  pull_request:
+    paths: *paths
   workflow_dispatch:
 
 jobs:

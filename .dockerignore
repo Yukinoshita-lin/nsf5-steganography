@@ -1,0 +1,43 @@
+# 构建上下文按仓库根算, 而根目录下有 data/(2.5GB) gpu/(2.6GB) .git/ 等
+# 大体积内容。不过滤的话每次 docker build 都要把它们发给 daemon。
+# 镜像只需要 pyproject/README + src/notebooks/scripts/teaching + models/。
+
+# 版本控制与 IDE
+.git
+.gitignore
+.github
+.idea
+.vscode
+.DS_Store
+
+# Python 缓存与构建产物
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+.venv/
+venv/
+
+# 大体积本地数据集与生成物 (镜像里用不到, 教学镜像自带 demo 数据)
+data/
+gpu/
+thesis/
+output/
+img/
+docs/
+_pdf_build/
+_tpl/
+teaching/videos/
+teaching/web/*/_build/
+notebooks/.ipynb_checkpoints/
+webapp/tests/node_modules/
+yccstego/
+
+# 模型: 只带两个部署模型进镜像。其余是备份/废弃/旧 xgboost 产物 (其中两个在
+# 当前环境已无法反序列化), 以及体积大且可重训的 CNN 检查点。
+models/*.joblib
+models/*.pt
+!models/stego_classifier.joblib
+!models/stego_classifier_v2_jpeg_lgb_51d.joblib
