@@ -14,6 +14,9 @@ src/*.pyc
 _pdf_build/
 teaching/web/*/_build/
 
+# 教学视频与质检抽帧 (生成物, 134MB; 重新生成见 teaching/README.md)
+teaching/videos/
+
 # IDE / 系统
 .vscode/
 .idea/
@@ -31,8 +34,12 @@ src/_dbg_*.py
 src/_diff_*.py
 src/_single_*.py
 
-# 文档产物(论文/综述)与报告模板, 不入库
-thesis/
+# 论文: 源码/实验脚本/数据入库, 排版成品与可重建的图不入库
+thesis/*.pdf
+thesis/*.docx
+thesis/figs/
+
+# 报告模板, 不入库
 _tpl/
 
 # GPU 版：大规模数据集 / 临时样本不提交 (可重新生成)
@@ -41,7 +48,19 @@ gpu/data/pr_*.png
 gpu/data/_*.py
 
 # 训练模型产物 (二进制, 可重新训练)
+# 例外: 两个可部署模型随仓库分发, 否则 clone 后 ML 功能不可用
 models/*.joblib
 *.joblib
+!models/stego_classifier.joblib
+!models/stego_classifier_v2_jpeg_lgb_51d.joblib
+
+# 本地数据集与训练日志 (体积大或可再生, 归档见 D:\Users\32403\.zcode\archive)
+data/dataset_*.csv
+data/campus_jpg/
+data/_*.log
+
+# webapp 测试依赖 (CI 里 npm ci 重新安装; package-lock.json 需要提交)
+webapp/tests/node_modules/
+webapp/tests/.npm-cache/
 
 yccstego/
