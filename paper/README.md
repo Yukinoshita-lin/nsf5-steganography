@@ -36,11 +36,12 @@ BIBINPUTS="$(cd .. && pwd);" xelatex paper-en && BIBINPUTS="$(cd .. && pwd);" bi
 
 - [ ] **ORCID**：两个 `.tex` 与 `paper.md` 里现在都是 `0000-0000-0000-0000`。
       JOSE 要求作者提供真实 ORCID，没有的话需要先在 <https://orcid.org> 注册。
-- [ ] **单位**：现写作「齐鲁工业大学 / Qilu University of Technology」，取自
-      `thesis/journal_paper.tex` 的署名，但那里域名写作 `qlu.edu.com`，中国高校
-      通常为 `.cn`。**这个我没有自行改成 .cn，请核实官方英文名称。**
-- [ ] **作者姓名拼写**：现用 `Fengjie Lin`，与 `thesis/journal_paper.tex` 一致；
-      而 `NOTICE` 里署的是 `Yushitayuri`。两者需统一。
+- [ ] **单位**：现写作「齐鲁工业大学 / Qilu University of Technology」，取自你
+      本地 `thesis/journal_paper.tex` 的署名（该目录不入库）。那里域名写作
+      `qlu.edu.com`，中国高校通常为 `.cn`。**这个我没有自行改成 .cn，请核实官方
+      英文全称。**
+- [ ] **作者姓名拼写**：现用 `Fengjie Lin`（与本地论文署名一致），而 `NOTICE`
+      里署的是 `Yushitayuri`。两者需统一。
 
 ## 关于引用
 

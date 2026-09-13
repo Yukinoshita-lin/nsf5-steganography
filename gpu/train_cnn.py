@@ -29,7 +29,9 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJ = os.path.dirname(HERE)
 DATA_DIR = os.path.join(HERE, "data")
-SPLIT_JSON = os.path.join(PROJ, "thesis", "data", "sota_cnn_split.json")
+# 划分文件写在工具链自己的 data/ 下, 而不是 thesis/ —— 论文目录按项目约定
+# 整体不入库 (.gitignore), 工具链不该依赖一个 clone 之后不存在的路径。
+SPLIT_JSON = os.path.join(DATA_DIR, "sota_cnn_split.json")
 
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
