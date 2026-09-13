@@ -1,0 +1,66 @@
+name: webapp browser tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "webapp/**"
+      - ".github/workflows/webapp-tests.yml"
+  pull_request:
+    paths:
+      - "webapp/**"
+      - ".github/workflows/webapp-tests.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Playwright (interactive + layout)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install test deps
+        working-directory: webapp/tests
+        run: npm ci
+
+      # The scripts drive playwright-core with an explicit executablePath, so
+      # they use the browser that is already on the image. Downloading
+      # Playwright's own Chromium (~170MB, minutes) would be dead weight.
+      - name: Locate a Chrome binary for playwright-core
+        run: |
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)
+          if [ -z "$CHROME" ]; then
+            echo "::error::no Chrome/Chromium found on this runner; set CHROME_PATH or add one"
+            exit 1
+          fi
+          echo "using $CHROME"
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+
+      - name: DOM smoke test (linkedom, no browser)
+        working-directory: webapp/tests
+        run: npm run test:dom
+
+      - name: Serve the webapp and run the interactive test
+        working-directory: webapp
+        run: |
+          python3 -m http.server 8097 &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID" EXIT
+          sleep 2
+          cd tests
+          SITE_URL=http://127.0.0.1:8097/ npm test
+
+      - name: Serve the webapp and run the layout test
+        working-directory: webapp
+        run: |
+          python3 -m http.server 8098 &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID" EXIT
+          sleep 2
+          cd tests
+          SITE_URL=http://127.0.0.1:8098/ npm run test:layout
