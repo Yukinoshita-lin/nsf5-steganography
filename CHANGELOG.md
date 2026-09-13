@@ -75,10 +75,15 @@ corrected rather than kept.
 - The two shipped models have **no in-repo producer**: `src/train_model.py`
   trains an LR/RF/GB/XGB family, and the LightGBM runs that produced them were
   never scripted. They work, but they are not reproducible from this repository.
-- The thesis, its experiment scripts, and its result CSVs are deliberately not
-  in this repository (`thesis/` is ignored in full). The CNN implementation that
-  the paper's comparison depends on therefore lives in `gpu/`, so that the
-  toolkit does not depend on an untracked directory.
+- The thesis and the JOSE paper are deliberately not in this repository
+  (`thesis/` and `paper*` are ignored). What *is* tracked is the code they need
+  to be reproducible: the toolkit in `gpu/` and the experiment orchestration in
+  `experiments/`. Their outputs (`experiments/data/`, `experiments/figs/`) are
+  generated artefacts and stay out.
+- The experiment scripts were moved out of `thesis/exp/` and `thesis/tools/`
+  because a tracked test or experiment that imports from an ignored directory is
+  reproducible only on the author's machine. Fixing that also removed four
+  scripts' hardcoded `F:\Steganography` paths.
 
 ## [Unreleased] - Teaching project
 

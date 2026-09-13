@@ -45,15 +45,16 @@ cpp/*.o
 # 论文及其实验脚本/数据: 整体不入库 (学位论文、期刊稿、综述、figs、exp、data)
 thesis/
 
-# JOSE 论文 (paper.md/paper.bib 在仓库根, 排版稿与 PDF 在 paper/):
-# 保留 PDF 成品, 排除 LaTeX 中间产物。
-paper/*.aux
-paper/*.log
-paper/*.out
-paper/*.bbl
-paper/*.blg
-paper/*.toc
-paper/*.synctex.gz
+# 实验目录: 脚本入库, 数据与图是产物不入库
+experiments/data/
+experiments/figs/
+experiments/**/__pycache__/
+
+# JOSE 论文: 与学位论文同样不入库。paper.md/paper.bib 与 paper/ 的排版稿、
+# PDF 全部只留在本地。若要投稿 JOSE 再按届时的决定放回 —— 见 paper/README.md。
+paper.md
+paper.bib
+paper/
 
 # 报告模板, 不入库
 _tpl/

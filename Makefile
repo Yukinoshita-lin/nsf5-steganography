@@ -17,7 +17,7 @@ else
 endif
 
 .PHONY: help install test core steg fp pipeline pytest pyfeatures cpp cpp-clean \
-	e2e gui notebooks dataset docker web-convert web-build thesis-data thesis-figs
+	e2e gui notebooks dataset docker web-convert web-build exp-data exp-figs
 
 help:
 	@echo "Targets:"
@@ -25,7 +25,7 @@ help:
 	@echo "  make test         - core + steganalysis + false-positive + features"
 	@echo "  make pytest       - run the whole suite through pytest"
 	@echo "  make cpp          - build the C++ accelerators into cpp/ (optional)"
-	@echo "  make thesis-figs  - rebuild thesis figures from thesis/data/*.csv"
+	@echo "  make exp-figs     - rebuild experiment figures from experiments/data/*.csv"
 	@echo "  make e2e          - full embed/decode/analyze demo"
 	@echo "  make notebooks    - regenerate per-chapter notebooks"
 	@echo "  make dataset      - download BOSSbase 1.01"
@@ -86,21 +86,20 @@ notebooks:
 dataset:
 	$(PY) scripts/download_datasets.py --out data/BOSSbase_1.01
 
-# 论文实验: 先出数据(含 CNN 训练, 约 2 小时), 再出图。
-# 只要已有 thesis/data/*.csv, 单独跑 `make thesis-figs` 即可。
-#
-# ⚠ 这两个目标依赖本地的 thesis/ 目录, 而该目录按项目约定**不入库**
-#   (.gitignore 整体忽略)。在别人 clone 出来的仓库里它们会直接失败 —— 这是
-#   有意为之: 实验编排随论文走, 不随工具链走。CNN 本体在 gpu/train_cnn.py。
-thesis-figs:
-	$(PY) thesis/exp/gen_figs.py
+# 论文实验: 脚本入库 (experiments/), 数据与图是产物 (experiments/{data,figs},
+# 已被 .gitignore 忽略)。
+#   先出数据(含 CNN 训练, 约 2 小时), 再出图。
+#   只要已有 experiments/data/*.csv, 单独跑 `make exp-figs` 即可。
+# CNN 本体在 gpu/train_cnn.py; 这里只是编排与出图。
+exp-figs:
+	$(PY) experiments/gen_figs.py
 
-thesis-data:
-	$(PY) thesis/exp/featurize_bossbase_npz.py
-	$(PY) thesis/exp/run_cnn_sota.py
-	$(PY) thesis/exp/eval_cnn_checkpoint.py
-	$(PY) thesis/exp/sota_compare.py
-	$(PY) thesis/exp/merge_sota_table.py
+exp-data:
+	$(PY) experiments/featurize_bossbase_npz.py
+	$(PY) experiments/run_cnn_sota.py
+	$(PY) experiments/eval_cnn_checkpoint.py
+	$(PY) experiments/sota_compare.py
+	$(PY) experiments/merge_sota_table.py
 
 docker:
 	docker compose up --build

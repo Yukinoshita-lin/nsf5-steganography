@@ -354,7 +354,7 @@ clone 之后 ML 判定即可用（需要 `lightgbm`，已列为依赖）。
 
 但请注意：**仓库里目前没有能产出这两个文件的脚本**。`src/train_model.py` 训练的是
 LR/RF/GB/XGB 家族，产不出这两个 LGB 模型。也就是说模型可用但**不可复现**。
-训练与评测脚本（本地的 `thesis/exp/`，按项目约定不入库）用的是
+训练与评测脚本（`experiments/`）用的是
 `learning_rate=0.03, num_leaves=31, n_estimators=800, min_child_samples=10`，
 并按**源图**分组做交叉验证；照这套超参自己训一个同量级的 LGB 是可行路径。
 
