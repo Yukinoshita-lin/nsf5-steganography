@@ -19,8 +19,10 @@ Colab**. Optional C++ accelerators speed up feature extraction, embedding, and
 shuffling; build them with `make cpp` (or `python scripts/build_cpp.py`). They
 are never shipped as binaries - the same sources build a `.dll`, `.so` or
 `.dylib` as appropriate - and when they are absent the code falls back to
-bit-compatible pure-Python implementations, so notebooks, Docker, and cloud
-environments work out of the box.
+equivalent pure-Python implementations, so notebooks, Docker, and cloud
+environments work out of the box. (Feature extraction is bit-identical between
+the two; the nsF5 embedder is interoperable but not pixel-identical -- see the
+note in the Chinese section.)
 
 ### Highlights
 
@@ -302,10 +304,18 @@ nsf5-steganography/
 
 ## 有监督 ML 隐写分析（C++ 特征提取 + 校园照片训练）
 
-将**特征提取**从 Python 移植到 **C++**（`cpp/fsfeatures.dll`，MinGW 编译），
-可显著降低逐图统计开销；嵌入热路径同样提供 **C++ 版**（`cpp/nsf5embed.dll`，
-经跨语言回环校验与 Python **像素级一致**，`cppembed.py` 封装）。
+将**特征提取**从 Python 移植到 **C++**（`cpp/fsfeatures.cpp`），
+可显著降低逐图统计开销；嵌入热路径同样提供 **C++ 版**（`cpp/nsf5embed.cpp`，
+`cppembed.py` 封装）。
 并用真实校园照片做**有监督训练**，得到一个可部署的分类器。
+
+> **关于"两条路径是否一致"**：特征提取逐位一致（`fsfeatures` 与 `py_features`
+> 在 RS/卡方/熵上误差 <1e-6，卡方 p 值因 MinGW 的 `lgamma` 半整数精度有约 0.02
+> 的容忍度）。嵌入路径则**不是逐像素一致**：`matrix` 逐像素相同；`nsF5` 在
+> p≥3 时会有几十个像素不同（65536 中约 8–32 个），因为湿纸编码在多个等价解中
+> 挑选哪一个 —— C++ 按固定下标顺序扫，Python 按种子派生顺序扫。两者都是合法解，
+> 各自回环正确，且能互相解码。契约由
+> `src/test_pipeline.py::test_cpp_python_embed_contract` 固定。
 
 ### 训练管线
 

@@ -7,8 +7,11 @@ LABEL org.opencontainers.image.licenses="Apache-2.0"
 WORKDIR /workspace
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git \
+    && apt-get install -y --no-install-recommends git libgomp1 \
     && rm -rf /var/lib/apt/lists/*
+# libgomp1: lightgbm 的 manylinux wheel 链接 OpenMP 运行时, 而 slim 镜像不带它。
+# 缺了会在 `joblib.load` 两个部署模型时抛 OSError: libgomp.so.1: cannot open
+# shared object file —— 表现为"模型未能加载", 而不是一句能指向根因的报错。
 
 # Core pure-Python algorithm modules. The C++ accelerators are not built here:
 # they are optional, so embed/decode and feature extraction fall back to the

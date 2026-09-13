@@ -127,7 +127,23 @@ def _fast_perm(total: int, seed: int) -> np.ndarray:
 def embed_string(image, text: str, method: str = "nsF5", p: int = 3,
                  password: str = "", check: bool = True, fast_permute: bool = False):
     """以 C++ 嵌入, 返回 (stego, report, nbits)。nbits=正文比特数(含16位头)。
-    fast_permute=True 用向量化置换加速(见 _fast_perm), 仅供批量生成, 配合 check=False。"""
+    fast_permute=True 用向量化置换加速(见 _fast_perm), 仅供批量生成, 配合 check=False。
+
+    ⚠ 与纯 Python 回退**不是逐像素一致** (与 README 早期"bit-compatible"的说法
+    不符, 已更正):
+
+      * `matrix` 路径: 与 `ns5_core.embed_string` 逐像素相同;
+      * `nsF5` 路径: p≤2 时相同; p≥3 时会有几十个像素不同 (65536 像素中约
+        8–32 个)。原因是湿纸求解在多个等价解里挑哪一个 —— C++ 侧按固定下标
+        顺序扫, Python 侧 `solve_wet_paper` 按输入派生的种子顺序扫, 两者都
+        是**合法解**, 各自回环正确, 且能互相解码 (C++ 嵌的图用 Python 解也
+        能还原)。
+
+    也就是说: 可逆性与互操作性成立, 但"同一张图同一口令跑两次得到同一张
+    stego 图"只在同一平台同一路径内成立。跨平台复现校验时不要断言逐像素相等,
+    要断言回环可还原。`test_pipeline.py::test_cpp_python_embed_contract` 把这条
+    契约固定下来。
+    """
     if not _is_lsb(method) and not _cpp_ok():
         # DLL 缺失 (Linux/macOS/Colab): 自动回退到同算法纯 Python 实现。
         from ns5_core import embed_string as _py_embed
