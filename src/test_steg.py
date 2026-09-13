@@ -29,6 +29,11 @@ def run():
     assert rc["stego_probability"] < 0.5, "干净图误判过高"
     assert rs["stego_probability"] >= 0.5, "含密图未检出"
 
+def test_steganalysis_separates_clean_from_stego():
+    """pytest 入口。`python src/test_steg.py` 仍然可用。"""
+    run()
+
+
 if __name__ == "__main__":
     run()
     print("[OK] 隐写分析可区分 干净/含密 图像")

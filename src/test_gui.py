@@ -79,5 +79,11 @@ def main():
     print("[OK] GUI 冒烟测试通过 (窗口/菜单/快捷键/差异/教学面板/扫描面板/主题/线程队列 正常)")
 
 
+def test_gui_smoke():
+    """pytest 入口。需要能创建 Tk 窗口: 无显示环境请用 xvfb-run
+    (`xvfb-run -a python src/test_gui.py`), 否则 TclError 是预期行为。"""
+    main()
+
+
 if __name__ == "__main__":
     main()
