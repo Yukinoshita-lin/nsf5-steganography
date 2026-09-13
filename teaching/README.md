@@ -110,6 +110,36 @@ python src/test_gui.py # GUI smoke test (includes the animation)
   - zh: <https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html>
   - en: <https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html>
 
+### 6) Teaching Videos (zh, narrated & animated — official v2)
+
+`teaching/gen_videos_v2.py` renders one **narrated & animated** video per
+handbook chapter (Ch. 1-11). Each beat of narration (edge-tts neural zh-CN
+voice, default Yunxi) drives the visuals: bullets fade in on cue, original
+PIL animations illustrate the core ideas (bit-plane stacking, uint8 overflow,
+syndrome decoding, wet/dry marking, keyed permutations, gradient descent, ROC
+operating points, ...), handbook figures get a Ken-Burns push-in, and
+subtitles are burned in. Scenes/scripts live in `video_scenes_zh.py`, the
+engine in `video_engine_v2.py` (NVENC GPU encoding when available, parallel
+beat production, resumable narration cache).
+
+```bash
+python -m pip install pillow edge-tts
+python teaching/gen_videos_v2.py                 # build missing chapters
+python teaching/gen_videos_v2.py --ch 3,5        # rebuild selected chapters
+python teaching/gen_videos_v2.py --ch all --voice zh-CN-XiaoxiaoNeural
+```
+
+- Outputs: `teaching/videos/zh/chNN.mp4` (official), `index.html`,
+  `durations.json`; QA contact sheets in `teaching/videos/qa/v2_*.png`
+- Narration needs network access to the edge-tts service; encoding uses the
+  NVIDIA GPU when present and falls back to libx264 elsewhere.
+- ffmpeg is resolved in this order: `NSF5_FFMPEG` env var →
+  `%USERNAME%\.zcode\bin\ffmpeg.exe` (this machine: `D:\Users\32403\.zcode\bin`)
+  → `PATH` → the `imageio-ffmpeg` package. No C:-drive artifacts required.
+
+The earlier static-slides generator (`gen_videos.py`) is kept as a fallback
+that works fully offline (Windows SAPI voice, no animations).
+
 ---
 
 ## 中文版
@@ -223,3 +253,28 @@ Markdown，PDF 与网页会同步**；若只改 PDF 或网页，则二者会不�
 - 本地构建网页：`pip install -r teaching/web/requirements.txt && jupyter-book build teaching/web/zh`（en 同理）
 - 打开：`teaching/web/{zh,en}/_build/html/index.html`
 - 在线：zh `.../zh/content/intro.html`、en `.../en/content/intro.html`
+
+## 6) 章节教学视频（中文配音 + 动画，正式版 v2）
+
+`teaching/gen_videos_v2.py` 为手册第 1–11 章各生成一支**配音 + 动画**讲解视频（1080p）：
+逐段神经网络语音（edge-tts，默认云希）驱动画面——要点随旁白逐条浮现、
+原创 PIL 动画演示核心思想（位平面叠加、uint8 溢出、伴随式解码、湿点标记、
+键控置换、梯度下降、ROC 操作点等）、手册真实插图带缓推镜头、底部同步字幕。
+场景脚本在 `video_scenes_zh.py`，引擎在 `video_engine_v2.py`
+（有 NVIDIA 显卡时走 NVENC GPU 编码 + 多进程并行，语音逐段落盘可断点续跑）。
+
+```bash
+python -m pip install pillow edge-tts
+python teaching/gen_videos_v2.py                 # 生成缺失章节
+python teaching/gen_videos_v2.py --ch 3,5        # 只重生成指定章节
+python teaching/gen_videos_v2.py --ch all --voice zh-CN-XiaoxiaoNeural
+```
+
+- 产物：`teaching/videos/zh/chNN.mp4`（正式版）、`index.html`（本地播放页）、`durations.json`
+- 质检：每章抽帧拼图在 `teaching/videos/qa/v2_*.png`
+- 说明：语音合成需联网（edge-tts 服务）；编码有 NVIDIA 显卡时走 GPU，否则回退 libx264
+- ffmpeg 查找顺序：`NSF5_FFMPEG` 环境变量 → `%USERNAME%\.zcode\bin\ffmpeg.exe`
+  （本机为 `D:\Users\32403\.zcode\bin`）→ `PATH` → `imageio-ffmpeg` 包；不在 C 盘留存项目产物
+
+早期纯静态幻灯版生成器 `gen_videos.py`（Windows SAPI 离线语音、无动画）保留作为备用。
+

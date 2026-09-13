@@ -134,7 +134,8 @@ def stego_detect():
     from ns5_core import embed_string
     import steganalysis as SA
     clean = demo_image(256)
-    stego, _, _ = embed_string(clean, "S" * 4000, method="nsF5", p=3)
+    # 消息长度须在 256x256 p=3 的真实容量内 (~3.4 KB); 3.3 KB 既够密又不变失败。
+    stego, _, _ = embed_string(clean, "S" * 3300, method="nsF5", p=3)
     rc = SA.analyze(clean)
     rs = SA.analyze(stego)
     labels = ["Gn (RS)", "chi2 p", "stego prob"]
@@ -225,7 +226,11 @@ def wetpaper(lang):
 
 
 def write_scan_data():
-    """Real per-density detection statistics for the payload-scan lab."""
+    """Real per-density detection statistics for the payload-scan lab.
+
+    The x axis is the honest embedding footprint: the fraction of pixels whose
+    value actually changed (not the nominal capacity fraction, which far
+    overstates how much of the image nsF5 touches)."""
     import glob
     import scan_panel as SP
     from PIL import Image
@@ -237,23 +242,36 @@ def write_scan_data():
         cover = demo_image(256, seed=23)
     # ensure the model files load and fall back to pure Python if needed
     try:
-        res = SP.scan_curves(cover, method="nsF5", p=3,
-                             densities=np.linspace(0, 0.35, 8))
+        payload_flags = np.linspace(0, 0.45, 8)   # nominal capacity fraction (fits 512x512 p=3)
+        res = SP.scan_curves(cover, method="nsF5", p=3, densities=payload_flags)
+        # recompute the actual per-density changed-pixel footprint
+        from ns5_core import embed_string
+        pix_dens = []
+        for dd in payload_flags:
+            if dd <= 1e-9:
+                pix_dens.append(0.0)
+            else:
+                st, _ = SP.embed_by_density(cover, float(dd), "nsF5", 3)
+                pix_dens.append(float((st != cover).sum()) / cover.size)
         ml = [float(v) if v == v else None for v in res["ml_proba"]]
         if max([v or 0 for v in ml]) - min([v or 0 for v in ml]) < 0.03:
             raise RuntimeError("flat ML curve on this cover")
         data = {
             "densities": [round(float(v), 4) for v in res["densities"]],
+            "changed_pixels": [round(float(v), 4) for v in pix_dens],
             "chi2_pvalue": [round(float(v), 6) for v in res["chi2_pvalue"]],
             "rs_rate": [round(float(v), 4) for v in res["rs_rate"]],
             "ml_proba": [round(v, 4) for v in ml],
             "note": "computed with the project's own nsF5 embedder and "
-                    "steganalysis functions (campus photo when available)",
+                    "steganalysis functions (campus photo when available); "
+                    "densities are the nominal capacity fraction, "
+                    "changed_pixels is the real footprint",
         }
     except Exception as exc:  # pragma: no cover - graceful demo fallback
         print("scan data fallback:", exc)
         data = {
             "densities": [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4],
+            "changed_pixels": [0.0, 0.006, 0.013, 0.019, 0.025, 0.031, 0.038, 0.044, 0.05],
             "chi2_pvalue": [0.999, 0.9, 0.7, 0.5, 0.35, 0.22, 0.13, 0.07, 0.03],
             "rs_rate": [0.0, 3.0, 8.0, 14.0, 21.0, 28.0, 35.0, 42.0, 49.0],
             "ml_proba": [4.0, 6.0, 9.0, 15.0, 26.0, 40.0, 58.0, 74.0, 86.0],
