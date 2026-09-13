@@ -16,13 +16,14 @@ else
   endif
 endif
 
-.PHONY: help install test core steg fp pyfeatures cpp cpp-clean e2e gui \
-	notebooks dataset docker web-convert web-build thesis-data thesis-figs
+.PHONY: help install test core steg fp pipeline pytest pyfeatures cpp cpp-clean \
+	e2e gui notebooks dataset docker web-convert web-build thesis-data thesis-figs
 
 help:
 	@echo "Targets:"
 	@echo "  make install      - editable install (uses $(PY))"
 	@echo "  make test         - core + steganalysis + false-positive + features"
+	@echo "  make pytest       - run the whole suite through pytest"
 	@echo "  make cpp          - build the C++ accelerators into cpp/ (optional)"
 	@echo "  make thesis-figs  - rebuild thesis figures from thesis/data/*.csv"
 	@echo "  make e2e          - full embed/decode/analyze demo"
@@ -44,6 +45,12 @@ steg:
 fp:
 	$(PY) src/test_false_positive.py
 
+pipeline:
+	$(PY) src/test_pipeline.py
+
+pytest:
+	$(PY) -m pytest -q
+
 pyfeatures:
 	$(PY) -c "import sys; sys.path.insert(0, 'src'); \
 import numpy as np; \
@@ -54,7 +61,7 @@ assert len(features(a)) == 11; \
 assert featurize_v2(a).shape == (143,); \
 print('pure-python features OK (no DLL required)')"
 
-test: core steg fp pyfeatures
+test: core steg fp pipeline pyfeatures
 
 # C++ 加速库 (可选): 缺失时 Python 侧自动回退到等价实现, 功能不变、只是慢些。
 # 编译逻辑收在 scripts/build_cpp.py, 与 CI 共用同一套平台规则。
