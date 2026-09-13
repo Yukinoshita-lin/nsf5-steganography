@@ -31,10 +31,24 @@ for _cand in ["Microsoft YaHei", "SimHei", "DengXian", "SimSun"]:
 plt.rcParams["font.sans-serif"] = [plt.rcParams["font.family"][0], "DejaVu Sans"] if isinstance(plt.rcParams["font.family"], list) else plt.rcParams["font.family"]
 plt.rcParams["axes.unicode_minus"] = False
 plt.rcParams["savefig.bbox"] = "tight"
-plt.rcParams["figure.dpi"] = 150
-plt.rcParams["savefig.dpi"] = 150
+# 优化：提高 DPI 至 200，图表文字在视频中更清晰锐利
+plt.rcParams["figure.dpi"] = 200
+plt.rcParams["savefig.dpi"] = 200
+# 优化：增大基础字号，确保视频中可读
+plt.rcParams["font.size"] = 12
+plt.rcParams["axes.titlesize"] = 13
+plt.rcParams["axes.labelsize"] = 12
+plt.rcParams["xtick.labelsize"] = 10
+plt.rcParams["ytick.labelsize"] = 10
+plt.rcParams["legend.fontsize"] = 10
 
-ACCENT = "#1f77b4"; WARM = "#d62728"; GREEN = "#2ca02c"; GREY = "#7f7f7f"
+# 统一视频风格配色：使用与视频一致的品牌色
+ACCENT = "#3D5AF1"       # 主色：视频强调色（蓝）
+WARM = "#D6336C"         # 暖色：含密/警告（玫红）
+GREEN = "#0D9488"        # 绿色：正确/干净（青 teal）
+GREY = "#606A80"         # 灰色：次要文字（muted）
+LIGHT_BG = "#F6F7FB"     # 背景色：与视频背景一致
+GRID_COLOR = "#DAE0EE"   # 网格线色：与视频 LINE 一致
 
 # ---------------- 双语标签 ----------------
 L = {
@@ -255,6 +269,30 @@ def build_clf(make=True):
 
 
 # ----------------------------------------------------------------------
+# 图表统一样式：与视频视觉风格保持一致
+# ----------------------------------------------------------------------
+def style_axes(ax, title=None, xlab=None, ylab=None, grid=True):
+    """统一美化坐标轴，匹配视频视觉风格。"""
+    if title:
+        ax.set_title(title, color="#1C2233", pad=12, fontweight="bold")
+    if xlab:
+        ax.set_xlabel(xlab, color="#1C2233")
+    if ylab:
+        ax.set_ylabel(ylab, color="#1C2233")
+    # 隐藏上右边框
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color(GRID_COLOR)
+    ax.spines["bottom"].set_color(GRID_COLOR)
+    # 刻度文字颜色
+    ax.tick_params(colors=GREY)
+    # 网格线
+    if grid:
+        ax.grid(True, axis="y", color=GRID_COLOR, linewidth=0.8, alpha=0.8)
+        ax.set_axisbelow(True)
+
+
+# ----------------------------------------------------------------------
 # 1) ROC + AUC (真实数据, GroupKFold OOF)
 # ----------------------------------------------------------------------
 def fig_roc_auc(d, feats, X, y, g, lang):
@@ -272,18 +310,19 @@ def fig_roc_auc(d, feats, X, y, g, lang):
     S = L[lang]["roc_auc"]
 
     fig, ax = plt.subplots(figsize=(7.2, 5.2))
-    ax.plot(fpr, tpr, color=ACCENT, lw=2.2, label=S["label"].format(auc))
-    ax.fill_between(fpr, tpr, alpha=0.15, color=ACCENT)
+    fig.patch.set_facecolor(LIGHT_BG)
+    ax.set_facecolor(LIGHT_BG)
+    ax.plot(fpr, tpr, color=ACCENT, lw=2.4, label=S["label"].format(auc))
+    ax.fill_between(fpr, tpr, alpha=0.12, color=ACCENT)
     ax.plot([0, 1], [0, 1], ls="--", color=GREY, lw=1.2, label=S["random"])
-    ax.plot(fpr[bi], tpr[bi], "o", ms=9, color=WARM, zorder=5,
+    ax.plot(fpr[bi], tpr[bi], "o", ms=10, color=WARM, zorder=5,
             label=S["youden"].format(fpr[bi], tpr[bi]))
     ax.annotate(S["annot"].format(tpr[bi], fpr[bi]),
                 xy=(fpr[bi], tpr[bi]), xytext=(fpr[bi]+0.22, tpr[bi]-0.28),
-                arrowprops=dict(arrowstyle="->", color=WARM), color=WARM, fontsize=9)
-    ax.set_xlabel(S["xlab"])
-    ax.set_ylabel(S["ylab"])
-    ax.set_title(S["title"])
-    ax.legend(loc="lower right", fontsize=9)
+                arrowprops=dict(arrowstyle="->", color=WARM, lw=1.5),
+                color=WARM, fontsize=9.5, fontweight="bold")
+    style_axes(ax, title=S["title"], xlab=S["xlab"], ylab=S["ylab"])
+    ax.legend(loc="lower right", frameon=False, fontsize=9.5)
     out("ml_roc_auc.png", lang)
 
 
@@ -361,15 +400,20 @@ def fig_decision_boundary(d, feats, X, y, g, lang):
     Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1].reshape(xx.shape)
     S = L[lang]["decision"]
     fig, ax = plt.subplots(figsize=(7.2, 5.4))
+    fig.patch.set_facecolor(LIGHT_BG)
+    ax.set_facecolor(LIGHT_BG)
+    # 回退：使用 RdYlBu 色带（旧版），层次更分明、更易观察
     cs = ax.contourf(xx, yy, Z, levels=np.linspace(0, 1, 21), cmap="RdYlBu", alpha=0.55)
     cf = ax.contour(xx, yy, Z, levels=[0.5], colors="k", linewidths=2)
     ax.clabel(cf, fmt={0.5: S["border"]}, fontsize=8)
     ax.scatter(Xs[y == 0, 0], Xs[y == 0, 1], s=8, alpha=0.55, color=ACCENT, label=S["clean"])
     ax.scatter(Xs[y == 1, 0], Xs[y == 1, 1], s=8, alpha=0.55, color=WARM, label=S["stego"])
-    ax.set_xlabel(S["xlab"]); ax.set_ylabel(S["ylab"])
-    ax.set_title(S["title"])
-    ax.legend(loc="best", fontsize=9)
-    fig.colorbar(cs, ax=ax, fraction=0.046, pad=0.04).set_label(S["cbar"])
+    style_axes(ax, title=S["title"], xlab=S["xlab"], ylab=S["ylab"])
+    ax.legend(loc="best", frameon=False, fontsize=9.5)
+    cbar = fig.colorbar(cs, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label(S["cbar"], color="#1C2233")
+    cbar.ax.yaxis.set_tick_params(color=GREY)
+    cbar.outline.set_visible(False)
     out("ml_decision_boundary.png", lang)
 
 
@@ -410,19 +454,20 @@ def fig_loss_descent(lang):
     loss = (w - 1) ** 2 + 0.5
     S = L[lang]["loss"]
     fig, ax = plt.subplots(figsize=(7.2, 4.8))
-    ax.plot(w, loss, color=ACCENT, lw=2.4, label=S["loss"])
+    fig.patch.set_facecolor(LIGHT_BG)
+    ax.set_facecolor(LIGHT_BG)
+    ax.plot(w, loss, color=ACCENT, lw=2.6, label=S["loss"])
     wcur, lr = -2.4, 0.28
     xs, ys = [], []
     for _ in range(16):
         xs.append(wcur); ys.append((wcur - 1) ** 2 + 0.5)
         wcur = wcur - lr * 2 * (wcur - 1)
-    ax.plot(xs, ys, ".-", color=WARM, ms=7, lw=1.4, label=S["gd"])
-    ax.axvline(1, ls=":", color=GREY)
+    ax.plot(xs, ys, ".-", color=WARM, ms=8, lw=1.6, label=S["gd"])
+    ax.axvline(1, ls=":", color=GREY, lw=1.2)
     ax.annotate(S["best"], xy=(1, 0.5), xytext=(1.35, 3.5),
-                arrowprops=dict(arrowstyle="->", color=GREY), fontsize=9)
-    ax.set_xlabel(S["xlab"]); ax.set_ylabel(S["ylab"])
-    ax.set_title(S["title"])
-    ax.legend(loc="upper center", fontsize=9)
+                arrowprops=dict(arrowstyle="->", color=GREY, lw=1.2), fontsize=9.5)
+    style_axes(ax, title=S["title"], xlab=S["xlab"], ylab=S["ylab"])
+    ax.legend(loc="upper center", frameon=False, fontsize=9.5)
     out("ml_loss_descent.png", lang)
 
 
