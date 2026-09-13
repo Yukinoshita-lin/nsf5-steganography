@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.5.0-blue)
+![version](https://img.shields.io/badge/version-1.6.0-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543629.svg)](https://doi.org/10.5281/zenodo.22543629)
@@ -15,8 +15,10 @@ steganalysis (chi-square and RS), SHA-256 content keying, and supervised
 machine-learning detection with two deployable LightGBM models.
 
 The project is pure Python at its core and runs on **Windows, Linux, macOS, and
-Colab**. Optional Windows C++ DLLs accelerate feature extraction, embedding,
-and shuffling; when they are absent the code automatically falls back to
+Colab**. Optional C++ accelerators speed up feature extraction, embedding, and
+shuffling; build them with `make cpp` (or `python scripts/build_cpp.py`). They
+are never shipped as binaries - the same sources build a `.dll`, `.so` or
+`.dylib` as appropriate - and when they are absent the code falls back to
 bit-compatible pure-Python implementations, so notebooks, Docker, and cloud
 environments work out of the box.
 
@@ -82,10 +84,11 @@ Apache-2.0 - see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 nsF5 隐写算法，并附带**盲隐写分析**、**图像哈希键控**与**码族/嵌入效率可视化**。
 
 项目核心为纯 Python（依赖 `numpy`/`Pillow`，GUI 使用标准库 `tkinter`），可在
-**Windows / Linux / macOS / Colab** 直接运行。另提供 **Windows C++ 加速库**
-（`cpp/fsfeatures.dll` 特征提取、`cpp/nsf5embed.dll` 嵌入热路径 + 确定性置乱
-`nsf5_permute`）；DLL 缺失时（如 Linux/macOS）自动回退到同算法纯 Python 实现：
-嵌入/解码仍可逆、11-D/143-D 特征与双版本 ML 模型均可使用。
+**Windows / Linux / macOS / Colab** 直接运行。另提供**可选的 C++ 加速库**
+（`cpp/fsfeatures.cpp` 特征提取、`cpp/nsf5embed.cpp` 嵌入热路径 + 确定性置乱
+`nsf5_permute`）：三平台同一份源码，用 `make cpp` 编译成 `.dll`/`.so`/`.dylib`
+（**不入库**，见 `scripts/build_cpp.py`）。库缺失时自动回退到同算法纯 Python
+实现：嵌入/解码仍可逆、11-D/143-D 特征与双版本 ML 模型均可使用。
 
 ## 互动教学网站
 
@@ -104,7 +107,8 @@ GitHub Pages 首页已升级为**交互式双语教学网站**（不依赖手册
   湿纸、效率曲线、ROC 与双模型对比
 - 📚 原手册仍保留: [`/zh`](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html)
   与 [`/en`](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
-- 🧪 自动化回归: `webapp/tests/`（交互 + 桌面/移动布局检查，已接入 GitHub Actions）
+- 🧪 自动化回归: `webapp/tests/`（DOM 冒烟 + 交互 + 桌面/移动布局），
+  由 `.github/workflows/webapp-tests.yml` 在每次改动 `webapp/**` 时执行
 
 ---
 
@@ -175,10 +179,11 @@ python -m pip install -e .         # 或只装 numpy pillow
 python src/gui.py                  # 图形界面（需要 tkinter）
 ```
 
-> **跨平台说明**：Linux/macOS 无需任何 Windows DLL——`fsfeatures`、`cppembed`、
-> `featurize_v2` 与 `ml_predict` 在检测不到 `cpp/*.dll` 时自动使用纯 Python
-> 实现；仅 GUI 需要系统自带 tkinter（Ubuntu/Debian：`sudo apt install python3-tk`）。
-> 也可用仓库根目录的 `Makefile`：`make test`、`make e2e`、`make notebooks`。
+> **跨平台说明**：无需任何预编译二进制——`fsfeatures`、`cppembed`、
+> `featurize_v2` 与 `ml_predict` 在检测不到 `cpp/` 下的库时自动使用纯 Python
+> 实现；想要加速就 `make cpp`（需要 g++/clang++）。仅 GUI 需要系统自带
+> tkinter（Ubuntu/Debian：`sudo apt install python3-tk`）。
+> 也可用仓库根目录的 `Makefile`：`make test`、`make cpp`、`make e2e`、`make notebooks`。
 
 ### 方式 B：安装打包的模块（wheel）
 
@@ -192,8 +197,9 @@ python -m build
 pip install dist/nsf5stego-1.5.0-py3-none-any.whl
 ```
 
-> 注意：wheel 仅含纯 Python 核心；`cpp/` 下的 Windows DLL 仅作可选加速，缺失时
-> 自动回退纯 Python（Linux/macOS 同理）。
+> 注意：wheel 仅含纯 Python 核心；C++ 加速库需自行 `make cpp` 编译，缺失时
+> 自动回退纯 Python。两个部署模型（`models/*.joblib`）随仓库分发，但不打进
+> wheel——从 wheel 安装时请一并取仓库里的 `models/` 目录。
 
 ### 运行测试
 
@@ -227,7 +233,7 @@ nsf5-steganography/
 ├── README.md / CHANGELOG.md / LICENSE / NOTICE
 ├── Makefile                 # install/test/e2e/notebooks/docker/web 快捷命令
 ├── docker-compose.yml
-├── cpp/                     # 可选 Windows C++ DLL（缺失时纯 Python 回退）
+├── cpp/                     # 可选 C++ 加速库源码（make cpp 编译，缺失时纯 Python 回退）
 ├── data/                    # 数据集 CSV 与 campus_jpg/BOSSbase 目录
 ├── docker/Dockerfile        # Linux JupyterLab 教学镜像
 ├── gpu/                     # PyTorch 批量特征 / GPU 训练
@@ -330,8 +336,17 @@ GUI 新增 **判定灵敏度** 下拉框（严格 / 均衡 / 宽松），作用�
 它与下方 **ML 分类含密概率** 联动（同一张净图在三种灵敏度下阈值
 0.95→0.77→0.57，ML 判决会由"干净"切换到"含密"），启发式概率也会围绕
 0.5 上下牵引。GUI **3 分析**会在原有启发式结果下方追加一行 **ML 分类含密概率**，
-输入图像会自动按训练一致的方式（转灰度→512 缩放→C++ 特征）送入模型。
-模型未加载时会提示先运行 `train_model.py`。
+输入图像会自动按训练一致的方式（转灰度→512 缩放→特征提取）送入模型。
+
+**模型从哪来（重要）**：两个部署模型 `models/stego_classifier.joblib`（143d 默认）
+与 `models/stego_classifier_v2_jpeg_lgb_51d.joblib`（53d 可解释）**已随仓库分发**，
+clone 之后 ML 判定即可用（需要 `lightgbm`，已列为依赖）。
+
+但请注意：**仓库里目前没有能产出这两个文件的脚本**。`src/train_model.py` 训练的是
+LR/RF/GB/XGB 家族，`thesis/exp/` 下的 LGB 脚本都只训练+评估、不落盘。也就是说模型
+可用但**不可复现**——这一点记录在 [`thesis/data/PROVENANCE.md`](thesis/data/PROVENANCE.md)。
+若要自己训练一个同量级的 LGB，可参考 `thesis/exp/sota_compare.py` 的超参与
+`thesis/exp/` 的评测协议。
 
 ```bash
 # 单独用 ML 判定单张图
@@ -710,7 +725,34 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.5.0 (当前) — 学习手册发布 + Zenodo DOI**
+- **v1.6.0 (当前) — 可验证性加固**
+  - **CNN 对比实验补上真实实现与真实数据**：`gpu/train_cnn.py` 与
+    `gpu/models/{xunet,yenet}.py` 此前并不存在（论文引用的路径是悬空的），
+    而 `sota_compare.py` 会把 53 维请求静默降级成 11 维、仍标成 `LGB-53d`。
+    现在特征列缺失即报错，`feat_set` 与 `dataset` 分列，所有基线共用同一份
+    按源图划分与同一套按源图 bootstrap 的置信区间。实测（BOSSbase，按源图
+    holdout）：Ye-Net 0.9541、LGB-143d 0.7529、LGB-53d 0.7172、LGB-11d 0.7128、
+    Xu-Net 0.5007（**未收敛**，训练集 AUC 也是 0.50，故不构成"CNN 不如手工
+    特征"的证据）。详见 [`thesis/exp/README.md`](thesis/exp/README.md)。
+  - **两个部署模型入库**：`models/stego_classifier.joblib`(143d) 与
+    `models/stego_classifier_v2_jpeg_lgb_51d.joblib`(53d)，并补上此前缺失的
+    `lightgbm` 依赖 —— 否则 clone 后 ML 判定仍是 `available=False`。
+  - **C++ 改为源码跨平台编译**：不再入库任何二进制，`make cpp` 三平台各自
+    产出 `.dll`/`.so`/`.dylib`；CI 现在真的编译并执行 C++ 一致性自检，
+    随后再删掉产物验证纯 Python 回退路径。
+  - **测试全量进 CI**：新增 pytest job 与无头 GUI job（xvfb）；`test_gui.py`
+    此前不在任何 workflow 里；`test_false_positive.py` 里一处 `ok = ok` 恒真
+    赋值让整个假阳性测试变成空断言。
+  - **浏览器回归测试真正跑起来**：`webapp-tests.yml` 此前未被提交，且即使提交
+    也会因 `python` 命令与 npmmirror 镜像源而失败。
+  - **教学视频质检修复**：两张质检图不可用（一张 33 字节空图、一张缺失），
+    根因是 `qa_sheet()` 在无抽帧时间时静默写出零高度 PNG 并中断后续章节。
+  - **论文源码入库**：`thesis/` 此前被整体 gitignore，源码零版本控制。
+  - 已知缺口（如实记录）：两个部署模型**没有仓库内的生产者**，
+    `src/train_model.py` 训不出它们 —— 见
+    [`thesis/data/PROVENANCE.md`](thesis/data/PROVENANCE.md)。
+
+- **v1.5.0 — 学习手册发布 + Zenodo DOI**
   - 发布中英文学习手册(PDF)至 `docs/`:
     - `docs/学习手册-从零读懂nsF5隐写项目.pdf` (中文, 12 周快速入门路线, 深入版见附录 F, 66 页)
     - `docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf` (英文, 12-week quick-start roadmap, deep 6–12 month track in Appendix F, 72 页)

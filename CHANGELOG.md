@@ -3,6 +3,86 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.0] - 2026-09-13
+
+Verifiability hardening: every claim the project makes should now be checkable
+by running something in the repo, and the claims that were not true have been
+corrected rather than kept.
+
+### Added
+
+- `gpu/train_cnn.py` and `gpu/models/{xunet,yenet}.py`. The paper referenced
+  these paths but they did not exist, so the "53-D features beat a CNN in the
+  small-sample regime" claim had no supporting data anywhere. The models are
+  reimplementations from the papers' descriptions (Xu et al. 2016, Ye et al.
+  2017), not the authors' official code, and are labelled as such. Training
+  splits strictly by source photo and reports train AUC beside val AUC, which is
+  what distinguishes "did not converge" from "overfit". Measured on BOSSbase:
+  Ye-Net 0.9541 [0.9463, 0.9630]; LGB-143d 0.7529; LGB-53d 0.7172; LGB-11d
+  0.7128; Xu-Net 0.5007 with chance-level *training* AUC, i.e. not converged.
+- `thesis/exp/featurize_bossbase_npz.py`, `merge_sota_table.py`,
+  `eval_cnn_checkpoint.py`, and `thesis/exp/README.md`: the experiment runbook.
+- `scripts/build_cpp.py` plus `make cpp` / `make cpp-clean`.
+- `src/cpplib.py`, resolving the accelerator filename per platform.
+- `src/test_pipeline.py`: feature contracts, SRM kernels (numpy vs torch),
+  the `analyze()` result contract, degenerate images, and ML model loading.
+- CI jobs: `pytest`, and a headless GUI job under `xvfb-run`.
+- `.github/workflows/webapp-tests.yml` (previously untracked, so the browser
+  regression suite had never run).
+- Two deployable models are now in the repository.
+
+### Changed
+
+- `thesis/` is tracked (source, experiment scripts, data CSVs, 0.5 MB). Only
+  rendered PDFs/DOCX, rebuildable figures, and run logs stay ignored. The thesis
+  source previously had no version control at all.
+- C++ accelerators are built from source on all three platforms instead of
+  shipping a Windows-only `.dll`; no binaries are committed.
+- `sota_compare.py` raises on missing feature columns instead of silently
+  degrading, keeps `feat_set` and `dataset` as separate columns, and computes
+  bootstrap CIs by resampling source photos rather than images.
+- `fig_sota` reads the merged table and scales its x-axis to the data (it
+  hardcoded `xlim(0.5, 0.85)`, which would draw a 0.95 bar off the canvas).
+- `models/*.joblib` moved from "ignored" to "two whitelisted files";
+  `lightgbm` added as a dependency (the shipped models are LightGBM pickles, so
+  without it a clone still got `available=False`); `scikit-learn` pinned `<2`.
+- `pyproject.toml` declares `xgboost`, the missing `py-modules` entries, a
+  `thesis` extra, and pytest configuration. The `dev` extra promised pytest
+  while the suite was bare asserts with `main()` guards.
+- `teaching/videos/` is ignored: 134 MB of generated output, rebuildable from
+  `teaching/README.md`.
+
+### Fixed
+
+- `qa_sheet()` wrote a 33-byte zero-height PNG when a chapter produced no beat
+  timestamps, then aborted the run, so later chapters were silently never built
+  and already-listed chapters were never retried. It now refuses to run with no
+  timestamps, and a failing chapter is reported, skipped, and left retryable.
+  Two unusable QA contact sheets (one 33-byte, one missing) were rebuilt.
+- The eleven rendered videos on disk had been renamed to their Chinese titles
+  while `index.html`/`durations.json` address them as `chNN.mp4`, so every link
+  on the local playback page 404'd.
+- `test_false_positive.py` contained `ok = ok` — a no-op assignment that
+  discarded the loop's failure signal, leaving the whole test resting on one
+  assertion.
+- `solve_wet_paper()` drew its traversal order from the global NumPy RNG, so the
+  same input produced different (equally valid) solutions run to run; the order
+  now derives from a hash of the inputs.
+- `encode_string()`/`decode_string()` used ASCII with `errors="replace"`, so any
+  non-ASCII message silently decoded as `?`. Now UTF-8.
+- `thesis/tools/gen_figs.py` hardcoded a personal path
+  (`F:\DCIM\Camera\*.jpg`) and would `IndexError` for anyone else.
+- `cross-platform.yml` used `python` in a job with no Python setup step.
+
+### Known gaps
+
+- The two shipped models have **no in-repo producer**: `src/train_model.py`
+  trains an LR/RF/GB/XGB family, and `thesis/exp/`'s LGB scripts train and
+  evaluate without persisting. They work, but they are not reproducible from
+  this repository. Recorded in `thesis/data/PROVENANCE.md`.
+- Two CSVs (`ood_jpeg_eval.csv`, `gain_importance_53d.csv`) cannot be
+  regenerated; the plotting code now says so instead of silently omitting them.
+
 ## [Unreleased] - Teaching project
 
 ### Added
