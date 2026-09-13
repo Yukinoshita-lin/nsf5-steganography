@@ -38,8 +38,8 @@ dependencies = [
 gpu = ["torch"]
 dev = ["pytest", "build"]
 notebooks = ["jupyter", "ipykernel"]
-# thesis/exp 的实验脚本额外需要 seaborn (两张热图) 与 lightgbm (LGB 基线)
-thesis = ["seaborn", "lightgbm", "torch", "pandas", "scikit-learn"]
+# experiments/ 下的实验脚本额外需要 seaborn (两张热图) 与 lightgbm (LGB 基线)
+experiments = ["seaborn", "lightgbm", "torch", "pandas", "scikit-learn"]
 
 [tool.pytest.ini_options]
 testpaths = ["src"]
