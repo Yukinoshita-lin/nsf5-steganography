@@ -30,12 +30,19 @@ WORK_SIZE = (512, 512)
 class MLPredictor:
     def __init__(self, model_path: str = MODEL_PATH, sensitivity: str = "均衡",
                  clip_outliers: bool = False, n_sigma: float = 5.0):
+        # 加载失败的原因必须留下来。此前是一个光秃秃的 `except Exception:
+        # pkg = None`, 于是"模型没打进 wheel / 文件缺失 / 依赖不匹配"三种完全
+        # 不同的问题在用户眼里都只是 available=False, 既无法自查也让 CI 里那次
+        # 镜像构建失败只显示"模型未能加载"而无从下手。
+        self._load_error = None
         try:
             from joblib import load
             pkg = load(model_path)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 - 记录下来交给调用方展示
             pkg = None
+            self._load_error = f"{type(exc).__name__}: {exc}"
         self._pkg = pkg
+        self.model_path = model_path
         self.sensitivity = sensitivity
         self.clip_outliers = clip_outliers
         self.n_sigma = n_sigma
@@ -70,6 +77,12 @@ class MLPredictor:
     @property
     def available(self) -> bool:
         return self._pkg is not None
+
+    @property
+    def load_error(self) -> str | None:
+        """模型加载失败的原因 (成功时为 None)。用于把 available=False 从
+        一句无信息量的提示变成可排查的错误。"""
+        return self._load_error
 
     def _threshold(self) -> float | None:
         """按灵敏度选择判定阈值: 严格→低误报点; 宽松→均衡阈值下探以提高检出。"""
