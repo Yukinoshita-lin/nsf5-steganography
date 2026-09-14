@@ -68,6 +68,24 @@ static double chi2_sf(double x, double df) {
     return gamma_q(df / 2.0, x / 2.0);
 }
 
+// 卡方 p 值: 自由度必须与 Python 参考实现一致。
+//
+// 2026-09-14 审计修复: 此前全图与 20 段前缀都直接传"非空灰度对数" n 当自由度,
+// 而 src/steganalysis.py::chi2_stats / src/featurize_v2.py::_prefix20_p 用的是
+// **n - 1**。同一张图 (stat=126.559, 83 个非空对) 两边给出 1.862e-03 vs
+// 1.475e-03 —— 相差 26%, 且方向恒定。仓库里的 C++/Python 一致性自检曾把这
+// 个偏差解释成"MinGW 半整数 lgamma 精度偏移", 把容差放宽到 0.2 就算通过 ——
+// 那是误诊: 真正的原因是这里少减了 1。
+//
+// 影响: 语料由 GPU/Python 路径产出 (df = n-1), 而 Windows 上带 DLL 的推理走
+// C++ (df = n), 于是 chi2_pvalue 与 median_prefix_p 这两个 BASE 特征在
+// 训练/推理之间系统性错位, 且错位与否取决于平台。
+static double chi2_pvalue(double stat, int n_pairs) {
+    if (n_pairs <= 0) return 0.0;      // 无有效灰度对
+    if (n_pairs == 1) return 1.0;      // 自由度不足, 与 chi2_stats 的中性取值一致
+    return chi2_sf(stat, (double)(n_pairs - 1));
+}
+
 // ---------- 特征计算 (单通道 8bit, row 主序) ----------
 // idx0..idx2: 输出指针
 NS5_EXPORT void fs_features(
@@ -87,7 +105,7 @@ NS5_EXPORT void fs_features(
         double s = e + o;
         if (s > 0.0) { df++; chi_stat += (e - o) * (e - o) / s; }
     }
-    double chi_p = chi2_sf(chi_stat, (double)df);
+    double chi_p = chi2_pvalue(chi_stat, df);
 
     // 前缀卡方中位 p (20 分区) —— 与 Python 对齐: end = max(64, N*i/20)
     double median_p = 0.0;
@@ -103,11 +121,16 @@ NS5_EXPORT void fs_features(
                 double e = (double)c[g], o = (double)c[g + 1], s2 = e + o;
                 if (s2 > 0.0) { d2++; st += (e - o) * (e - o) / s2; }
             }
-            ps.push_back((d2 > 0) ? chi2_sf(st, (double)d2) : 0.0);
+            ps.push_back(chi2_pvalue(st, d2));
         }
         std::vector<double> sp = ps;
         std::sort(sp.begin(), sp.end());
-        median_p = sp[sp.size() / 2];
+        // 2026-09-14 审计修复: 偶数个样本时 numpy.median 取**中间两个的均值**,
+        // 此前这里取的是上中位 sp[n/2]。语料 (GPU/Python 路径) 用的是 numpy 规则,
+        // 两者在同一张图上相差 0.0553 vs 0.0672 —— 又一个平台相关的训练/推理错位。
+        const size_t n_ps = sp.size();
+        median_p = (n_ps % 2 == 1) ? sp[n_ps / 2]
+                                   : 0.5 * (sp[n_ps / 2 - 1] + sp[n_ps / 2]);
     }
 
     // RS 分析 (掩码 M=[0,1,1,0])

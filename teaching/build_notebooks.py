@@ -163,11 +163,22 @@ def chapter03():
         "    r = SA.analyze(im)\n"
         "    print(name, 'Gn=%.3f' % r['RS_Gn'], 'chi2p=%.3f' % r['chi2_pvalue'],\n"
         "          'prob=%.2f' % r['stego_probability'], r['verdict'])",
-        "# 强化练习: 换一条 5000 字符消息, 观察改动占比与概率\n"
-        "s2, rep2, nb2 = embed_string(clean, 'S' * 5000, method='nsF5', p=3)\n"
+        "# 强化练习: 把消息加到接近满容量, 观察改动占比与检测概率如何上升\n"
+        "# (2026-09-14: 此处原写死 5000 字符, 超过 img/cover.png 的容量, 直接抛\n"
+        "#  ValueError —— notebook 从未被执行过, 所以坏了很久没人发现。)\n"
+        "from make_dataset import capacity_bytes\n"
+        "cap = capacity_bytes(clean.size, 3, head_pixels=0)   # p=3 时的可用字节数\n"
+        "cap_chars = int(cap * 0.9)                            # 留 10% 余量\n"
+        "print('img/cover.png 容量(p=3, 90%%): %d 字节' % cap_chars)\n"
+        "s2, rep2, nb2 = embed_string(clean, 'S' * cap_chars, method='nsF5', p=3)\n"
         "r2 = SA.analyze(s2)\n"
         "print('density=%.3f' % (rep2['cover_changed'] / clean.size),\n"
-        "      'prob=%.2f' % r2['stego_probability'], r2['verdict'])",
+        "      'prob=%.2f' % r2['stego_probability'], r2['verdict'])\n"
+        "# 顺带看看超容量时的报错是否清楚 (教学点: 容量是硬约束)\n"
+        "try:\n"
+        "    embed_string(clean, 'S' * (cap * 2), method='nsF5', p=3)\n"
+        "except ValueError as e:\n"
+        "    print('超容量 ->', str(e)[:80])",
     ]
     return nb(md, code)
 

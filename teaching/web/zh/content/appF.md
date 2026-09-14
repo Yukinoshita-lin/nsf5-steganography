@@ -32,7 +32,7 @@
 | 算法主线 | nsF5/F5、矩阵嵌入、湿纸、伴随式 | ch04–05、项目 `ns5_core.py`；往外可延伸 JPEG 域与 DCT 系数隐写 |
 | 检测 / ML 主线 | 特征工程、SRM、143d/53d、OOD | ch08、`featurize_v2.py`、`train_model.py`；往外可延伸现代高维特征与深度学习隐写分析 |
 | 工程主线 | C++ DLL、GPU 批量、GUI、多源数据集、CI | ch09、`cppembed.py`、`gpu/*`、`.github/workflows`；往外可延伸部署与鲁棒性 |
-| 研究主线 | 复现论文→找 gap→做改进→诚实评估 | 论文（appE）与 `thesis/`；强调“切分/校准/测试”严谨性（ch07） |
+| 研究主线 | 复现论文→找 gap→做改进→诚实评估 | 文献（appE）与 `docs/RESULTS.md`；强调“切分/校准/测试”严谨性（ch07） |
 
 ## F.3 可选的“往外走”课题（按主线挑 1–2 个）
 

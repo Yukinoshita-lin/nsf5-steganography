@@ -30,7 +30,7 @@
 
 ## Online
 
-- The project README and the thesis draft thesis/thesis1.pdf (SRM / 143-D / 53-D experiments are in the experimental chapter); GitHub: Yukinoshita-lin/nsf5-steganography;
+- The project README and the canonical results table `docs/RESULTS.md` (current numbers for the SRM / 143-D / 53-D experiments); GitHub: Yukinoshita-lin/nsf5-steganography;
 
 - scikit-learn docs: LogisticRegression, GroupKFold, roc_curve;
 

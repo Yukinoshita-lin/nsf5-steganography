@@ -30,6 +30,16 @@ SMOKE_LIMIT = int(os.environ.get("DS_LIMIT", "0"))
 
 IM_EXTS = ("*.jpg", "*.jpeg", "*.png", "*.bmp", "*.tif", "*.tiff", "*.pgm")
 
+
+def _looks_like_size(tok: str) -> bool:
+    """`512x512` / `256X256` 这类工作尺寸写法 (与照片目录区分开)。
+
+    位置参数是 `nargs="*"`, 所以 `make_dataset.py <照片目录> 512x512` 会把尺寸
+    也当成第二个目录, 多打印一行"未找到图像"的无用告警 (2026-09-14 审计)。
+    """
+    parts = str(tok).lower().split("x")
+    return len(parts) == 2 and all(p.strip().isdigit() for p in parts)
+
 # 默认 8 档变体: 6 个原档 + 1 个 LSB + 1 个 0.40 补档
 DEFAULT_VARIANTS = [
     ("nsF5", 3, 0.25),
@@ -207,9 +217,12 @@ def main(photo_dir: str = DEFAULT_PHOTO_DIR, work=(512, 512), out_name: str = ""
                 os.remove(tp)
         n_clean = n_stego = 0
         with open(csv_path, newline="", encoding="utf-8") as f:
-            for r in csv.reader(f):
-                if len(r) == 1 and r[0] == V1_FEAT_KEYS[0]:
-                    continue
+            # 2026-09-14 审计修复: 原来的"跳过表头"判断是 `len(r)==1 and r[0]==第一列`,
+            # 但表头是 18 列, 永远匹配不上 —— 于是表头被当成一个样本, 打印的
+            # 合计恒比真实值多 1 (实测 2899 vs 2898)。这里显式跳过第一行。
+            rows = csv.reader(f)
+            next(rows, None)
+            for r in rows:
                 if r[-5] == "clean":
                     n_clean += 1
                 else:
@@ -244,6 +257,14 @@ if __name__ == "__main__":
             ("lsb", 0, 0.30),
             ("lsb", 0, 0.70),
         ]
-    for i, d in enumerate(a.dirs or [DEFAULT_PHOTO_DIR]):
+    # 位置参数是 nargs="*", 于是 `make_dataset.py <照片目录> 512x512` 会把
+    # `512x512` 也当成第二个照片目录, 多打印一行"未找到图像"的无用告警
+    # (2026-09-14 审计发现)。这里按"看起来像尺寸"的形态把它滤掉。
+    dirs = [d for d in a.dirs if not _looks_like_size(d)]
+    if a.dirs and len(dirs) != len(a.dirs):
+        sizes = [d for d in a.dirs if _looks_like_size(d)]
+        if a.work == f"{WORK[0]}x{WORK[1]}":      # 未显式传 work 时, 用被滤掉的那个
+            a.work = sizes[0]
+    for i, d in enumerate(dirs or [DEFAULT_PHOTO_DIR]):
         work = tuple(map(int, a.work.lower().split("x"))) if "x" in a.work else WORK
         main(d, work, a.out, a.id_offset, a.workers, a.preprocess, a.feature_set, variants)

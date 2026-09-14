@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.6.0-blue)
+![version](https://img.shields.io/badge/version-1.6.4-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543629.svg)](https://doi.org/10.5281/zenodo.22543629)
@@ -132,8 +132,8 @@ GitHub Pages 首页已升级为**交互式双语教学网站**（不依赖手册
 项目提供**中英文双语学习手册**，从零基础开始，12 周快速入门；想深入可预留 6–12 个月（见手册附录 F 的完整路线）:
 
 - 🖥 网页版: [中文](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html) · [English](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
-- 🇨🇳 [`docs/学习手册-从零读懂nsF5隐写项目.pdf`](docs/学习手册-从零读懂nsF5隐写项目.pdf) — 中文版, 66 页
-- 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 72 pages
+- 🇨🇳 [`docs/学习手册-从零读懂nsF5隐写项目.pdf`](docs/学习手册-从零读懂nsF5隐写项目.pdf) — 中文版, 67 页
+- 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 74 pages
 - 📓 按章 Colab/Jupyter Notebook: 见 [`teaching/README.md`](teaching/README.md)
 - 🐳 Docker/JupyterLab 教学镜像: `docker compose up --build`
 
@@ -158,12 +158,69 @@ r = pred.predict(image)
 # r = {'probability': 0.83, 'verdict': '含密(stego)', 'threshold': 0.168}
 ```
 
-| 版本 | 文件 | AUC (8-split mean) | OOD 鲁棒 | 推荐场景 |
-|---|---|---|---|---|
-| **143d 默认** | `stego_classifier.joblib` | 0.9085 | **1/8 fp** | 通用部署 / 真实图 |
-| **53d 可解释** | `stego_classifier_v2_jpeg_lgb_51d.joblib` | **0.9227** | 3/8 fp | 论文 / 答辩 / 教学 |
+#### 指标口径（重要）：头条只引用 BOSSbase
 
-详见下文的 **双版本部署策略** 一节。
+同一个 143d 模型在 BOSSbase 上是 0.8062，在自建校园语料上是 0.8939 —— 差值反映
+的是**语料**（难度、负样本构成都不同），不是模型强弱。对外引用、论文对比一律用
+下面主表的 BOSSbase 数字：
+
+| 语料 | 模型 | AUC | 协议 | 说明 |
+|---|---|---|---|---|
+| **BOSSbase 1.01**（领域标准基准，**头条口径**） | LGB-143d | **0.8062** [0.7894, 0.8225] | 按源图 holdout | 对外一律引用这一行 |
+| | LGB-53d | 0.7172 [0.6943, 0.7406] | 同上 | 同一份划分，可与 CNN 对比 |
+| | LGB-11d | 0.7128 [0.6913, 0.7360] | 同上 | 11 维基线 |
+| 校园照片（自建语料，**附表**） | 143d 部署模型 | 0.8939；8-split 均值 0.8980 | 按源图 holdout | 含 414 张真实 JPEG 干净图，与上表不可并列 |
+| | 53d 部署模型 | 0.8391；8-split 均值 0.8461 | 同上 | 同上 |
+
+> ⚠ **2026-09-14 审计更正**：校园语料此前的数字（0.8946 / 0.9100，8-split
+> 0.9085 / 0.9227）含**源图泄漏** —— 414 个 `clean_jpeg` 行被赋予了独立
+> photo_id，使"按源图划分"失效；同一批 GPU 产出的 SRM 特征尺度也与推理端
+> 不一致。两处均已修复并重跑，详见 [CHANGELOG](CHANGELOG.md) 1.6.2。
+> 修复后 **143d 优于 53d**（此前结论相反：SRM 90 维在错误尺度下才是"噪声"）。
+
+完整权威表（逐行标注语料 / 协议 / 是否可溯源）见 **[`docs/RESULTS.md`](docs/RESULTS.md)**，
+由 `experiments/build_results_table.py` 生成；README 内任何口径冲突都以它为准。
+
+| 版本 | 文件 | 校园语料 AUC (8-split 均值) | 弱档 nsF5 p3 d=0.25 | 推荐场景 |
+|---|---|---|---|---|
+| **143d 默认** | `stego_classifier.joblib` | **0.8980** | **50.0%** | 通用部署 / 真实图 |
+| **53d 可解释** | `stego_classifier_v2_jpeg_lgb_51d.joblib` | 0.8461 | 41.4% | 论文 / 答辩 / 教学（逐维可解释） |
+
+> 本表是**校园照片**语料（自建，含真实 JPEG 干净图）上的部署指标；与 BOSSbase
+> 的数字分属不同语料，不能并列。
+>
+> **OOD（真实干净照片）误报率**（2026-09-14 重建，1514 张 = 校园 414 + DIV2K 100 +
+> ALASKA#2 1000，可追到 `experiments/data/ood_summary.csv`）：
+> **143d 9.58%** [8.20, 11.16]、**53d 28.86%** [26.64, 31.20]。
+> 旧的"1/8 / 3/8"只有 8 张样本、且生产者已丢失，已作废。
+> 详见下文的 **双版本部署策略** 与 [`docs/RESULTS.md`](docs/RESULTS.md) 第 5 节。
+
+## 更正记录：曾经出现过的错误
+
+这一节列的是**本项目真实犯过、并且已经修复**的错误。写在这里的动机很直接：隐写分析
+项目如果连自己的评测数字都不可信，它的教学价值就是负的。逐条细节见
+[`CHANGELOG.md`](CHANGELOG.md) 的 1.6.1–1.6.4，权威数字见
+[`docs/RESULTS.md`](docs/RESULTS.md)。
+
+| # | 曾经的错误 | 影响（实测） | 现状 |
+|---|---|---|---|
+| 1 | **源图泄漏**：414 个 `clean_jpeg` 行被赋了独立 photo_id，而其特征与对应 `clean` 行逐位相同（是副本） | "按源图划分"名存实亡 —— 同一张源图可以跨训练/验证两侧。单独修分组后 143d held-out AUC **0.8946 → 0.7555**、弱档检出 **85.3% → 44.2%** | 已修：`experiments/add_jpeg_clean.py` 让 photo_id 继承源图；`train_deploy_models.py` 开训前强制校验分组不变量 |
+| 2 | **SRM 特征尺度不一致**：GPU 端在高通滤波前把像素 `/255`，残差缩小 255 倍、`clip` 形同虚设 | 语料用 GPU 特征、单图推理用 CPU 特征，两者相差约 **30 倍**，143d 模型一直吃分布外输入。修好后 BOSSbase 143d **0.7529 → 0.8062** | 已修：CPU/GPU 143 维特征逐项一致（max\|Δ\|≈3e-5），并有回归测试与 CI job |
+| 3 | **C++ 与 Python 特征不一致，且被自检掩盖**：卡方自由度用了 `n` 而非 `n−1`（p 值差 **26%**）、20 段中位数取"上中位"；自检把它误诊成"MinGW lgamma 精度偏移"，容差放宽到 **0.2** | Windows（带 DLL）与 Linux（纯 Python）对同一张图给出不同的 `chi2_pvalue` / `median_prefix_p` | 已修：11 维逐项一致（max\|d\|≈6e-14），自检容差收回 **1e-9** |
+| 4 | **结论建立在错误数据上**：曾写"53d 精简版 AUC 更高""SRM 90 维是噪声特征、去掉反而更好" | 该结论完全来自第 1、2 条缺陷 | 已推翻并重跑：**143d 更准**（8-split 0.8980 vs 0.8461）；SRM 占 LightGBM gain **52.6%**，去掉它 OOF AUC 掉 0.05 |
+| 5 | **OOD 数字只有 8 张样本**（"1/8、3/8"），且产生它的脚本与数据一起丢失 | 无法复核，也没有统计意义 | 已重建 `experiments/ood_eval.py`：**1514 张**真实干净照片，143d **9.58%**、53d **28.86%**（Wilson 95% CI） |
+| 6 | **同一指标名跨语料/跨协议混用**："8-split" 指过两种协议；校园语料数字与 BOSSbase 数字被并列比较 | 读者会看到互相矛盾的数值 | 已修：`docs/RESULTS.md` 把**语料**与**协议**做成每行必填字段，并规定 README 头条只引用 BOSSbase |
+| 7 | **多处数字只打印不落盘**（GPU 管线 0.790/0.644/0.712、train_model 家族、gain importance） | 不可溯源，无法复核 | 已修：四个生产者补齐并重跑，不可溯源行 **9 → 0**（0.7903 / 0.6438 / 0.8889 等逐位复现） |
+| 8 | **部署模型不可复现**：仓库里没有能产出两个随包 `.joblib` 的脚本 | clone 之后无法重建模型，"可用但不可复现" | 已补 `experiments/train_deploy_models.py`，并在全部 5796 个样本上验证其产出与随包模型预测一致 |
+| 9 | **教学手册带着已被推翻的结论**（DOCX、网页版、PDF 三处都有） | 教学材料带错结论比没有结论更糟 | 已修：`teaching/handbook_facts.py` 统一口径并纳入 CI；PDF 按新口径重新导出（中文 67 页 / 英文 74 页） |
+| 10 | **教学 notebook 从未被执行过** | 03 号让学员嵌入 5000 字符，而封面图容量只有 3494 字节 —— 这个 cell 一直在抛 `ValueError` | 已修并进 CI：10/10 逐本执行通过，另有"入库 notebook 与生成器一致"的漂移检查 |
+| 11 | **LICENSE 缺 APPENDIX 段**，结尾被换成自定义版权块 | GitHub 把 Apache-2.0 识别成 `NOASSERTION`，与徽章不符 | 已恢复标准 Apache-2.0 全文 |
+| 12 | **若干使用即踩的缺陷**：`python src/run_e2e.py` 在中文 Windows 控制台崩溃（`✓` 无法用 GBK 编码）；`make_dataset` 打印的样本数恒比真实值多 1；`train_model` 遇到空环境变量直接崩溃；README 引用过从未存在的 `src/_add_jpeg_clean.py`；wheel 安装示例版本过期 | 使用者直接踩到 | 均已修复，并新增控制台编码护栏测试 |
+
+> **为什么保留这些记录，而不是悄悄把数字改掉：** 第 1 条和第 3 条恰好是"评测设计本身
+> 出错"的两个典型样本 —— 前者说明"按源图分组"这种纪律会在 id 分配这种细节上悄悄失效，
+> 后者说明一个被误诊的容差可以把两种实现的差异藏住很久。它们现在是教学材料的一部分
+> （见第 7、8 章与 `docs/RESULTS.md` 第 1 节）。
 
 ---
 
@@ -195,8 +252,8 @@ python src/gui.py                  # 图形界面（需要 tkinter）
 # 构建 wheel + sdist（需已安装 build）
 python -m build
 
-# 安装 wheel（核心模块：ns5_core / steganalysis / gui 等）
-pip install dist/nsf5stego-1.5.0-py3-none-any.whl
+# 安装 wheel（核心模块：ns5_core / steganalysis / gui 等；文件名带版本号）
+pip install dist/nsf5stego-<版本>-py3-none-any.whl
 ```
 
 > 注意：wheel 仅含纯 Python 核心；C++ 加速库需自行 `make cpp` 编译，缺失时
@@ -352,11 +409,37 @@ GUI 新增 **判定灵敏度** 下拉框（严格 / 均衡 / 宽松），作用�
 与 `models/stego_classifier_v2_jpeg_lgb_51d.joblib`（53d 可解释）**已随仓库分发**，
 clone 之后 ML 判定即可用（需要 `lightgbm`，已列为依赖）。
 
-但请注意：**仓库里目前没有能产出这两个文件的脚本**。`src/train_model.py` 训练的是
-LR/RF/GB/XGB 家族，产不出这两个 LGB 模型。也就是说模型可用但**不可复现**。
-训练与评测脚本（`experiments/`）用的是
-`learning_rate=0.03, num_leaves=31, n_estimators=800, min_child_samples=10`，
-并按**源图**分组做交叉验证；照这套超参自己训一个同量级的 LGB 是可行路径。
+**模型可复现**：`experiments/train_deploy_models.py` 就是这两个文件的**生产者**，
+口径已冻结：
+
+- 语料 `data/dataset_campus_v2_jpeg.csv`（414 张校园照片 × 14 = 5796 样本）
+- 按**源图**划分 `GroupShuffleSplit(test_size=0.25, random_state=seed)`
+- LightGBM `learning_rate=0.03, num_leaves=31, n_estimators=800,
+  min_child_samples=10, subsample=0.9, colsample_bytree=0.8`
+
+复现证据（2026-09-14 审计后重跑）：143d 在 seed=0..7 上的 AUC 为
+0.8939 / 0.8998 / 0.8987 / 0.8972 / 0.8892 / 0.9009 / 0.9145 / 0.8901
+（均值 **0.8980**），53d 为 0.8391 / 0.8326 / 0.8531 / 0.8589 / 0.8408 / 0.8500 /
+0.8615 / 0.8330（均值 **0.8461**）；随仓库分发的两个 `.joblib` 就是该脚本的产物。
+
+生产者会在训练前检验**分组不变量**（每个 photo_id 的 variant 集合必须一致），
+语料一旦出现"孤儿 id 块"就直接拒绝运行 —— 这正是 1.6.2 修掉的那类源图泄漏。
+语料本身的生成链见 `python experiments/add_jpeg_clean.py`（JPEG 干净行的 photo_id
+**继承源图**，且是真实 JPEG 往返而非 clean 行的副本）。
+
+> **可复现性的边界（如实说明）**：校园语料的 414 张照片是作者本人的
+> `data/campus_jpg/`（不入库，也无法分发）。因此**两个部署模型的训练语料
+> 不能从零重建**——脚本链（`make_dataset.py` → `add_jpeg_clean.py` →
+> `train_deploy_models.py`）是完整的，但需要自备同规模的 JPG 照片目录。
+> 想完全从零复现，请走 BOSSbase 路线（`scripts/download_datasets.py` +
+> `experiments/featurize_bossbase_npz.py` + `experiments/sota_compare.py`），
+> 那条链只用公开基准，`docs/RESULTS.md` 的主表就是它。
+
+```bash
+python experiments/train_deploy_models.py             # 重训并覆盖 models/*.joblib（约 3 分钟）
+python experiments/train_deploy_models.py --no-splits # 只跑 seed 0（约 10 秒）
+python experiments/train_deploy_models.py --no-save   # 只评估，不落盘
+```
 
 ```bash
 # 单独用 ML 判定单张图
@@ -481,52 +564,58 @@ stego p5=1.30）。v2 模型在训练分布内已"过激"，JPEG 干净图即使
 
 ```bash
 # 自动生成 v2 + JPEG 数据集 (campus_v2.csv + 414 JPEG clean -> campus_v2_jpeg.csv)
-py src/_add_jpeg_clean.py
+python experiments/add_jpeg_clean.py
 
 # 训练 (与 v2 同样的 5 折 GroupKFold + 4 模型 stacking)
 DS_FILES="dataset_campus_v2_jpeg.csv" python src/train_model.py
 ```
 
-**v2 特征可解释性**(2026-09-06):
+**v2 特征可解释性**(2026-09-14 审计后重算):
 
-- v2 143d 特征组:LGB gain 占比 → LSB PREFIX 42.2%, BASE 21.6%, SRM 90 维合计 26.6%, PREFIX 9.6%
-- 单特征 AUC 排名:20 段 LSB 前缀 + 11 维 BASE 全部 > 0.60;SRM 90 维平均单特征 AUC 仅 0.50~0.52(近随机)
-- 结论:**143d 中 ~73% 增益来自 31 个可解释特征**;SRM 90 维是"压舱石",边际贡献微弱但提供 OOD 鲁棒性
+- 单特征 AUC（校园 v2_jpeg 语料，取 max(AUC, 1-AUC) 的中位数）:
+  BASE 11 → 0.610, PREFIX 20 → 0.646, LSB PREFIX 20 → 0.607,
+  SRM absmean → 0.512, SRM std → 0.550
+- 特征消融（5 折 GroupKFold OOF, 8 seed 均值）:
+  B11 0.8708 → 53d 子集 0.8513 → 完整 143d **0.9010**，即 **SRM 90 维贡献 +0.050 AUC**;
+  按源图 GroupKFold(8) 上 143d 对 53d 是 **8/8 全胜**
+- 结论（**与此前相反**）: SRM 90 维在**尺度正确**时不是噪声。2026-09-06 那版结论
+  （"SRM 近随机、去掉反而更好"，gain 占比 SRM 26.6% / LSB PREFIX 42.2% 等）是在
+  GPU 端把像素先 `/255` 的错误尺度上算出来的，已作废。
+  现已按当前口径重算（`experiments/gain_importance.py`）：**SRM 90 维占 gain 的
+  52.6%**，BASE 11 占 20.7%、LSB PREFIX 20 占 20.6%、PREFIX 20 占 6.2%；
+  Top-5 特征为 `Rm`(7.6%) / `lsb_prefix_p4`(7.0%) / `srm_absmean_c29`(6.1%) /
+  `RS_Gr`(5.5%) / `srm_std_c29`(4.6%)。旧表（SRM 26.6%）已作废。
 
-### 双版本部署策略(2026-09-06)
+### 双版本部署策略(2026-09-14 审计后更新)
 
 经过可解释性对照实验,项目保留 **143d 默认版** 与 **53d 可解释版** 两套模型,各自适用场景不同:
+
+> **语料提醒**：本节（以及下方"模型对比""最终决策"）的 AUC 全部来自**校园照片**
+> 语料（自建，含 414 张真实 JPEG 干净图）。同一族模型在 BOSSbase 1.01 上是
+> 0.8062（143d）/ 0.7172（53d），两者**不可并列**。权威表见
+> [`docs/RESULTS.md`](docs/RESULTS.md)，头条口径见上文"指标口径"一节。
 
 | 维度 | **143d 默认版**(`stego_classifier.joblib`) | **53d 可解释版**(`stego_classifier_v2_jpeg_lgb_51d.joblib`) |
 |---|---|---|
 | 特征构成 | BASE 11 + SRM 90 + PREFIX 20 + LSB PREFIX 20 + TEX/EST 2 | BASE 11 + PREFIX 20 + LSB PREFIX 20 + TEX/EST 2(去 SRM) |
-| 8-split 平均 AUC | 0.9085 | **0.9227**(+0.014) |
-| Held-out AUC (seed=0) | 0.8946 | **0.9100**(+0.015) |
-| 弱档检出 nsF5 p3 d=0.25 | 85.3% | **87.2%** |
-| OOD 鲁棒性 (真实 JPEG 干净 fp) | **1/8**(median 0.011) | 3/8(median 0.028) |
-| 模型文件大小 | 2.7 MB | 2.7 MB |
+| 8-split 平均 AUC（校园语料） | **0.8980** | 0.8461 |
+| Held-out AUC（校园语料, seed=0） | **0.8939** | 0.8391 |
+| 弱档检出 nsF5 p3 d=0.25 | **50.0%** | 41.4% |
+| 特征消融（5 折 OOF, 8 seed 均值） | **0.9010** | 0.8513 |
+| 模型文件大小 | 2.8 MB | 2.8 MB |
 | 可解释性 | 一般(143 维,LIME/SHAP 可对单图解释) | **强**(51 维有明确统计定义,可直接列 Top 贡献) |
 | 推荐场景 | 通用部署 / 异构数据 / 真实图像 | 论文 / 答辩 / 教学 / 单图分析 |
 
-**核心结论**:
-- 53d 在 AUC 和弱档检出上**全面胜出**,因为 SRM 90 维是 LGB 中的"噪声特征"(平均单特征 AUC 仅 0.50~0.52)
-- 但 143d 在 OOD 鲁棒性上**更稳**:SRM 高通残差对 JPEG 高频噪声有"过滤"作用,真实校园照片判错率更低
-- **工程上保留双版本,默认加载 143d**(稳健),可通过 GUI 选项切换 53d(可解释)
+**核心结论（审计后）**:
+- **143d 在 AUC 与弱档检出上更好**：去掉 SRM 90 维后消融 OOF AUC 从 0.9010 掉到 0.8513
+- 53d 的价值在**可解释性**：53 维里 51 维有明确统计含义，可逐维列出贡献；代价是 AUC 低约 0.05
+- 此前"53d 全面胜出、143d 靠 OOD 稳"的结论建立在两个缺陷之上（SRM 尺度错误 + 语料源图泄漏），见 1.6.2
+- **工程上保留双版本,默认加载 143d**(更准),教学/答辩场景切 53d(可解释)
 
-#### 53d 精简实验明细
+#### 53d 精简版定位（审计后更正）
 
-- 8 split 全部胜出(差异 +0.005 ~ +0.022):
-  ```
-  seed    143d     53d    diff
-     0  0.8946  0.9100 +0.0155
-     1  0.9228  0.9307 +0.0080
-     2  0.9166  0.9216 +0.0051
-     3  0.9083  0.9307 +0.0224
-     4  0.9263  0.9375 +0.0112
-     5  0.8933  0.9131 +0.0198
-     6  0.9196  0.9385 +0.0189
-     7  0.8866  0.8995 +0.0129
-  ```
+- 按源图 GroupKFold(8) 的 OOF:143d **0.8966** vs 53d 0.8470 —— **143d 8/8 全胜**
+  (此前记录的是"53d 7/8 胜", 那是错误尺度 + 泄漏语料的产物)
 - **可解释优势**:53 维中 51 维有明确统计含义
   - `Rm/Sm/Rn/Sn/RS_Gr/RS_Gn`:RS 分析 6 个规则翻转率
   - `chi2_pvalue/chi2_stat`:LSB 卡方 p 值与统计量
@@ -551,8 +640,8 @@ pred_53 = MLPredictor(model_path='models/stego_classifier_v2_jpeg_lgb_51d.joblib
                       clip_outliers=False)  # 53d 不需要 clip(单特征 AUC 高,训练分布更稳)
 
 # 同一张图
-result_143 = pred_143.predict(img)  # AUC 高 + OOD 稳
-result_53 = pred_53.predict(img)    # AUC 更高 + 可对每维特征解释
+result_143 = pred_143.predict(img)  # AUC 更高 + 弱档检出更强
+result_53 = pred_53.predict(img)    # AUC 略低, 但可对每维特征解释
 ```
 
 #### GUI 集成(规划)
@@ -564,23 +653,32 @@ result_53 = pred_53.predict(img)    # AUC 更高 + 可对每维特征解释
 
 
 
+下表是**校园照片**语料上的历史记录。2026-09-14 已把其中"只打印不落盘"的配置
+全部重跑并落盘（`experiments/data/train_model_metrics.csv`），所以下面的数字现在
+**都有产物可查**；重跑值与原值并列，差异来自修正后的特征口径与语料。
+与 BOSSbase 的数字不可并列。
+
 | 模型 | 训练集 | Held-out AUC | 真实 JPEG 干净 prob | nsF5 p3 d=0.25 检出 |
 |---|---|---|---|---|
-| v1 XGB (旧默认) | dataset.csv (11维, 6档) | 0.7435 | 0.30 (正确) | 49% |
+| v1 XGB (旧默认) | dataset.csv (11维, 6档) | 0.7435 → **重跑 0.7371** | 0.30 (正确) | 49% |
 | v2 LR (未修复) | campus_v2 (143维, 12档) | 0.8278 | **1.00 (误判)** | 25% |
 | v2 XGB (旧默认) | campus_v2_jpeg (143维, 12档 + 414 JPEG clean) | 0.8723 | 0.14 (正确) | 15.6% |
-| v2 XGB tuned | campus_v2_jpeg + 网格调优 (depth=5, n_est=500) | 0.8889 | 0.14 (正确) | 67.9% |
-| v2 XGB + WEAK_WEIGHT=3 | campus_v2_jpeg + 弱档加权×3 | 0.8534 | 0.14 (正确) | 20.2% |
+| v2 XGB tuned | campus_v2_jpeg + 网格调优 (depth=5, n_est=500) | 0.8889 → **重跑 0.8889** | 0.14 (正确) | 67.9% |
+| v2 XGB + WEAK_WEIGHT=3 | campus_v2_jpeg + 弱档加权×3 | 0.8534 → 重跑 XGB 0.8832 / LR 0.9055 | 0.14 (正确) | 20.2% |
 | v2 XGB + WEAK_WEIGHT=5 | campus_v2_jpeg + 弱档加权×5 | 0.8377 | — | 25.7% |
-| v2 STACK (WEAK_WEIGHT=3) | campus_v2_jpeg + 4 模型 LR meta | 0.8321 | **0.10 (正确)** | **32.1%** |
-| **v2 LGB tuned (新默认)** | **campus_v2_jpeg + LGB 网格调优 (nl=31, ne=800, lr=0.03)** | **0.8946** | **0.14 (正确)** | **85.3%** |
+| v2 STACK (WEAK_WEIGHT=3) | campus_v2_jpeg + 4 模型 LR meta | 0.8321 → **重跑 0.8672** | **0.10 (正确)** | **32.1%** |
+| **v2 LGB tuned (新默认)** | **campus_v2_jpeg + LGB 网格调优 (nl=31, ne=800, lr=0.03)** | **0.8939** | 见下 | **50.0%** |
+
+> 重跑还暴露一件事：在当前（修正后的）语料上，**LR（标准化 + 校准）常常是最强的
+> 单模型**（0.9055），高于调优后的 XGB（0.8889）与 STACK（0.8672）。这与旧口径
+> "XGB/LGB 更强"的印象相反，值得在下一轮实验里单独查清。
 
 - **新默认** `stego_classifier.joblib` = **v2 LGB tuned**
   (`num_leaves=31, n_estimators=800, learning_rate=0.03, min_child_samples=10`)。
-- 测试集 AUC **0.8946**（vs XGB tuned 0.8889，**+0.006**）；多 split 平均 AUC **0.9085**（+0.007）。
-- **弱档检出最强**：nsF5 p3 d=0.25: 67.9% → **85.3%**；nsF5 p2 d=0.35: 84.4% → **95.4%**；
-  matrix p3 d=0.40: 89.0% → **94.5%**。LSB 三档全部 100% 检出。
-- 真实校园 JPEG 干净照片 OOD 鲁棒性提升（8 张中 7 张 prob < 0.5；median 0.011 vs XGB tuned 0.18）。
+- 现口径（2026-09-14 重跑，可追到 `experiments/data/deploy_model_metrics.csv`）：
+  held-out AUC **0.8939**、8-split 平均 **0.8980 ± 0.0074**；弱档 nsF5 p3 d=0.25 检出 **50.0%**、
+  nsF5 p2 d=0.35 **71.2%**、matrix p3 d=0.40 **74.0%**；验证集干净误报 27.9%。
+- 表内"测试集 AUC 0.8946 / 弱档 85.3%"等为**审计前记录**，含源图泄漏与 SRM 尺度错误，不再引用。
 - XGB tuned 已备份为 `stego_classifier_v2_jpeg_xgb_tuned.bak.joblib`。
 - **STACK 版** (`_weak3_stack.joblib`) 仍保留供 OOD 严重场景切换（人工噪声 prob 0.24 vs LGB 0.99）。
 - v1 11 维 XGB 保留为参考。
@@ -589,13 +687,18 @@ result_53 = pred_53.predict(img)    # AUC 更高 + 可对每维特征解释
 >
 > | 版本 | 文件 | 适用 |
 > |---|---|---|
-> | **143d 默认版(稳健)** | `stego_classifier.joblib` | 通用部署 / 异构数据 / 真实图像(默认加载) |
-> | **53d 可解释版(AUC+)** | `stego_classifier_v2_jpeg_lgb_51d.joblib` | 论文 / 答辩 / 教学 / 单图分析 |
+> | **143d 默认版(更准)** | `stego_classifier.joblib` | 通用部署 / 异构数据 / 真实图像(默认加载) |
+> | **53d 可解释版** | `stego_classifier_v2_jpeg_lgb_51d.joblib` | 论文 / 答辩 / 教学 / 单图分析 |
 >
 > 143d 默认:LGB tuned(`num_leaves=31, n_estimators=800, learning_rate=0.03, min_child_samples=10`),
-> held-out AUC **0.8946**、多 split 平均 AUC **0.9085**、OOD 1/8 fp。
-> 53d 可解释:同样超参,53 维特征(去 SRM),held-out AUC **0.9100**、多 split 平均 AUC **0.9227**、
-> OOD 3/8 fp(牺牲少量鲁棒性换 AUC+0.014 与完全可解释性)。
+> held-out AUC **0.8939**（校园语料）、8-split 平均 **0.8980**、弱档检出 **50.0%**。
+> 53d 可解释:同样超参,53 维特征(去 SRM),held-out AUC **0.8391**、8-split 平均 **0.8461**、
+> 弱档检出 41.4% —— 用约 0.05 AUC 换"每一维都能解释"。
+> 两者在 BOSSbase 上的同族数字是 0.8062 / 0.7172（头条口径，见上文"指标口径"）。
+>
+> ⚠ 上述 AUC 均为**校园语料**（自建，更容易）。同一族模型在 BOSSbase 1.01 上是
+> **0.7529 / 0.7172** —— 对外引用、论文对比请用后者，见 [`docs/RESULTS.md`](docs/RESULTS.md)。
+> 两个模型现已可由 `experiments/train_deploy_models.py` 现场复现（逐位一致）。
 > STACK 与 XGB tuned 仍保留供场景切换;v1 11 维 XGB 保留为参考。
 
 ---
@@ -632,13 +735,18 @@ python gpu/predict_gpu.py <图像> [<图像>...]
 `data/campus_jpg`（仅 414 张 jpg）作为唯一数据源，CPU 与 GPU 两条管线均已全量重跑。
 
 - **GPU 统计特征管线**：特征 2070 张 512² 灰度约 **5s（≈397 img/s）**，GPU 利用率
-  峰值 **99% / 平均 74%**；验证 **AUC≈0.790**，acc≈0.802（Youden 阈值 0.713）；逐档——
-  `matrix p3`≈99%、`nsF5 p2 d0.95`≈93%、`nsF5 p2 d0.50`≈89%、弱 `nsF5 p3`≈64%、干净误报≈43%。
+  峰值 **99% / 平均 74%**；验证 **AUC≈0.790**，acc≈0.802（Youden 阈值 0.713）。
+  > 2026-09-14 复核：这一行**已可复现**（`experiments/data/gpu_pipeline_metrics.csv`，
+  > `--datas imageset --srm off` 得到 AUC **0.7903**、阈值 0.7130、acc 0.8024）。
+  > 注意它对应 `--srm off`；默认 `--srm auto`（= on）在 `imageset` 上只有
+  > AUC 0.6544 —— 两条口径不同，数字不可混用。
 - **CPU 特征管线**：2898 样本（414 干净 + 2484 含密，6 档），CV 最佳为
   **LogisticRegression CV-AUC≈0.759**；held-out **AUC≈0.781**、acc≈0.780；
   `matrix p2 d0.80`/`p3 d0.50` 检出≈100%/99%、`nsF5 p2 d0.85`≈95%、弱 `nsF5 p3 d0.25`≈52%。
 - **一致性**：`python gpu/featurize_gpu.py` 自检，GPU 与 CPU 参考特征逐项一致
-  （RS 到 bit 级、浮点 ~1e-7）。
+  （RS 到 bit 级、浮点 ~1e-7）。注意该自检走 `use_srm=False`；而
+  `gpu/train_ml_gpu.py` 默认 `--srm on`，训练时先做 SRM 高通预处理再过 11 维 ——
+  与 CPU 侧"原始图直接提特征"不是同一口径，两边数字不可直接并列。
 
 ### 参考基准数据集 (BOSSbase 1.01) 重跑
 
@@ -657,6 +765,8 @@ py gpu/train_ml_gpu.py
 - **数据**：2000 源图 → **10000 样本**（2000 干净 + 8000 含密，1干净+4变体），npz ≈1.57GB。
 - **实测 (验证 2000 样本, Youden 阈值 0.798)**：**AUC≈0.644**，acc≈0.655；逐档——
   `matrix p3 d0.50`≈80%、`nsF5 p2 d0.95`≈70%、`nsF5 p2 d0.50`≈68%、弱 `nsF5 p3 d0.30`≈57%、
+  > 2026-09-14 复核：这一行**已可复现**（`--datas imageset_bossbase --srm off` →
+  > AUC **0.6438**、阈值 0.7983、acc 0.6550）。
   干净误报≈48%。
 - **对比**：相比校园照片基线（AUC≈0.767/0.79）下降，验证了文献公认结论——BOSSbase
   经去马赛克加工、统计结构更强，弱密度 LSB 嵌入足印更弱，是**更难的隐写分析基准**；
@@ -681,6 +791,10 @@ py gpu/train_ml_gpu.py
 - **数据**：校园 2070 + BOSSbase 50000 = **52070 样本**（414+10000 源图，各 1干净+4变体）。
 - **实测 (验证 10430 样本, Youden 阈值 0.795)**：**AUC≈0.712**，acc≈0.690；逐档——
   `matrix p3`≈87%、`nsF5 p2 d0.95`≈79%、`nsF5 p2 d0.50`≈70%、弱 `nsF5 p3`≈50%、干净误报≈41%。
+  > 2026-09-14 复核：本仓库现有的 BOSSbase 图像集只有 **10000 样本**（旧数是
+  > 50000 样本的全量集），因此无法逐位复现 0.712。用现有数据重跑合并配置
+  > （3410 + 10000 = 13410 样本, `--srm off`）得到 **AUC 0.6672**、阈值 0.7921、
+  > acc 0.6776，见 `experiments/data/gpu_pipeline_metrics.csv`。
 - **对比**：合并 AUC(0.712) 介于纯校园(0.790) 与 BOSSbase 单跑(0.644) 之间，符合数据
   难度梯度——模型在更难基准与自然场景间取得平衡；GPU 特征提取 52k 张约 146s，GPU 满载。
 
@@ -744,7 +858,7 @@ git tag v1.1 && git push origin main --tags
     holdout）：Ye-Net 0.9541、LGB-143d 0.7529、LGB-53d 0.7172、LGB-11d 0.7128、
     Xu-Net 0.5007（**未收敛**，训练集 AUC 也是 0.50，故不构成"CNN 不如手工
     特征"的证据）。CNN 的实现与训练入口在 `gpu/train_cnn.py` 与
-    `gpu/models/`；实验编排脚本按项目约定随 `thesis/` 一并留在本地。
+    `gpu/models/`。
   - **两个部署模型入库**：`models/stego_classifier.joblib`(143d) 与
     `models/stego_classifier_v2_jpeg_lgb_51d.joblib`(53d)，并补上此前缺失的
     `lightgbm` 依赖 —— 否则 clone 后 ML 判定仍是 `available=False`。
@@ -758,20 +872,23 @@ git tag v1.1 && git push origin main --tags
     也会因 `python` 命令与 npmmirror 镜像源而失败。
   - **教学视频质检修复**：两张质检图不可用（一张 33 字节空图、一张缺失），
     根因是 `qa_sheet()` 在无抽帧时间时静默写出零高度 PNG 并中断后续章节。
-  - 已知缺口（如实记录）：两个部署模型**没有仓库内的生产者**，
-    `src/train_model.py` 训不出它们。
-  - 注：学位论文、期刊稿、实验脚本与实验数据按项目约定**不入库**（`thesis/`
-    整体忽略）。本版新增的 CNN 实现放在 `gpu/`，是因为它属于工具链而非论文。
+  - 已知缺口（如实记录，**已于 v1.6.1 关闭**）：两个部署模型当时没有仓库内的
+    生产者，`src/train_model.py` 训不出它们 —— 现由
+    `experiments/train_deploy_models.py` 补齐（见本文件"模型从哪来"一节）。
+  - 注：实验数据（`experiments/data/`、`data/dataset_*.csv`）按项目约定**不入库**
+    （可重新生成）。本版新增的 CNN 实现放在 `gpu/`。
 
 - **v1.5.0 — 学习手册发布 + Zenodo DOI**
   - 发布中英文学习手册(PDF)至 `docs/`:
-    - `docs/学习手册-从零读懂nsF5隐写项目.pdf` (中文, 12 周快速入门路线, 深入版见附录 F, 66 页)
-    - `docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf` (英文, 12-week quick-start roadmap, deep 6–12 month track in Appendix F, 72 页)
+    - `docs/学习手册-从零读懂nsF5隐写项目.pdf` (中文, 12 周快速入门路线, 深入版见附录 F, 67 页)
+    - `docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf` (英文, 12-week quick-start roadmap, deep 6–12 month track in Appendix F, 74 页)
   - 涵盖 v1.4.0 全部新特性: 143d/53d 双版本 ML 模型、SRM 高通滤波、特征可解释性分析
   - 零基础: 从"像素与二进制"到"LGB 分类器超参调优"的完整学习路径
   - 新增 Zenodo 存档 DOI 徽章
 
-- **v1.4.0 — 双版本 ML 模型**
+- **v1.4.0 — 双版本 ML 模型** ⚠ **本节数字已于 2026-09-14 审计作废**
+  （源图泄漏 + SRM 特征尺度错误；现口径见 CHANGELOG 1.6.2：
+  143d held-out 0.8939 / 8-split 0.8980，53d 0.8391 / 0.8461，且 **143d 优于 53d**）
   - **143d 默认版**(`stego_classifier.joblib`) — LGB tuned
     (`num_leaves=31, n_estimators=800, learning_rate=0.03, min_child_samples=10`)
     - Held-out AUC **0.8946**,8 split 平均 **0.9085**

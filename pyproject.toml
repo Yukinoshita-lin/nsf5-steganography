@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nsf5stego"
-version = "1.6.0"
+version = "1.6.4"
 description = "nsF5 steganography tool: syndrome matrix coding (Hamming) + wet-paper coding + image-hash keying + blind steganalysis + GUI"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -61,5 +61,5 @@ py-modules = [
     "ns5_core", "steganalysis", "efficiency", "image_io", "gui",
     "cppembed", "cpplib", "fsfeatures", "ml_predict", "make_dataset",
     "train_model", "matrix_demo", "scan_panel", "featurize_v2",
-    "py_features", "srm_filter",
+    "py_features", "srm_filter", "run_e2e",
 ]

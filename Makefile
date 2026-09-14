@@ -17,7 +17,9 @@ else
 endif
 
 .PHONY: help install test core steg fp pipeline pytest pyfeatures cpp cpp-clean \
-	e2e gui notebooks dataset docker web-convert web-build exp-data exp-figs
+	e2e gui notebooks dataset docker web-convert web-build exp-data exp-figs \
+	exp-models results results-check ood gain-importance handbook-check handbook-fix \
+	notebooks-run
 
 help:
 	@echo "Targets:"
@@ -26,6 +28,14 @@ help:
 	@echo "  make pytest       - run the whole suite through pytest"
 	@echo "  make cpp          - build the C++ accelerators into cpp/ (optional)"
 	@echo "  make exp-figs     - rebuild experiment figures from experiments/data/*.csv"
+	@echo "  make exp-models   - retrain the two deployed models (reproducible producer)"
+	@echo "  make results      - rebuild docs/RESULTS.md (canonical results table)"
+	@echo "  make results-check - verify docs/RESULTS.md is in sync"
+	@echo "  make ood          - OOD real-photo false-positive evaluation (1514 photos)"
+	@echo "  make gain-importance - regenerate LGB gain importance tables"
+	@echo "  make handbook-check- verify handbooks carry no stale claims (CI uses this)"
+	@echo "  make handbook-fix - correct the handbook sources (DOCX + web) from the fact table"
+	@echo "  make notebooks-run - execute all 10 teaching notebooks headlessly"
 	@echo "  make e2e          - full embed/decode/analyze demo"
 	@echo "  make notebooks    - regenerate per-chapter notebooks"
 	@echo "  make dataset      - download BOSSbase 1.01"
@@ -101,12 +111,43 @@ exp-data:
 	$(PY) experiments/sota_compare.py
 	$(PY) experiments/merge_sota_table.py
 
+# 两个部署模型的生产者 (校园语料, 不需要 GPU/torch)。产出的 .joblib 会被覆盖,
+# 指标落在 experiments/data/deploy_model_metrics.csv。
+exp-models:
+	$(PY) experiments/train_deploy_models.py
+
+# 唯一权威结果表: 合并所有实验产物, 逐行标注语料/协议/可溯源性。
+results:
+	$(PY) experiments/build_results_table.py
+
+results-check:
+	$(PY) experiments/build_results_table.py --check
+
+# OOD 真实干净照片误报率 (需要 data/external/{div2k,alaska2}, 见 experiments/README.md)
+ood:
+	$(PY) experiments/ood_eval.py
+
+# 特征重要性 (LightGBM gain) 的生产者
+gain-importance:
+	$(PY) experiments/gain_importance.py
+
+# 手册事实校验/修正: 陈旧结论必须消失, 现口径必须出现 (见 teaching/handbook_facts.py)
+handbook-check:
+	$(PY) teaching/handbook_facts.py --check
+
+handbook-fix:
+	$(PY) teaching/handbook_facts.py --fix --web
+
+# 逐个执行教学 notebook (CI 与本地共用)
+notebooks-run:
+	$(PY) teaching/run_notebooks.py --timeout 900
+
 docker:
 	docker compose up --build
 
 web-convert:
-	$(PY) teaching/web/docx2md.py --docx "thesis/学习手册-从零读懂nsF5隐写项目.docx" --out teaching/web/zh --lang zh
-	$(PY) teaching/web/docx2md.py --docx "thesis/Learning-Handbook-From-Zero-to-nsF5-Steganography.docx" --out teaching/web/en --lang en
+	$(PY) teaching/web/docx2md.py --docx "docs/src/学习手册-从零读懂nsF5隐写项目.docx" --out teaching/web/zh --lang zh
+	$(PY) teaching/web/docx2md.py --docx "docs/src/Learning-Handbook-From-Zero-to-nsF5-Steganography.docx" --out teaching/web/en --lang en
 	$(PY) teaching/web/add_lang_switch.py
 
 web-build:

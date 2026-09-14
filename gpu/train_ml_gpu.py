@@ -265,6 +265,60 @@ def main():
     }
     joblib.dump(payload, out_path)
     print(f"\n分类器已保存 -> {out_path}")
+
+    # ---- 指标落盘 (2026-09-14 审计) ----
+    # 此前这个脚本只把 AUC 打到 stdout, 于是 README 里"GPU 管线 校园 0.790 /
+    # BOSSbase 0.644 / 合并 0.712"三个数字在仓库里查无产物, 只能算不可溯源。
+    # 现在每次运行都追加一行, 结论可以对着 CSV 复核。
+    import csv
+    import platform
+    from datetime import datetime, timezone
+
+    metrics_dir = os.path.join(PROJ, "experiments", "data")
+    os.makedirs(metrics_dir, exist_ok=True)
+    metrics_path = os.path.join(metrics_dir, "gpu_pipeline_metrics.csv")
+    row = {
+        "dataset": "+".join(names),
+        "feature_set": fset,
+        "srm_preprocess": bool(use_srm),
+        "model": "STACK" if args.stack else "LR",
+        "n_samples": len(y),
+        "n_train": int(len(tr)),
+        "n_val": int(len(va)),
+        "n_photos": int(len(np.unique(photo_id))),
+        "n_features": int(F.shape[1]),
+        "auc": round(float(auc), 4),
+        "threshold_youden": round(float(thr), 6),
+        "acc": round(float(acc), 4),
+        "device": FG.pick_gpu(),
+        "elapsed_s": round(time.perf_counter() - t0, 1),
+        "model_path": os.path.relpath(out_path, PROJ).replace("\\", "/"),
+        "producer": "gpu/train_ml_gpu.py",
+        "python": platform.python_version(),
+        "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+    new = not os.path.exists(metrics_path)
+    with open(metrics_path, "a", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(row))
+        if new:
+            w.writeheader()
+        w.writerow(row)
+    print(f"指标已追加 -> {os.path.relpath(metrics_path, PROJ)}  (AUC={row['auc']})")
+
+    det_path = os.path.join(metrics_dir, "gpu_pipeline_detection.csv")
+    new = not os.path.exists(det_path)
+    with open(det_path, "a", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        if new:
+            w.writerow(["dataset", "feature_set", "srm_preprocess", "model",
+                        "method", "p", "density", "n", "n_detected", "detection_rate"])
+        for key, vals in sorted(rows.items(), key=lambda kv: (str(kv[0][0]), str(kv[0][1]))):
+            meth, p_, dens = key
+            w.writerow(["+".join(names), fset, bool(use_srm),
+                        "STACK" if args.stack else "LR",
+                        meth, p_, dens, len(vals), sum(vals),
+                        round(sum(vals) / len(vals), 4) if vals else ""])
+    print(f"逐档检出 -> {os.path.relpath(det_path, PROJ)}")
     print("判定: python gpu/predict_gpu.py <图像路径>")
 
 

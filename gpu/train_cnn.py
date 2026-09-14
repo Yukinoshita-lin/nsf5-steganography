@@ -1,7 +1,7 @@
 """
 train_cnn —— 隐写分析 CNN (Xu-Net / Ye-Net) 的训练与评估入口。
 
-存在意义: `thesis/exp/run_cnn_sota.py` 与 `thesis/exp/sota_compare.py` 都要
+存在意义: `experiments/run_cnn_sota.py` 与 `experiments/sota_compare.py` 都要
 拿 CNN 与项目自己的手工特征 LGB 基线对比, 但此前本文件不存在 (历史上写过一
 版, 因当时解释器无 torch 而崩, 未提交即被删除), 于是"小样本下 53d 手工特征
 优于 CNN"这一论断在仓库里没有任何数据支撑。本文件把这条路补上。
@@ -9,7 +9,7 @@ train_cnn —— 隐写分析 CNN (Xu-Net / Ye-Net) 的训练与评估入口。
 ⚠ 评测纪律 (隐写分析评估的命门): 划分必须**按源图分组**。同一张源图派生的
 干净图 + 4 张含密变体若被分到不同侧, 模型只需记住源图内容就能刷高 AUC —— 那
 是源图泄漏, 不是隐写检测能力。所有划分一律走 `split_by_photo()`, 落盘
-`thesis/data/sota_cnn_split.json`, 供 LGB 基线复用同一份划分, 保证 CNN 与
+`gpu/data/sota_cnn_split.json`, 供 LGB 基线复用同一份划分, 保证 CNN 与
 手工特征是在**逐图相同**的验证集上比较。
 
 用法(库):  from train_cnn import train_one
@@ -29,8 +29,8 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJ = os.path.dirname(HERE)
 DATA_DIR = os.path.join(HERE, "data")
-# 划分文件写在工具链自己的 data/ 下, 而不是 thesis/ —— 论文目录按项目约定
-# 整体不入库 (.gitignore), 工具链不该依赖一个 clone 之后不存在的路径。
+# 划分文件写在工具链自己的 GPU data/ 下 (该目录不入库, 但由本脚本现场生成):
+# 工具链不该依赖一个 clone 之后不存在的路径。
 SPLIT_JSON = os.path.join(DATA_DIR, "sota_cnn_split.json")
 
 if HERE not in sys.path:
@@ -42,7 +42,7 @@ if HERE not in sys.path:
 # --------------------------------------------------------------------------- #
 def _dataset_paths(name: str):
     """名可带或不带 `imageset_` 前缀: 既接受 "bossbase", 也接受调用方
-    (thesis/exp/run_cnn_sota.py) 传的 "imageset_bossbase"。"""
+    (experiments/run_cnn_sota.py) 传的 "imageset_bossbase"。"""
     stem = name if name.startswith("imageset_") else f"imageset_{name}"
     base = os.path.join(DATA_DIR, stem)
     return base + ".npz", base + "_x.npy"
@@ -240,7 +240,7 @@ def train_one(model_name: str, datas, epochs: int = 40, batch: int = 32,
       * `best_val_auc` —— 载入最优权重后做的 **5-crop TTA** val AUC, 这是对外
                     报告的抬头数字, 也是写进论文表的那个。
 
-    签名与 `thesis/exp/run_cnn_sota.py` 的关键字调用逐字一致, 改动需同步。
+    签名与 `experiments/run_cnn_sota.py` 的关键字调用逐字一致, 改动需同步。
     """
     import torch
     import torch.nn as nn

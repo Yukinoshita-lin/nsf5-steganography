@@ -34,6 +34,13 @@ src/_dbg_*.py
 src/_diff_*.py
 src/_single_*.py
 
+# 教学 notebook 运行时写到仓库根的演示图
+# (teaching/run_notebooks.py 执行后会自动清理; 手工在根目录跑 notebook 时会留下)
+/output_demo.png
+/my_copy.png
+/efficiency_demo.png
+/capstone_efficiency.png
+
 # C++ 加速库产物: 不入库。二进制随平台而异, 且 Windows-only 的 .dll 会让
 # Linux/macOS 用户以为"没有加速可用"。用 `make cpp` 或 scripts/build_cpp.py
 # 现场编译, 缺失时 Python 侧自动回退到等价实现。
@@ -42,22 +49,22 @@ cpp/*.so
 cpp/*.dylib
 cpp/*.o
 
-# 论文及其实验脚本/数据: 整体不入库 (学位论文、期刊稿、综述、figs、exp、data)
-thesis/
-
 # 实验目录: 脚本入库, 数据与图是产物不入库
 experiments/data/
 experiments/figs/
 experiments/**/__pycache__/
 
-# JOSE 论文: 与学位论文同样不入库。paper.md/paper.bib 与 paper/ 的排版稿、
-# PDF 全部只留在本地。若要投稿 JOSE 再按届时的决定放回 —— 见 paper/README.md。
-paper.md
-paper.bib
-paper/
+# 学习手册的 DOCX 源稿: 本地保留 (docs/*.pdf 与 teaching/web 的正文都由它生成),
+# 但不入库 —— 与"产物入库、源稿本地"的一贯约定一致。
+# 2026-09-14: thesis/ 与全部论文稿 (paper.md / paper.bib / paper/) 已从项目中删除。
+docs/src/
 
 # 报告模板, 不入库
 _tpl/
+
+# 本地工具配置与交付契约产物 (审计 2026-09-14: 一直以未跟踪状态挂在仓库根)
+.claude/
+artifact-delivery-contract.json
 
 # GPU 版：大规模数据集 / 临时样本不提交 (可重新生成)
 gpu/data/*.npz
@@ -80,6 +87,9 @@ models/*.pt
 data/dataset_*.csv
 data/campus_jpg/
 data/_*.log
+# 外部公开语料 (DIV2K / ALASKA#2 等): 本地挂载或另行下载, 不入库。
+# 2026-09-14 起 OOD 评估 (experiments/ood_eval.py) 依赖它。
+data/external/
 
 # webapp 测试依赖 (CI 里 npm ci 重新安装; package-lock.json 需要提交)
 webapp/tests/node_modules/

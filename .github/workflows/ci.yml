@@ -70,6 +70,74 @@ jobs:
       - name: 无头运行 GUI 冒烟测试
         run: xvfb-run -a python src/test_gui.py
 
+  feature-consistency:
+    name: 特征口径一致性 (CPU vs GPU)
+    # 2026-09-14 审计发现: gpu/featurize_v2_gpu.py 曾把像素先 /255 再过高通核,
+    # 使 GPU 产出的 srm_* 与推理端 CPU 特征差约 30 倍 —— 语料用 GPU 特征建、
+    # 单图判定走 CPU 特征, 等于给 143d 模型喂分布外输入。
+    # torch 只在这个 job 装 (CPU wheel), 免得拖慢主测试。
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow matplotlib scikit-learn joblib pandas pytest
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+      - name: 143 维特征 CPU/GPU 必须同尺度
+        run: python -m pytest -q src/test_pipeline.py::test_v2_cpu_gpu_consistency
+
+  notebooks:
+    name: 教学 notebook (生成一致 + 可执行)
+    # 2026-09-14 审计: notebooks/ 是教学交付物, 却从未被执行过 —— 03 号笔记本
+    # 让学员嵌入 5000 字符, 而 img/cover.png 的容量只有 3494 字节, 一直抛
+    # ValueError 而无人发现。这个 job 把"可执行"变成 CI 事实:
+    #   1) 生成器与入库 notebook 必须一致 (防手工改动被下次生成覆盖);
+    #   2) 10 本逐个跑通 (nbclient, 无头)。
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pillow matplotlib scikit-learn joblib pandas \
+            lightgbm nbclient nbformat ipykernel
+      - name: 入库 notebook 必须与生成器一致
+        run: |
+          python teaching/build_notebooks.py
+          if ! git diff --quiet -- notebooks/; then
+            echo "::error::notebooks/ 与 teaching/build_notebooks.py 不一致; 请跑 'make notebooks' 并提交结果"
+            git diff --stat -- notebooks/
+            exit 1
+          fi
+          echo "notebooks/ 与生成器一致"
+      - name: 逐本执行 notebook
+        run: python teaching/run_notebooks.py --timeout 900
+
+  handbook:
+    name: 手册事实校验
+    # 2026-09-14 审计: 两本手册 (DOCX + 网页版) 长期带着被推翻的结论
+    # (0.9085/0.9227、"53d AUC 更高"、"SRM 是噪声"、"OOD 1/8/3/8"、指向已删除的
+    # thesis/)。教学材料带错结论比没结论更糟, 所以把它变成 CI 事实。
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install python-docx pypdf
+      - name: 手册不得含陈旧结论, 且必须含现口径
+        run: python teaching/handbook_facts.py --check
+
   build:
     name: 构建 wheel + sdist
     runs-on: ubuntu-latest

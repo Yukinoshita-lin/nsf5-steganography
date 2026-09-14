@@ -142,7 +142,15 @@ def _features_v2(xt, sub_u8):
     medp = np.median(p20, 1).astype(np.float32)
 
     # ----- SRM 30 残差统计 -----
-    xf = sub_u8.astype(np.float32) / 255.0  # (B,H,W) 0~1, 减少 conv 数值
+    # 尺度必须与 CPU 参考实现 (src/featurize_v2.py::_srm_stats) 一致: 高通核作用在
+    # **原始灰度 0..255** 上, 残差再 clip ±4 —— 文献 (Fridrich SRM) 与
+    # srm_filter.py 的口径都是整数尺度。
+    #
+    # 2026-09-14 审计修复: 此前这里先 `/255.0` 再卷积, 残差整体缩小 255 倍, clamp(±4)
+    # 形同虚设, 于是 GPU 产出的 srm_mu/absmean/std 与推理端使用的 CPU 特征相差约
+    # 30 倍 —— 训练集是 GPU 特征、线上单图判定走 CPU 特征, 等于给 143d 模型喂了
+    # 分布外的输入 (53d 模型不含 SRM, 不受影响)。
+    xf = sub_u8.astype(np.float32)
     xf_t = torch.from_numpy(np.ascontiguousarray(xf)).to(xt.device).unsqueeze(1)  # (B,1,H,W)
     r = _srm_residuals(xf_t)                                                       # (B,30,H,W)
     # mean / absmean / abs.std  三个统计 -> 各 30 维

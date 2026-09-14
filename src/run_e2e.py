@@ -30,7 +30,8 @@ def main():
         assert got == msg, f"[{tag}] 解码不一致: {got!r}"
         stego_path = os.path.join(OUT, f"stego_{tag}.png")
         IO.save_image(stego, stego_path)
-        print(f"[{tag}] 嵌入 {nbits} 比特, 改动 {report['cover_changed']} 像素, 解码一致 ✓ -> {stego_path}")
+        print(f"[{tag}] 嵌入 {nbits} 比特, 改动 {report['cover_changed']} 像素, "
+              f"解码一致 [OK] -> {stego_path}")
 
     # 3) 盲隐写分析: 干净 vs 密
     stego_path = os.path.join(OUT, "stego_pwd.png")

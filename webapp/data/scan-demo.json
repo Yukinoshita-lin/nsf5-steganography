@@ -40,14 +40,14 @@
     26.7381
   ],
   "ml_proba": [
-    5.3301,
-    18.2185,
-    36.7096,
-    30.6515,
-    52.383,
-    76.3355,
-    80.0812,
-    83.1513
+    2.6341,
+    75.1262,
+    78.5916,
+    96.1547,
+    98.7019,
+    99.571,
+    99.5603,
+    98.9537
   ],
   "note": "computed with the project's own nsF5 embedder and steganalysis functions (campus photo when available); densities are the nominal capacity fraction, changed_pixels is the real footprint"
 }

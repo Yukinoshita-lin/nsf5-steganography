@@ -6,7 +6,7 @@
 
 
 
-**This is a handbook that teaches through code.** It does not replace a textbook or the project thesis. Instead, it arranges the information-hiding and machine-learning ideas behind F:\Steganography in an order a beginner can actually follow: intuition and examples first, then the project implementation, then hands-on experiments.
+**This is a handbook that teaches through code.** It does not replace a textbook. Instead, it arranges the information-hiding and machine-learning ideas behind F:\Steganography in an order a beginner can actually follow: intuition and examples first, then the project implementation, then hands-on experiments.
 
 ## 0.1 Who This Is For
 
@@ -114,7 +114,7 @@ The project is a research tool: it runs algorithm experiments and ships as a GUI
 
 The first draft of this handbook tracked project v1.3. On September 6 the project moved to v1.4.0, and this edition is synchronized with it. Chapters 1-6 (the steganography algorithms) are unchanged; the machine-learning and engineering chapters now include sections 8.8 and 9.7, and older scores are labeled as "v1 baselines".
 
-- ML detection grew from 11-D features with LR/XGB (AUC ~0.75-0.79) to a 143-D LightGBM default (0.9085 average) plus a 53-D interpretable model (0.9227); see 8.8;
+- ML detection grew from 11-D features with LR/XGB (AUC ~0.75-0.79) to a 143-D LightGBM default (8-split mean 0.8980) plus a 53-D interpretable model (0.8461): the 143-D model is the more accurate one, the 53-D one explains every dimension; see 8.8 and `docs/RESULTS.md`;
 
 - New SRM high-pass preprocessing, 143-D v2 features, 12 embedding variants, real JPEG clean samples, and a full BOSSbase multi-source dataset; see 8.8 and 9.7;
 

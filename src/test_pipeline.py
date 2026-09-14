@@ -82,6 +82,37 @@ def test_srm_kernels():
     print(f"[OK] SRM 30 核, numpy/torch 双实现一致 (max diff {diff:.2e})")
 
 
+def test_v2_cpu_gpu_consistency():
+    """143 维特征的 CPU 与 GPU 实现必须同尺度 —— SRM 段曾经在这里出过事。
+
+    2026-09-14 审计发现: `gpu/featurize_v2_gpu.py` 把像素先 `/255` 再过高通核,
+    残差整体缩小 255 倍、`clamp(±4)` 形同虚设, 于是 GPU 产出的
+    `srm_mu/absmean/std` 与 CPU 参考实现差约 30 倍。语料是用 GPU 特征建的,
+    而 `ml_predict` 单图判定走 CPU 特征 —— 等于线上给 143d 模型喂分布外输入
+    (53d 模型不含 SRM, 不受影响)。这条测试是该缺陷的回归护栏。
+    """
+    try:
+        import torch  # noqa: F401
+    except ImportError:
+        print("[SKIP] 未安装 torch, 跳过 143 维 CPU/GPU 一致性")
+        return
+    gpu_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "gpu")
+    if gpu_dir not in sys.path:
+        sys.path.insert(0, gpu_dir)
+    from featurize_v2_gpu import NAMES, extract_features_v2_gpu
+    img = _photo(shape=(256, 256))
+    cpu = featurize_v2(img)
+    gpu = extract_features_v2_gpu(img[None], chunk=1, device="cpu")[0]
+    assert list(NAMES) == list(ALL_FEATURE_NAMES), (
+        "GPU 与 CPU 的 143 维列名/列序不一致, 模型会拿到错位的特征")
+    diff = np.abs(cpu - gpu)
+    rel = diff / (np.abs(cpu) + 1e-9)
+    assert diff.max() < 1e-2 and rel.max() < 1e-2, (
+        f"143 维 CPU/GPU 特征不一致: max|d|={diff.max():.3e}, max rel={rel.max():.3e} "
+        f"(最差的几维: {[ALL_FEATURE_NAMES[i] for i in np.argsort(-diff)[:4]]})")
+    print(f"[OK] 143 维 CPU/GPU 特征一致 (max|d|={diff.max():.2e}, max rel={rel.max():.2e})")
+
+
 # --------------------------------------------------------------------------- #
 #  隐写分析契约
 # --------------------------------------------------------------------------- #
@@ -109,6 +140,35 @@ def test_steganalysis_survives_degenerate_images():
 # --------------------------------------------------------------------------- #
 #  ML 判定
 # --------------------------------------------------------------------------- #
+def test_cpp_features_match_python():
+    """装得上 C++ 加速库时, 11 维特征必须与纯 Python 参考逐项一致。
+
+    2026-09-14 审计发现两处偏差, 且都被仓库里的自检以"放宽容差"掩盖:
+      1. 卡方自由度用了非空灰度对数 n, 参考实现用 n-1 → p 值差约 26%;
+      2. 20 段中位数取上中位, numpy.median 取中间两个的均值。
+    两者都会让 Windows(带 DLL) 与 Linux(纯 Python) 在同一张图上给出不同的
+    chi2_pvalue / median_prefix_p —— 等于训练用一套特征、推理用另一套。
+    """
+    try:
+        from fsfeatures import FSFeatures
+        lib = FSFeatures()
+    except Exception as exc:  # noqa: BLE001 - 无 DLL 是正常情况 (Linux/macOS/Colab)
+        print(f"[SKIP] 无 C++ 加速库 ({type(exc).__name__}), 跳过 C++/Python 特征一致性")
+        return
+    img = _photo(shape=(256, 256))
+    cpp = lib.features(img)
+    py = py_features(img)
+    worst, worst_k = 0.0, ""
+    for k, v in py.items():
+        d = abs(float(cpp[k]) - float(v))
+        if d > worst:
+            worst, worst_k = d, k
+    assert worst < 1e-9, (
+        f"C++ 与 Python 的 11 维特征不一致: 最大差 {worst:.2e} 出现在 {worst_k} "
+        f"(cpp={cpp[worst_k]}, python={py[worst_k]})")
+    print(f"[OK] C++ 与 Python 的 11 维特征逐项一致 (max|d|={worst:.2e})")
+
+
 def test_cpp_python_embed_contract():
     """固定 C++ 加速路径与纯 Python 回退之间的契约。
 
@@ -188,8 +248,10 @@ if __name__ == "__main__":
     test_v2_features_shape_and_finiteness()
     test_v2_53d_subset_is_consistent()
     test_srm_kernels()
+    test_v2_cpu_gpu_consistency()
     test_steganalysis_contract()
     test_steganalysis_survives_degenerate_images()
+    test_cpp_features_match_python()
     test_cpp_python_embed_contract()
     test_ml_model_is_loadable()
     test_ml_predict_routing()

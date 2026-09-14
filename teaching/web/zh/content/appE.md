@@ -30,7 +30,7 @@
 
 ## 在线资料与工具
 
-- 项目 README 与论文草稿 thesis/thesis1.pdf（SRM/143d/53d 与多源实验见论文实验章）；GitHub：Yukinoshita-lin/nsf5-steganography；
+- 项目 README 与权威结果表 `docs/RESULTS.md`（SRM/143d/53d 与多源实验的现口径）；GitHub：Yukinoshita-lin/nsf5-steganography；
 
 - scikit-learn 官方文档：LogisticRegression、GroupKFold、roc_curve；
 

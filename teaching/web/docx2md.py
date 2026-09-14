@@ -2,10 +2,10 @@
 
 Usage:
     python teaching/web/docx2md.py \
-        --docx "thesis/学习手册-从零读懂nsF5隐写项目.docx" \
+--docx "docs/src/学习手册-从零读懂nsF5隐写项目.docx" \
         --out teaching/web/zh --lang zh
     python teaching/web/docx2md.py \
-        --docx "thesis/Learning-Handbook-From-Zero-to-nsF5-Steganography.docx" \
+--docx "docs/src/Learning-Handbook-From-Zero-to-nsF5-Steganography.docx" \
         --out teaching/web/en --lang en
 
 The converter understands the handbook's own layout: direct-formatted headings,

@@ -5,7 +5,7 @@
   (c) 篡改感知演示 (哈希键控 + 解码还原成功/失败)
   (d) 系统架构图  (代码绘制)
   (e) 伴随式矩阵编码查询示意 (高亮命中的被改系数)
-CSV → thesis/data ; 图 → thesis/figs
+CSV → experiments/data ; 图 → experiments/figs
 """
 from __future__ import annotations
 import sys, os, csv, glob

@@ -63,7 +63,7 @@ def fig_ablation():
     fig.tight_layout()
     fig.savefig(os.path.join(EXP_FIGS, "fig_ablation.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("✓ fig_ablation.png")
+    print("[OK] fig_ablation.png")
 
 
 def fig_model_heatmap():
@@ -80,7 +80,7 @@ def fig_model_heatmap():
     fig.tight_layout()
     fig.savefig(os.path.join(EXP_FIGS, "fig_model_heatmap.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("✓ fig_model_heatmap.png")
+    print("[OK] fig_model_heatmap.png")
 
 
 def fig_density():
@@ -104,7 +104,7 @@ def fig_density():
     fig.tight_layout()
     fig.savefig(os.path.join(EXP_FIGS, "fig_density.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("✓ fig_density.png")
+    print("[OK] fig_density.png")
 
 
 def fig_sota():
@@ -178,7 +178,7 @@ def fig_sota():
     fig.tight_layout()
     fig.savefig(os.path.join(EXP_FIGS, "fig_sota.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("✓ fig_sota.png")
+    print("[OK] fig_sota.png")
 
 
 def fig_ood_jpeg():
@@ -225,7 +225,7 @@ def fig_ood_jpeg():
     fig.tight_layout()
     fig.savefig(os.path.join(EXP_FIGS, "fig_ood_jpeg.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("✓ fig_ood_jpeg.png")
+    print("[OK] fig_ood_jpeg.png")
 
 
 def fig_top20_gain():
@@ -240,7 +240,7 @@ def fig_top20_gain():
     fig.tight_layout()
     fig.savefig(os.path.join(EXP_FIGS, "fig_top20_gain.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("✓ fig_top20_gain.png")
+    print("[OK] fig_top20_gain.png")
 
 
 def fig_srm_heatmap():
@@ -263,7 +263,7 @@ def fig_srm_heatmap():
     fig.tight_layout()
     fig.savefig(os.path.join(EXP_FIGS, "fig_srm_heatmap.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("✓ fig_srm_heatmap.png")
+    print("[OK] fig_srm_heatmap.png")
 
 
 def fig_8split():
@@ -283,7 +283,7 @@ def fig_8split():
     fig.tight_layout()
     fig.savefig(os.path.join(EXP_FIGS, "fig_8split.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("✓ fig_8split.png")
+    print("[OK] fig_8split.png")
 
 
 def fig_single_auc():
@@ -305,7 +305,7 @@ def fig_single_auc():
     fig.tight_layout()
     fig.savefig(os.path.join(EXP_FIGS, "fig_single_auc.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print("✓ fig_single_auc.png")
+    print("[OK] fig_single_auc.png")
 
 
 def main():

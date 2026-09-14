@@ -32,7 +32,7 @@ To produce results, do not spread evenly. Go deep on one track; keep the rest at
 | Algorithm | nsF5/F5, matrix embedding, wet paper, syndrome | ch04-05, project `ns5_core.py`; extend to JPEG domain & DCT coefficients |
 | Detection / ML | feature engineering, SRM, 143d/53d, OOD | ch08, `featurize_v2.py`, `train_model.py`; extend to modern high-dim features & deep steganalysis |
 | Engineering | C++ DLL, GPU batch, GUI, multi-source datasets, CI | ch09, `cppembed.py`, `gpu/*`, `.github/workflows`; extend to deployment & robustness |
-| Research | reproduce papers -> find a gap -> improve -> honest evaluation | papers (appE) and `thesis/`; emphasize the split/calibration/test discipline (ch07) |
+| Research | reproduce papers -> find a gap -> improve -> honest evaluation | literature (appE) and `docs/RESULTS.md`; emphasize the split/calibration/test discipline (ch07) |
 
 ## F.3 Optional "Go Further" Topics (pick 1-2 by track)
 

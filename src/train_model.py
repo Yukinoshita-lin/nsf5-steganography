@@ -143,7 +143,15 @@ def main(seed=0):
     def lr(seed=0):  return make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000, C=0.1, random_state=seed))
     def rf(seed=0):  return RandomForestClassifier(n_estimators=500, max_depth=None, min_samples_split=2, n_jobs=-1, random_state=seed)
     def gb(seed=0):  return GradientBoostingClassifier(n_estimators=300, learning_rate=0.05, max_depth=3, random_state=seed)
-    def xg(seed=0):  return XGBClassifier(n_estimators=400, learning_rate=0.05, max_depth=4,
+    # XGB 超参可用环境变量覆盖: README 里 "v2 XGB tuned (depth=5, n_est=500)"
+    # 那一行就是靠这套覆盖复现的 (2026-09-14 审计: 此前无法从脚本复现该配置)。
+    # 空字符串按"未设置"处理: `WEAK_WEIGHT=` / `$env:WEAK_WEIGHT=''` 会留下一个
+    # 存在的空变量, 直接 float("") 会 ValueError (2026-09-14 审计发现)。
+    xgb_depth = int(os.environ.get("XGB_DEPTH") or "4")
+    xgb_n = int(os.environ.get("XGB_N_EST") or "400")
+    xgb_lr = float(os.environ.get("XGB_LR") or "0.05")
+
+    def xg(seed=0):  return XGBClassifier(n_estimators=xgb_n, learning_rate=xgb_lr, max_depth=xgb_depth,
                                            subsample=0.9, colsample_bytree=0.8, eval_metric="logloss",
                                            random_state=seed, n_jobs=-1)
     make_clf = {"LR": lr, "RF": rf, "GB": gb, "XGB": xg}
@@ -155,7 +163,7 @@ def main(seed=0):
     print(f"训练池 {len(tr_idx)} / 测试 {len(te_idx)} (按 photo_id 分组防泄漏)")
 
     # 1a) 弱档加权: nsF5/低密度档权重提升 (默认 1.0, 环境变量 WEAK_WEIGHT 调整)
-    weak_w = float(os.environ.get("WEAK_WEIGHT", "1.0"))
+    weak_w = float(os.environ.get("WEAK_WEIGHT") or "1.0")
     sample_weight = None
     if weak_w != 1.0 and "method" in df.columns and "p" in df.columns and "density" in df.columns:
         meta_tr = df.iloc[tr_idx]
@@ -284,6 +292,64 @@ def main(seed=0):
     }
     dump(payload, model_path)
     print(f"\n模型已保存 -> {model_path}  (name={final_pick_te}, AUC={payload['held_out_auc']:.4f})")
+
+    # ---- 指标落盘 (2026-09-14 审计) ----
+    # 此前本脚本只把指标 print 出来, 于是 README 里 "v1 XGB 0.7435 / v2 XGB tuned
+    # 0.8889 / WEAK_WEIGHT=3 0.8534 / STACK 0.8321" 四行在仓库里没有产物,
+    # 只能算不可溯源。现在每次运行都追加 CSV, 便于复核与写进权威结果表。
+    import csv
+    from datetime import datetime, timezone
+
+    metrics_dir = os.path.join(PROJ, "experiments", "data")
+    os.makedirs(metrics_dir, exist_ok=True)
+    metrics_path = os.path.join(metrics_dir, "train_model_metrics.csv")
+    row = {
+        "dataset": ",".join(DATA_FILES),
+        "model": final_pick_te,
+        "n_features": len(feats),
+        "n_samples": int(len(y)),
+        "n_train": int(len(tr_idx)),
+        "n_test": int(len(te_idx)),
+        "n_photos": int(len(np.unique(groups))),
+        "held_out_auc": round(float(roc_auc_score(y[te_idx], pt)), 4),
+        "threshold_youden": round(float(best_thr[final_pick_te]), 6),
+        "threshold_fp10": round(float(thr_fp[final_pick_te]), 6),
+        "acc": round(float(accuracy_score(y[te_idx], pred)), 4),
+        "bacc": round(float(balanced_accuracy_score(y[te_idx], pred)), 4),
+        "clean_fp_rate": round(float(fp_rate), 4),
+        "stego_detection_rate": round(float(det_hi), 4),
+        "weak_weight": os.environ.get("WEAK_WEIGHT", ""),
+        "xgb_depth": xgb_depth,
+        "xgb_n_est": xgb_n,
+        "xgb_lr": xgb_lr,
+        "candidates_auc": ";".join(
+            f"{n}={roc_auc_score(y[te_idx], p_te[n]):.4f}" for n in p_te),
+        "model_path": os.path.relpath(model_path, PROJ).replace("\\", "/"),
+        "producer": "src/train_model.py",
+        "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+    new = not os.path.exists(metrics_path)
+    with open(metrics_path, "a", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(row))
+        if new:
+            w.writeheader()
+        w.writerow(row)
+    print(f"指标已追加 -> {os.path.relpath(metrics_path, PROJ)}")
+
+    det_path = os.path.join(metrics_dir, "train_model_detection.csv")
+    new = not os.path.exists(det_path)
+    with open(det_path, "a", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        if new:
+            w.writerow(["dataset", "model", "n_features", "method", "p", "density",
+                        "n", "n_detected", "detection_rate"])
+        for (meth, p_, dens), g in te_df.groupby(["method", "p", "density"]):
+            n = len(g)
+            det = int((g._pred == 1).sum())
+            w.writerow([",".join(DATA_FILES), final_pick_te, len(feats),
+                        "clean" if pd.isna(meth) else meth, p_, dens, n, det,
+                        round(det / n, 4) if n else ""])
+    print(f"逐档检出 -> {os.path.relpath(det_path, PROJ)}")
 
 
 if __name__ == "__main__":

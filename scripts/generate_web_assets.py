@@ -349,9 +349,12 @@ def roc_illustration():
 
 
 def dual_models():
-    groups = ["8-split AUC", "held-out AUC", "OOD clean FP / 8"]
-    m143 = [0.9085, 0.8946, 1]
-    m53 = [0.9227, 0.9100, 3]
+    # 2026-09-14 审计后刷新: 旧图用的是被源图泄漏抬高的数字
+    # (0.9085/0.9227 等), 且 OOD 1/8 vs 3/8 已不可溯源。
+    # 这里只画能追到 experiments/data/deploy_model_metrics.csv 的三个指标。
+    groups = ["8-split AUC", "held-out AUC", "weak nsF5 detect"]
+    m143 = [0.8980, 0.8939, 0.5000]
+    m53 = [0.8461, 0.8391, 0.4135]
     x = np.arange(len(groups))
     fig, ax = plt.subplots(figsize=(7.6, 3.8))
     ax.bar(x - 0.2, m143, 0.4, label="143-D robust", color="#2e74b5")

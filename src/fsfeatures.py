@@ -104,24 +104,23 @@ def check_against_python():
             d = abs(a - b)
             diffs[k] = max(diffs.get(k, 0.0), d)
 
-    print("C++ vs Python 最大绝对差异 (应接近 0):")
+    # 全部 11 维走同一把尺子。
+    #
+    # 2026-09-14 审计: 此前 chi2_pvalue / median_prefix_p 的容差被放宽到 0.2,
+    # 注释给的理由是"MinGW 半整数 lgamma 精度偏移, 单调等价"。那是误诊 ——
+    # 真实原因是 C++ 侧两个实现细节与 Python 参考不一致:
+    #   1) 卡方自由度直接用了"非空灰度对数" n, 而参考实现用 n-1 (差 26%);
+    #   2) 20 段中位数取上中位 sp[n/2], 而 numpy.median 取中间两个的均值。
+    # 两者都已修, 于是这里可以恢复严格判定; 放宽容差只会掩盖真正的偏差。
+    print("C++ vs Python 最大绝对差异 (应接近机器精度):")
     ok = True
-    for k in ["RS_Gn", "RS_Gr", "Rm", "Sm", "Rn", "Sn", "diff_entropy", "lsb_diff_entropy"]:
+    for k in ["RS_Gn", "RS_Gr", "Rm", "Sm", "Rn", "Sn", "diff_entropy",
+              "lsb_diff_entropy", "chi2_pvalue", "median_prefix_p"]:
         d = diffs.get(k, 0.0)
-        flag = "OK" if d < 1e-6 else "MISMATCH"
-        if d >= 1e-6: ok = False
+        flag = "OK" if d < 1e-9 else "MISMATCH"
+        if d >= 1e-9:
+            ok = False
         print(f"  {k:<18} {d:.2e}  {flag}")
-    d = diffs.get("chi2_pvalue", 0.0)
-    # MinGW std::lgamma 对半整数 df 有 ~10% 的固定精度偏移(方向恒定,单调),
-    # 作为 ML 特征单调等价; 以绝对容差判定, RS/熵要求 bit 级一致。
-    flag = "OK" if d < 0.2 else "MISMATCH"
-    if d >= 0.2: ok = False
-    print(f"  {'chi2_pvalue':<18} {d:.2e}  {flag}")
-    d = diffs.get("median_prefix_p", 0.0)
-    flag = "OK" if d < 0.2 else "MISMATCH"
-    if d >= 0.2: ok = False
-    print(f"  {'median_prefix_p':<18} {d:.2e}  {flag}")
-    print("  (chi2 因子存在 MinGW 半整数 lgamma 精度偏移, 单调一致, 对训练无害)")
     return ok
 
 if __name__ == "__main__":

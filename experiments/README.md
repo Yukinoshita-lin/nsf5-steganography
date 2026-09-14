@@ -19,6 +19,18 @@ make exp-data    # 特征表 + LGB 基线 + CNN 训练(耗时长) + 汇总表
 make exp-figs    # 按 experiments/data 里的 CSV 重建全部图
 ```
 
+两个**部署模型**的复现与结果表的刷新是另一条独立的链（不需要 torch）：
+
+```bash
+python experiments/train_deploy_models.py    # 重训 + 覆盖 models/*.joblib（约 3 分钟）
+python experiments/build_results_table.py    # 合并成 docs/RESULTS.md + results_canonical.csv
+```
+
+（等价的 make 目标：`make exp-models` / `make results` / `make results-check`。）
+
+`docs/RESULTS.md` 是项目**唯一权威结果表**：每一行都带 corpus（语料）与
+protocol_id（协议），README 的指标一律引用它；口径冲突时以它为准。
+
 ## 数据流
 
 ```
@@ -58,6 +70,10 @@ gpu/data/imageset_bossbase.npz           2000 源图 × 5 变体 (1 干净 + 4 �
 | `ablation_5stage.py` | `ablation_5stage*.csv` | 校园 v2 CSV | 分钟级 |
 | `model_compare_4clf.py` | `model_compare_4clf*.csv` | 校园 v2 CSV | 分钟级 |
 | `density_grid.py` | `density_grid.csv` | 校园 v2 CSV | 分钟级 |
+| `train_deploy_models.py` | `deploy_model_metrics.csv` + `models/*.joblib` | `data/dataset_campus_v2_jpeg.csv` | ~3 min（8-split）/ ~10 s（单 seed） |
+| `build_results_table.py` | `results_canonical.csv` + `docs/RESULTS.md` | `experiments/data/*.csv` | < 5 s |
+| `ood_eval.py` | `ood_eval.csv` + `ood_summary.csv` | `data/campus_jpg` + `data/external/{div2k,alaska2}` | ~20 min（1514 张 × 2 模型 × 2 配置） |
+| `gain_importance.py` | `gain_importance*.csv` + `gain_group_share.csv` | `data/dataset_campus_v2_jpeg.csv` | < 1 min |
 
 ## 评测纪律（三条，违反任何一条结论就不成立）
 
@@ -69,6 +85,42 @@ gpu/data/imageset_bossbase.npz           2000 源图 × 5 变体 (1 干净 + 4 �
 3. **不同语料的数字不进同一张表。** `dataset_bossbase.csv`（10000 源图 × 7 变体）
    与 `imageset_bossbase.npz`（2000 源图 × 5 变体）是两套东西。
    `sota_table.csv` 用 `comparable_group` 列把这件事写死，`fig_sota` 也只画 A 组。
+
+   其中最容易犯的一处：**「8-split 平均 AUC」在项目里指两种不同的东西** ——
+   README 的 0.9085/0.9227 是「按源图 holdout × 8 个 seed 取均值」
+   (`holdout_by_photo_8seed`)，而 `_8split_compare.py` 的 0.9853/0.9914 是
+   「GroupKFold(8) 的 OOF」(`groupkfold8_oof`)。两者都被叫过 8-split，不能混引。
+    `docs/RESULTS.md` 第 8 节把可以/不可以比较的组合写死了。
+
+4. **特征口径唯一。** 语料是用哪条特征管线建的，推理就必须走哪条。
+   2026-09-14 审计发现两个反例，都已修并有护栏：
+   - `gpu/featurize_v2_gpu.py` 的 SRM 曾把像素先 `/255`，与 CPU 参考差约 30 倍
+     （语料用 GPU、单图判定用 CPU）→ `src/test_pipeline.py::test_v2_cpu_gpu_consistency`
+     与 CI 的 `feature-consistency` job 守住；
+   - `cpp/fsfeatures.cpp` 的卡方自由度曾用 `n` 而非 `n-1`、中位数取上中位，
+     与 Python 参考不一致（Windows 与 Linux 给出不同特征）→ `src/fsfeatures.py`
+     的自检容差已从被误诊而放宽的 0.2 收回 `1e-9`。
+
+5. **分组不变量必须成立。** 每个 `photo_id` 的 variant 集合必须完全一致；
+   出现"孤儿 id 块"（某些 id 只有单一 variant）就是源图泄漏的前兆，
+   `experiments/train_deploy_models.py::check_corpus_grouping()` 会直接拒绝训练。
+   这正是 2026-09-14 审计最严重缺陷（414 个 `clean_jpeg` 行各占一个 photo_id）
+   的形态 —— 修正分组后 143d held-out AUC 0.8946 → 0.7555。
+
+## 语料的可复现性边界
+
+| 语料 | 能否从零重建 | 说明 |
+|---|---|---|
+| BOSSbase npz / CSV | ✅ | `scripts/download_datasets.py` 公开可下载（`dde.binghamton.edu`，2026-09 实测可用）|
+| 校园 v2 / v2_jpeg | ❌ | 414 张照片是作者本人的 `data/campus_jpg/`，不可分发；脚本链完整但需自备照片 |
+| OOD 真实照片集 | ⚠ 部分 | DIV2K 100 张公开可下载；ALASKA#2 需 Kaggle 凭据；校园 414 张同上 |
+
+`docs/RESULTS.md` 第 4 节（主表）走的是 BOSSbase，因此主表可从零复现；
+第 6 节（附表）的校园数字只能在拿到那批照片后重跑；第 5 节（OOD 误报率）
+额外需要 DIV2K（公开）与 ALASKA#2（Kaggle）语料，见 `experiments/ood_eval.py`。
+
+外部语料放在 `data/external/`（不入库，见 `.gitignore`）：本地可以用 junction/软链
+指向别处的副本，`ood_eval.py` 的默认路径就是按这个布局写的。
 
 ## 关于 CNN 结果的说明
 
