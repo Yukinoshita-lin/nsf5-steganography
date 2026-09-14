@@ -19,7 +19,7 @@ endif
 .PHONY: help install test core steg fp pipeline pytest pyfeatures cpp cpp-clean \
 	e2e gui notebooks dataset docker web-convert web-build exp-data exp-figs \
 	exp-models results results-check ood gain-importance handbook-check handbook-fix \
-	notebooks-run
+	notebooks-run hooks attribution-check
 
 help:
 	@echo "Targets:"
@@ -36,6 +36,8 @@ help:
 	@echo "  make handbook-check- verify handbooks carry no stale claims (CI uses this)"
 	@echo "  make handbook-fix - correct the handbook sources (DOCX + web) from the fact table"
 	@echo "  make notebooks-run - execute all 10 teaching notebooks headlessly"
+	@echo "  make hooks        - enable the repo git hooks (.githooks, strips AI co-author trailers)"
+	@echo "  make attribution-check - verify no AI co-author trailer in history"
 	@echo "  make e2e          - full embed/decode/analyze demo"
 	@echo "  make notebooks    - regenerate per-chapter notebooks"
 	@echo "  make dataset      - download BOSSbase 1.01"
@@ -141,6 +143,16 @@ handbook-fix:
 # 逐个执行教学 notebook (CI 与本地共用)
 notebooks-run:
 	$(PY) teaching/run_notebooks.py --timeout 900
+
+# 启用仓库自带 git 钩子: 提交时自动剔除 AI 协作工具的署名尾注
+hooks:
+	git config core.hooksPath .githooks
+	@echo "hooks enabled: core.hooksPath=.githooks (commit-msg 会剔除 AI 尾注)"
+
+# 兜底检查: 历史(或某次提交)里是否残留 AI 共同作者尾注
+attribution-check:
+	@git log --format=%B | grep -Eiq '^Co-Authored-By:.*(anthropic|openai|claude|codex|copilot|trae)' \
+		&& { echo "发现 AI 共同作者尾注"; exit 1; } || echo "历史干净: 无 AI 共同作者尾注"
 
 docker:
 	docker compose up --build

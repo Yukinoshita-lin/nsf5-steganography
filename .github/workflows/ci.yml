@@ -138,6 +138,27 @@ jobs:
       - name: 手册不得含陈旧结论, 且必须含现口径
         run: python teaching/handbook_facts.py --check
 
+  attribution:
+    name: 提交署名 (无 AI 共同作者尾注)
+    # 2026-09-14: 17 个提交被 Claude Code 自动追加了
+    #   Co-Authored-By: Claude Code <noreply@anthropic.com>
+    # GitHub 把它们显示成共同作者; 删分支没用 (提交已并入主干), 只能改写历史。
+    # 现在提交钩子会当场去掉 (.githooks/commit-msg), 这个 job 负责兜底:
+    # 一旦历史里再出现这类尾注就红, 而不是等别人看到。
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # 需要完整历史才能检查
+      - name: 历史里不得出现 AI 共同作者尾注
+        run: |
+          if git log --format=%B | grep -Eiq '^Co-Authored-By:.*(anthropic|openai|claude|codex|copilot|trae)'; then
+            echo "::error::发现 AI 共同作者尾注; 可用 scripts/strip_ai_trailers.py + git filter-branch 清理"
+            git log --format='%h %s' -i --grep='co-authored-by:.*claude' | head -5
+            exit 1
+          fi
+          echo "历史干净: 无 AI 共同作者尾注"
+
   build:
     name: 构建 wheel + sdist
     runs-on: ubuntu-latest

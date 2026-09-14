@@ -222,6 +222,28 @@ r = pred.predict(image)
 > 后者说明一个被误诊的容差可以把两种实现的差异藏住很久。它们现在是教学材料的一部分
 > （见第 7、8 章与 `docs/RESULTS.md` 第 1 节）。
 
+### 提交署名的一次清理（2026-09-14）
+
+用 AI 编程助手协作时，它会在提交信息里自动追加
+`Co-Authored-By: Claude Code <noreply@anthropic.com>` 这类尾注。GitHub 会把它当成
+**共同作者**显示在提交流里 —— 与"贡献者列表"不同（本项目贡献者 API 一直只有仓库
+所有者），但同样显眼。
+
+**删分支并不能去掉它**：提交一旦并入主干，归属就跟着提交走。清理方式是改写这 17 个
+提交的信息（作者、树内容、tag 全部不动，只有信息变了），然后强推：
+
+```bash
+git bundle create .git/backup.bundle --all        # 先全量备份
+python scripts/strip_ai_trailers.py < msg > new   # 或直接用下面的 msg-filter
+git filter-branch -f --msg-filter \
+  'python scripts/strip_ai_trailers.py' -- <起点>^..HEAD
+git push --force-with-lease origin main
+```
+
+以后不会再发生：`.githooks/commit-msg` 会在提交时当场剔除这类尾注
+（启用一次：`make hooks`，即 `git config core.hooksPath .githooks`），CI 的
+`attribution` job 则对整段历史兜底检查。
+
 ---
 
 ## 安装与运行

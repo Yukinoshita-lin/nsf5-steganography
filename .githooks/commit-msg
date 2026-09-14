@@ -1,0 +1,30 @@
+#!/bin/sh
+# 剔除 AI 协作工具的署名尾注 (Claude Code / Trae / Codex / Copilot ...).
+#
+# 为什么需要它: 这类工具会在提交时自动追加
+#     Co-Authored-By: Claude Code <noreply@anthropic.com>
+# GitHub 会把它当成**共同作者**显示在提交流里; 一旦并入主干, 只有改写历史才能去掉。
+# 与其事后重写 (会改变所有 SHA, 还要强推), 不如提交时就拦掉。
+#
+# 启用:  git config core.hooksPath .githooks      # 或 `make hooks`
+#
+# 设计原则: **best-effort, 永不阻塞提交**。
+#  - Windows 上 `command -v python3` 会命中 Microsoft Store 的别名桩,
+#    直接执行它以退出码 49 失败 (0.5 秒内就报错, 而且没有输出),
+#    所以这里先 `python -c pass` 验证解释器真的能用再往下走;
+#  - 任何一个环节出问题都 exit 0 —— 钩子不该让人的提交提交不上;
+#    真正的兜底是 CI 的 `attribution` job 与 `make attribution-check`。
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+msg="$1"
+[ -n "$msg" ] && [ -f "$msg" ] || exit 0
+
+for py in python3 python py; do
+    command -v "$py" >/dev/null 2>&1 || continue
+    "$py" -c "pass" >/dev/null 2>&1 || continue          # 跳过 Store 别名桩
+    if "$py" "$root/scripts/strip_ai_trailers.py" < "$msg" > "$msg.tmp" 2>/dev/null; then
+        mv "$msg.tmp" "$msg" 2>/dev/null || rm -f "$msg.tmp"
+        exit 0
+    fi
+    rm -f "$msg.tmp"
+done
+exit 0
