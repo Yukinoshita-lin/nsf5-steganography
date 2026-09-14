@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.6.4-blue)
+![version](https://img.shields.io/badge/version-1.6.5-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543629.svg)](https://doi.org/10.5281/zenodo.22543629)
@@ -149,7 +149,7 @@ from src.ml_predict import MLPredictor
 # 默认 143d (稳健, 部署推荐)
 pred = MLPredictor()  # models/stego_classifier.joblib
 
-# 切换 53d 可解释版 (AUC 更高, 论文/教学推荐)
+# 切换 53d 可解释版 (AUC 略低, 但每一维都能解释; 教学/答辩推荐)
 pred = MLPredictor(model_path='models/stego_classifier_v2_jpeg_lgb_51d.joblib',
                    clip_outliers=False)
 

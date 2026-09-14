@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.5] - 2026-09-14
+
+**把"教学面"补全：视频旁白脚本、教学图、以及散落各处的措辞。**
+
+上一版修了手册的 DOCX / 网页 / PDF 三处，但教学材料还有第五处 —— **旁白视频**
+（`teaching/video_scenes_zh.py` 与 `video_decks_zh.py`）。排查后确认它们同样带着
+被推翻的结论，这一版一起修掉并把护栏扩到视频脚本。
+
+### Fixed
+
+- `video_scenes_zh.py` / `video_decks_zh.py`：
+  - **"53d 可解释版 AUC 更高"** —— 错。现改为"143d 更准（8-split 0.898）做默认，
+    53d 每一维都能解释（0.846），代价是 AUC 低约 0.05"；
+  - **"143 维 + 12 档：AUC 推到 0.81 / OOF ≈ 0.814"** —— v1 时期数字，已删；
+  - **"SRM 预处理：同源 +0.03、跨源反亏"** —— v1 口径，加上"未在当前版本复现"的限定；
+  - "四个分类器 AUC 几乎重叠" 补上范围限定（**11 维**语料上成立：LR/RF/GB/XGB =
+    0.701/0.702/0.714/0.720，极差 0.02；143 维上是 LR 0.924 / XGB 0.900 /
+    LGB 0.901 / RF 0.866）。
+- `teaching/web/{zh,en}/content/ch08.md`：8.8.1 节标题与代码注释里的
+  "AUC 更高"、v1 时期 SRM 口径的表述；`appF.md` 的同一处。
+- `README.md`：`MLPredictor` 示例注释 "53d 可解释版（AUC 更高）" → "AUC 略低，
+  但每一维都能解释"。
+- 教学图按修正后的 11 维语料重画（`teaching/gen_ml_figures.py`，含四分类器 ROC）。
+- **本地视频重渲**：第 8 章 `ch08.mp4` 重新生成（4:06，14 段；变化的旁白重新
+  TTS，未变的分段复用缓存），`durations.json` / `index.html` / 质检图同步更新。
+
+### Added
+
+- `teaching/handbook_facts.py` 的校验范围扩到**视频脚本文稿**：禁止
+  "AUC 更高""推到 0.81""OOF ≈ 0.814" 等陈旧说法，要求出现"未在当前版本复现"
+  与现口径数字。CI 的手册 job 一并覆盖（注入测试验证过它能抓到）。
+
 ## [1.6.4] - 2026-09-14
 
 **对教学材料负责：手册改正 + 教学 notebook 进 CI。**

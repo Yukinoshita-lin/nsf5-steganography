@@ -43,6 +43,22 @@ PDF = {
     "en": os.path.join(PROJ, "docs", "Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf"),
 }
 
+# 旁白视频的脚本文稿 (教学面的第五处; 视频本体是生成物, 不入库)
+VIDEO_FILES = {
+    "zh": [os.path.join(PROJ, "teaching", "video_scenes_zh.py"),
+           os.path.join(PROJ, "teaching", "video_decks_zh.py")],
+}
+VIDEO_FORBIDDEN = [
+    "AUC 更高",          # 53d 不再"更高" —— 修正后 143d 更准
+    "推到 0.81",         # v1 时期的 OOF 数字
+    "OOF ≈ 0.814",
+    "四者 AUC ≈ 0.70–0.72，几乎重叠",   # 该说法只在 11 维语料成立, 需写明范围
+]
+VIDEO_REQUIRED = [
+    "未在当前版本复现",   # v1 时期的 SRM 预处理口径必须带这个限定
+    "0.898",             # 现口径
+]
+
 # --------------------------------------------------------------------------
 #  1) 必须出现的现口径 (两种语言都要有)
 # --------------------------------------------------------------------------
@@ -329,6 +345,12 @@ WEB = {
          "| **文档章节** | **对应代码** | **读它之前先掌握** |"),
         ("## 10.4 论文与代码对照阅读表", "## 10.4 文档与代码对照阅读表"),
         ("选论文/README 中的 1～2 个结论", "选 README / `docs/RESULTS.md` 中的 1～2 个结论"),
+        ("### 8.8.1 SRM 高通滤波：同源有收益，跨源反而亏",
+         "### 8.8.1 SRM 高通滤波：v1 时期同源有收益、跨源反而亏（该口径未在当前版本复现）"),
+        ("# 53d 可解释版（去 SRM 90 维，AUC 更高、可逐维解释）",
+         "# 53d 可解释版（去 SRM 90 维；AUC 略低，但每一维都能解释）"),
+        ("SRM 同源有收益、跨源反而亏（ch08.8.1）",
+         "SRM 预处理在 v1 口径下同源有收益、跨源反而亏（ch08.8.1；该口径未在当前版本复现）"),
         ("v2 逻辑回归在训练分布内 AUC 很高，但部署到真实 JPEG 干净照片时**几乎全判 1.0**："
          "SRM 残差对 JPEG 高频噪声过于敏感。修复办法是把 414 张真实 JPEG 干净图作为独立 "
          "`photo_id`（与原训练集完全不相交）加入训练，得 `dataset_campus_v2_jpeg.csv`，"
@@ -434,6 +456,17 @@ WEB = {
          "- The 90 SRM residual statistics are the single largest gain contributor (52.6%) once "
          "the feature scale is consistent, but they are also the least interpretable block - that "
          "is the trade-off the 53-D model removes;"),
+        ("### 8.8.1 SRM High-Pass Filtering: Same-Source Gain, Cross-Source Loss",
+         "### 8.8.1 SRM High-Pass Filtering: v1-Era Same-Source Gain, Cross-Source Loss "
+         "(not reproduced in the current revision)"),
+        ("# 53d interpretable model (SRM 90 removed; higher AUC)",
+         "# 53d interpretable model (SRM 90 removed; slightly lower AUC, fully interpretable)"),
+        ("SRM gains on same-source but loses on cross-source (ch08.8.1)",
+         "In the v1-era protocol SRM gains on same-source but loses on cross-source "
+         "(ch08.8.1; not reproduced in the current revision)"),
+        ("> **Watch out |** The gain only appears within **same-source** data.",
+         "> **Watch out (v1-era protocol; not reproduced in the current revision) |** "
+         "In that protocol the gain only appeared within **same-source** data."),
         ("- ML detection grew from 11-D features with LR/XGB (AUC ~0.75-0.79) to a 143-D LightGBM "
          "default (0.9085 average) plus a 53-D interpretable model (0.9227); see 8.8;",
          "- ML detection grew from 11-D features with LR/XGB (AUC ~0.75-0.79) to a 143-D LightGBM "
@@ -605,6 +638,19 @@ def check(include_web: bool) -> int:
                 if s not in text:
                     print(f"  [缺现口径] {lang}/{label}: 缺 {s!r}")
                     bad += 1
+    # 视频脚本文稿 (只有中文旁白)
+    for p in VIDEO_FILES["zh"]:
+        if not os.path.exists(p):
+            continue
+        txt = io.open(p, encoding="utf-8").read()
+        for s in VIDEO_FORBIDDEN:
+            if s in txt:
+                print(f"  [陈旧结论] video/{os.path.basename(p)}: 仍含 {s!r}")
+                bad += 1
+        for s in VIDEO_REQUIRED:
+            if s not in txt:
+                print(f"  [缺现口径] video/{os.path.basename(p)}: 缺 {s!r}")
+                bad += 1
     if bad:
         print(f"\n手册校验未通过: {bad} 处。跑 `python teaching/handbook_facts.py --fix` 修正源稿。")
         return 1
