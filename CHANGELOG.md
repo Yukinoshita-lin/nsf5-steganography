@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.8] - 2026-09-14
+
+**覆盖率门槛的第三个坑：测的是"有没有屏幕"。** v1.6.7 的 tag CI 仍然红在 pytest
+作业上，日志给出的数字是 **51.3%**（本地模拟是 66%，Windows 是 69%）。
+
+### Fixed
+
+- **pytest 作业在无显示环境下跳过 GUI 冒烟测试**，而 `gui.py` 有 670 行，
+  覆盖率因此从 ~69% 掉到 ~51% —— 65% 门槛实际在惩罚"这台机器没有屏幕"，而不是
+  代码质量。现在该作业也安装 xvfb 并用 `xvfb-run -a` 跑，使覆盖率与有显示的环境
+  可比。这也和第 1 条教训同源：**门槛必须有稳定的测量口径**，否则它会时红时绿。
+
+### Verification
+
+- 本地（Windows，38 项全跑）覆盖率 **68.8%**；模拟"无 C++ 库 + 无 torch + 无 xgboost"
+  为 **66.1%**；本次修复后 CI 的 pytest 作业会以 `xvfb-run` 执行，测量口径与前者一致。
+
 ## [1.6.7] - 2026-09-14
 
 **v1.6.6 上线后 CI 报红的两处修复**（tag 已归档到 Zenodo，因此按补丁版本向前修，

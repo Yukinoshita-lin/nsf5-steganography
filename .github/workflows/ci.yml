@@ -47,11 +47,16 @@ jobs:
           # 缺它 ml_predict 会静默退回 available=False。
           python -m pip install numpy pillow matplotlib joblib \
             scikit-learn pandas lightgbm xgboost pytest pytest-cov
+      - name: 安装虚拟显示 (xvfb)
+        # 覆盖率必须和"有显示"的环境可比: gui.py 有 670 行, 没有显示时
+        # test_gui_smoke 会跳过, 覆盖率会从 ~69% 掉到 ~51% —— 那样 65% 门槛
+        # 测的就不是代码质量, 而是"这台机器有没有屏幕"。
+        run: sudo apt-get update && sudo apt-get install -y xvfb
       # 覆盖率在 2026-09-14 之前没有任何度量 (34 用例 / 16.6k 行)。当时实测 52%,
       # 补上"实验链冒烟"(造图→make_dataset→train_model→run_e2e) 后到 69%。
       # 门槛 65 是"不许掉下去"的护栏, 留了跨平台差异的余量 (Linux 上 C++ 库不在)。
       - name: 全部测试 + 覆盖率
-        run: python -m pytest -q --cov --cov-report=term --cov-fail-under=65
+        run: xvfb-run -a python -m pytest -q --cov --cov-report=term --cov-fail-under=65
 
   gui:
     name: GUI 冒烟测试 (xvfb)
