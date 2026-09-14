@@ -16,6 +16,7 @@ import os, sys, json
 import numpy as np
 import pandas as pd
 from joblib import dump, load
+from pathutil import rel_from_proj
 
 PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_FILES = (os.environ.get("DS_FILES", "").split(",") if os.environ.get("DS_FILES")
@@ -302,7 +303,10 @@ def main(seed=0):
 
     metrics_dir = os.path.join(PROJ, "experiments", "data")
     os.makedirs(metrics_dir, exist_ok=True)
-    metrics_path = os.path.join(metrics_dir, "train_model_metrics.csv")
+    # 路径可用环境变量覆盖: 冒烟测试不该把测试行写进权威指标表
+    # (docs/RESULTS.md 会读它)。
+    metrics_path = os.environ.get("METRICS_CSV") or os.path.join(
+        metrics_dir, "train_model_metrics.csv")
     row = {
         "dataset": ",".join(DATA_FILES),
         "model": final_pick_te,
@@ -324,7 +328,7 @@ def main(seed=0):
         "xgb_lr": xgb_lr,
         "candidates_auc": ";".join(
             f"{n}={roc_auc_score(y[te_idx], p_te[n]):.4f}" for n in p_te),
-        "model_path": os.path.relpath(model_path, PROJ).replace("\\", "/"),
+        "model_path": rel_from_proj(model_path, PROJ),
         "producer": "src/train_model.py",
         "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
@@ -334,9 +338,10 @@ def main(seed=0):
         if new:
             w.writeheader()
         w.writerow(row)
-    print(f"指标已追加 -> {os.path.relpath(metrics_path, PROJ)}")
+    print(f"指标已追加 -> {rel_from_proj(metrics_path, PROJ)}")
 
-    det_path = os.path.join(metrics_dir, "train_model_detection.csv")
+    det_path = os.environ.get("DETECTION_CSV") or os.path.join(
+        metrics_dir, "train_model_detection.csv")
     new = not os.path.exists(det_path)
     with open(det_path, "a", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
@@ -349,7 +354,7 @@ def main(seed=0):
             w.writerow([",".join(DATA_FILES), final_pick_te, len(feats),
                         "clean" if pd.isna(meth) else meth, p_, dens, n, det,
                         round(det / n, 4) if n else ""])
-    print(f"逐档检出 -> {os.path.relpath(det_path, PROJ)}")
+    print(f"逐档检出 -> {rel_from_proj(det_path, PROJ)}")
 
 
 if __name__ == "__main__":

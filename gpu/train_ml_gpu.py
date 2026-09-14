@@ -25,6 +25,9 @@ DATA_FILES = ["imageset_campus", "imageset_bossbase"]  # 多数据源合并训�
 MODEL_DIR = os.path.join(PROJ, "models")
 MODEL_PATH = os.path.join(MODEL_DIR, "steg_classifier_gpu.joblib")
 
+sys.path.insert(0, os.path.join(PROJ, "src"))
+from pathutil import rel_from_proj as _rel  # noqa: E402  跨盘符时 relpath 会抛错
+
 GLOBAL_PHOTO_ID = None  # 记录拼接后 source 边界, 供逐档统计
 
 
@@ -292,7 +295,7 @@ def main():
         "acc": round(float(acc), 4),
         "device": FG.pick_gpu(),
         "elapsed_s": round(time.perf_counter() - t0, 1),
-        "model_path": os.path.relpath(out_path, PROJ).replace("\\", "/"),
+        "model_path": _rel(out_path),
         "producer": "gpu/train_ml_gpu.py",
         "python": platform.python_version(),
         "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -303,7 +306,7 @@ def main():
         if new:
             w.writeheader()
         w.writerow(row)
-    print(f"指标已追加 -> {os.path.relpath(metrics_path, PROJ)}  (AUC={row['auc']})")
+    print(f"指标已追加 -> {_rel(metrics_path)}  (AUC={row['auc']})")
 
     det_path = os.path.join(metrics_dir, "gpu_pipeline_detection.csv")
     new = not os.path.exists(det_path)
@@ -318,7 +321,7 @@ def main():
                         "STACK" if args.stack else "LR",
                         meth, p_, dens, len(vals), sum(vals),
                         round(sum(vals) / len(vals), 4) if vals else ""])
-    print(f"逐档检出 -> {os.path.relpath(det_path, PROJ)}")
+    print(f"逐档检出 -> {_rel(det_path)}")
     print("判定: python gpu/predict_gpu.py <图像路径>")
 
 

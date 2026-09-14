@@ -46,6 +46,7 @@ PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PROJ, "src"))
 
 from featurize_v2 import ALL_FEATURE_NAMES, featurize_v2  # noqa: E402
+from pathutil import rel_from_proj  # noqa: E402
 
 DEFAULT_IN = os.path.join(PROJ, "data", "dataset_campus_v2.csv")
 DEFAULT_OUT = os.path.join(PROJ, "data", "dataset_campus_v2_jpeg.csv")
@@ -179,7 +180,7 @@ def main() -> int:
     check_grouping(out)
     df_out = out.sort_values(["photo_id", "variant"], kind="stable").reset_index(drop=True)
     df_out.to_csv(args.csv_out, index=False)
-    print(f"已写出 -> {os.path.relpath(args.csv_out, PROJ)}  "
+    print(f"已写出 -> {rel_from_proj(args.csv_out, PROJ)}  "
           f"({len(df_out)} 行 / {df_out.photo_id.nunique()} 源图, "
           f"{os.path.getsize(args.csv_out) / 1e6:.1f} MB)")
     return 0

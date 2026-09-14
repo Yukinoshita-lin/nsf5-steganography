@@ -19,7 +19,7 @@ endif
 .PHONY: help install test core steg fp pipeline pytest pyfeatures cpp cpp-clean \
 	e2e gui notebooks dataset docker web-convert web-build exp-data exp-figs \
 	exp-models results results-check ood gain-importance handbook-check handbook-fix \
-	notebooks-run hooks attribution-check
+	notebooks-run hooks attribution-check handbook-snippets coverage
 
 help:
 	@echo "Targets:"
@@ -38,6 +38,8 @@ help:
 	@echo "  make notebooks-run - execute all 10 teaching notebooks headlessly"
 	@echo "  make hooks        - enable the repo git hooks (.githooks, strips AI co-author trailers)"
 	@echo "  make attribution-check - verify no AI co-author trailer in history"
+	@echo "  make handbook-snippets - execute the python code blocks in the handbook"
+	@echo "  make coverage     - full suite with coverage report"
 	@echo "  make e2e          - full embed/decode/analyze demo"
 	@echo "  make notebooks    - regenerate per-chapter notebooks"
 	@echo "  make dataset      - download BOSSbase 1.01"
@@ -153,6 +155,14 @@ hooks:
 attribution-check:
 	@git log --format=%B | grep -Eiq '^Co-Authored-By:.*(anthropic|openai|claude|codex|copilot|trae)' \
 		&& { echo "发现 AI 共同作者尾注"; exit 1; } || echo "历史干净: 无 AI 共同作者尾注"
+
+# 手册里的 python 片段必须真的能跑 (可执行片段全部执行, 例外见脚本里的清单)
+handbook-snippets:
+	$(PY) teaching/verify_handbook_experiments.py
+
+# 带覆盖率的完整测试 (门槛见 pyproject / CI)
+coverage:
+	$(PY) -m pytest -q --cov --cov-report=term
 
 docker:
 	docker compose up --build

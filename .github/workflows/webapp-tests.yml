@@ -64,3 +64,15 @@ jobs:
           sleep 2
           cd tests
           SITE_URL=http://127.0.0.1:8098/ npm run test:layout
+
+      # 2026-09-14 新增: 站点里有手写的 aria/role, 但一直没有自动检查。
+      # 首次运行就抓到 5 个控件缺 label、1 个 select 无可访问名称、3 处对比度不足。
+      - name: Serve the webapp and run the accessibility audit (axe)
+        working-directory: webapp
+        run: |
+          python3 -m http.server 8099 &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID" EXIT
+          sleep 2
+          cd tests
+          SITE_URL=http://127.0.0.1:8099/ npm run test:a11y

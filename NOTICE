@@ -1,7 +1,7 @@
 nsf5stego
-Copyright 2026 Yushitayuri <dev@example.com>
+Copyright 2026 Yukinoshita-lin
 
-This product includes software developed by Yushitayuri.
+This product includes software developed by Yukinoshita-lin.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy
@@ -83,18 +83,18 @@ license texts are available in the upstream project repositories.
 Bundled Sub-Projects
 ================================================================================
 
-This repository ships with a sibling Python package under the `yccstego/`
-directory:
+The author maintains a sibling Python package, distributed separately
+(published on PyPI), which is NOT part of this repository or of any release
+archived from it:
 
   yccstego — JPEG-compression-domain nsF5 on the Y (luma) channel of YCbCr
   with a self-contained DCT + Huffman codec.
     Copyright 2026 Yukinoshita-lin
     License: Apache-2.0
-    License file: yccstego/LICENSE
+    Source: https://pypi.org/project/yccstego/
 
 The two packages are independent: each has its own LICENSE and NOTICE, and
-each carries its own copyright. They are co-developed by the same author
-group and distributed together for convenience.
+each carries its own copyright.
 
 ================================================================================
 Reference Implementations and Algorithms

@@ -3,6 +3,60 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.6] - 2026-09-14
+
+**发布链路 + 仓库治理 + 质量保障。** 这一版不加新功能，只补"项目能不能被正确
+引用、能不能被可靠维护"这几件事。
+
+### Added
+
+- `.gitattributes`：仓库统一 LF（此前每次 diff 都刷 "LF will be replaced by
+  CRLF" 警告）；PDF/DOCX/joblib/npz/png 等显式标为二进制；钩子与脚本强制 LF。
+- `CITATION.cff` + `.zenodo.json`：GitHub 的 "Cite this repository" 与 Zenodo
+  归档元数据（此前两者都没有，而姊妹项目有）。
+- `CONTRIBUTING.md`、`SECURITY.md`、`.github/pull_request_template.md`：贡献入口、
+  漏洞报告渠道（含"算法可检测性不是漏洞"这类边界说明）、PR 自检清单。
+- `src/test_experiment_smoke.py`：**实验链冒烟** —— 造 12 张合成图 →
+  `make_dataset` → `train_model` → `run_e2e`。覆盖率一测就发现这三条用户入口
+  是 **0%**，也就是"按 README 跑一遍"从来没被 CI 验证过。
+- `webapp/tests/a11y.mjs` + CI 步骤：用 axe-core 做无障碍审计（只对
+  serious/critical 判失败，例外需写明理由）。
+- `teaching/verify_handbook_experiments.py`：**执行手册里的 python 片段**并断言
+  期望输出（此前只校验数字与结论，不校验"照着抄能不能跑"）。
+- `src/pathutil.py`：跨盘符的路径显示工具（见下面的 Fixed）。
+- CI：pytest 作业现在跑覆盖率并要求 ≥65%；新增 PyPI 发布作业
+  （trusted publishing，默认由仓库变量 `PUBLISH_TO_PYPI` 控制，避免未配置时误红）。
+
+### Fixed
+
+- **手册里 3 段示例代码其实是坏的**（两语言各一份）：ch06 用错误口令去解码、
+  以及从被篡改的图里解码，都会直接抛 `ValueError` —— 现在改成显式捕获并打印
+  "解码失败"，既是能跑的示例，也更清楚地把"键控 + 篡改感知"讲明白。
+- 手册里把**命令写进了 ```python 围栏**（`python src\make_dataset.py` 之类）：
+  已改为 ```bash，并把 Windows 专用的反斜杠路径改成跨平台的 `src/xxx.py`。
+- **跨盘符路径会让脚本崩**：`train_model.py` 等处于 `os.path.relpath(model_path,
+  PROJ)` —— 当 `OUT_MODEL` 指向另一个盘符（CI 上的 `/tmp` 就是这种情况）时抛
+  `ValueError: path is on mount ...`，训练都跑完了却在写指标时崩溃。统一改用
+  `pathutil.rel_from_proj()`（这类写法共修了 4 个文件 9 处）。
+- **网站无障碍缺陷 5 处**：4 个表单控件缺 `label for`（汉明 p/m、湿纸 m、阈值滑块）、
+  1 个下拉框无可访问名称、3 处 `.range-note` 对比度只有 4.2:1（低于 WCAG AA 4.5:1）。
+  修复后 axe 在两个视口上均为 **0 违规**。
+- `NOTICE`：版权署名仍是旧的占位邮箱 `dev@example.com`；并且声明"`yccstego/` 随本
+  仓库分发"—— 实际上它是独立发布在 PyPI 的姊妹项目、并不在本仓库里。两处都改对了。
+- 覆盖率的两个连带问题：`train_model.py` 的指标路径现在可用 `METRICS_CSV` /
+  `DETECTION_CSV` 覆盖（冒烟测试不再往权威表里写测试行）。
+
+### Changed
+
+- README 的 DOI 徽章从"某个版本 DOI"改为 **concept DOI**
+  （10.5281/zenodo.22543628）—— 它始终解析到最新归档版本，不会再指向审计前的旧快照。
+
+### 待你完成的一步
+
+- PyPI 上的 `nsf5stego` 仍是 **1.4.0**（依赖里没有 `lightgbm`，主页还指向旧 owner）。
+  发布作业已经写好，但需要你在 PyPI 配置一次 trusted publisher（见 `ci.yml` 里
+  `pypi` 作业的注释），然后在仓库设 `PUBLISH_TO_PYPI=true` 才会真正上传。
+
 ## [1.6.5] - 2026-09-14
 
 **把"教学面"补全：视频旁白脚本、教学图、以及散落各处的措辞。**

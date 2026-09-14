@@ -1,0 +1,39 @@
+{
+  "title": "nsF5 Steganography: syndrome matrix coding, wet-paper coding, blind steganalysis, and a bilingual teaching toolkit",
+  "description": "<p>An open-source teaching and research toolkit for image steganography and steganalysis. It implements the nsF5 algorithm (binary Hamming syndrome matrix coding with wet-paper coding), SHA-256 content keying, blind steganalysis (chi-square and RS analysis), and supervised detection with LightGBM, together with a bilingual handbook, ten runnable notebooks, an interactive browser laboratory, and a desktop GUI.</p><p>Every reported number is labelled with its corpus, protocol, and traceability in <code>docs/RESULTS.md</code>; the repository also documents the errors found during its own audits (source-photo leakage and an SRM feature-scaling defect) rather than quietly replacing the numbers. See the &quot;更正记录&quot; section of the README.</p>",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "Apache-2.0",
+  "version": "1.6.6",
+  "creators": [
+    {
+      "name": "Yukinoshita-lin"
+    }
+  ],
+  "keywords": [
+    "steganography",
+    "steganalysis",
+    "nsF5",
+    "wet paper coding",
+    "Hamming codes",
+    "LightGBM",
+    "SRM",
+    "reproducible evaluation",
+    "computer science education"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/Yukinoshita-lin/nsf5-steganography",
+      "relation": "isSupplementTo",
+      "resource_type": "software",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://pypi.org/project/nsf5stego/",
+      "relation": "isIdenticalTo",
+      "resource_type": "software",
+      "scheme": "url"
+    }
+  ],
+  "notes": "Includes the bilingual handbook (Chinese/English), ten teaching notebooks, an interactive browser laboratory, and the experiments that produce docs/RESULTS.md."
+}

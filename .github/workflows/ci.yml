@@ -46,9 +46,12 @@ jobs:
           # lightgbm 是必需的: 随仓库分发的两个部署模型就是 LGBMClassifier,
           # 缺它 ml_predict 会静默退回 available=False。
           python -m pip install numpy pillow matplotlib joblib \
-            scikit-learn pandas lightgbm pytest
-      - name: 全部测试
-        run: python -m pytest -q
+            scikit-learn pandas lightgbm pytest pytest-cov
+      # 覆盖率在 2026-09-14 之前没有任何度量 (34 用例 / 16.6k 行)。当时实测 52%,
+      # 补上"实验链冒烟"(造图→make_dataset→train_model→run_e2e) 后到 69%。
+      # 门槛 65 是"不许掉下去"的护栏, 留了跨平台差异的余量 (Linux 上 C++ 库不在)。
+      - name: 全部测试 + 覆盖率
+        run: python -m pytest -q --cov --cov-report=term --cov-fail-under=65
 
   gui:
     name: GUI 冒烟测试 (xvfb)
@@ -134,9 +137,13 @@ jobs:
       - name: 安装依赖
         run: |
           python -m pip install --upgrade pip
-          python -m pip install python-docx pypdf
+          python -m pip install python-docx pypdf numpy pillow matplotlib \
+            scikit-learn joblib pandas lightgbm
       - name: 手册不得含陈旧结论, 且必须含现口径
         run: python teaching/handbook_facts.py --check
+      # 手册里的 python 片段必须真的能跑 (2026-09-14 首跑就抓到 3 处示例直接抛异常)
+      - name: 手册代码片段可执行 + 期望输出
+        run: python teaching/verify_handbook_experiments.py
 
   attribution:
     name: 提交署名 (无 AI 共同作者尾注)
@@ -192,3 +199,31 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+
+  pypi:
+    name: 发布到 PyPI (trusted publishing)
+    # 2026-09-14: PyPI 上的 nsf5stego 还停在 1.4.0 (依赖里连 lightgbm 都没有,
+    # 装了也加载不了模型)。这里补上发布步骤。
+    #
+    # 默认**不执行**: 需要先在 PyPI 上配置好 trusted publisher
+    #   PyPI → Your projects → nsf5stego → Publishing → Add a new pending publisher
+    #     Owner:            Yukinoshita-lin
+    #     Repository:       nsf5-steganography
+    #     Workflow name:    ci.yml
+    #     Environment:      pypi
+    # 配置完在仓库里设一个变量 `PUBLISH_TO_PYPI=true` (Settings → Variables) 即可启用。
+    # 这样在没配置之前, tag 上的 CI 不会因为这一步无谓地变红。
+    if: startsWith(github.ref, 'refs/tags/v') && vars.PUBLISH_TO_PYPI == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write          # trusted publishing 用 OIDC, 不需要 API token
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist

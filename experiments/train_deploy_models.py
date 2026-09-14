@@ -75,6 +75,7 @@ PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PROJ, "src"))
 
 from featurize_v2 import ALL_FEATURE_NAMES, SRM_STAT_NAMES  # noqa: E402
+from pathutil import rel_from_proj  # noqa: E402
 
 # ---------------------------------------------------------------- 冻结口径
 # 这三项 + LGB_PARAMS 就是两个部署模型的完整"配方", 改动任何一项都等于
@@ -251,7 +252,7 @@ def build_payload(clf, feats, name, metrics, seed, csv_path, feat_key):
         # —— 溯源字段 (新增; 旧 payload 没有, 读方不做假设) ——
         "provenance": {
             "producer": "experiments/train_deploy_models.py",
-            "dataset": os.path.relpath(csv_path, PROJ).replace("\\", "/"),
+            "dataset": rel_from_proj(csv_path, PROJ),
             "dataset_rows": int(metrics["dataset_rows"]),
             "n_photos": int(metrics["n_photos"]),
             "feature_set": feat_key,
@@ -298,7 +299,7 @@ def run(feat_key: str, args) -> dict:
     pid = df["photo_id"].values
 
     print(f"\n=== {feat_key} ({len(feats)} 维) ===")
-    print(f"  数据: {os.path.relpath(csv_path, PROJ)}  "
+    print(f"  数据: {rel_from_proj(csv_path, PROJ)}  "
           f"样本 {len(df)}  源图 {len(np.unique(pid))}  "
           f"clean={(y == 0).sum()} stego={(y == 1).sum()}")
 
@@ -362,7 +363,7 @@ def run(feat_key: str, args) -> dict:
         payload = build_payload(clf, feats, MODEL_NAMES[feat_key], m, args.seed,
                                csv_path, feat_key)
         joblib.dump(payload, path)
-        print(f"  已保存 -> {os.path.relpath(path, PROJ)}  "
+        print(f"  已保存 -> {rel_from_proj(path, PROJ)}  "
               f"({os.path.getsize(path) / 1e6:.1f} MB)")
     else:
         print("  --no-save: 未落盘")
@@ -391,7 +392,7 @@ def main() -> int:
         sys.exit(f"未知模型 {bad}; 可选 {sorted(MODEL_FILES)}")
 
     print("部署模型生产者 — 冻结口径:")
-    print(f"  csv={os.path.relpath(os.path.abspath(args.csv), PROJ)}  "
+    print(f"  csv={rel_from_proj(os.path.abspath(args.csv), PROJ)}  "
           f"test_size={SPLIT_TEST_SIZE}  seed={args.seed}")
     print(f"  params={json.dumps(LGB_PARAMS, sort_keys=True)}")
 
@@ -399,7 +400,7 @@ def main() -> int:
 
     os.makedirs(os.path.dirname(OUT_CSV), exist_ok=True)
     pd.DataFrame(rows).to_csv(OUT_CSV, index=False, float_format="%.4f")
-    print(f"\n指标已写入 -> {os.path.relpath(OUT_CSV, PROJ)}")
+    print(f"\n指标已写入 -> {rel_from_proj(OUT_CSV, PROJ)}")
     print("下一步: python experiments/build_results_table.py  (刷新唯一权威结果表)")
     return 0
 

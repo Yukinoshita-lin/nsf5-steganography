@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nsf5stego"
-version = "1.6.5"
+version = "1.6.6"
 description = "nsF5 steganography tool: syndrome matrix coding (Hamming) + wet-paper coding + image-hash keying + blind steganalysis + GUI"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -36,7 +36,7 @@ dependencies = [
 
 [project.optional-dependencies]
 gpu = ["torch"]
-dev = ["pytest", "build"]
+dev = ["pytest", "pytest-cov", "build"]
 notebooks = ["jupyter", "ipykernel"]
 # experiments/ 下的实验脚本额外需要 seaborn (两张热图) 与 lightgbm (LGB 基线)
 experiments = ["seaborn", "lightgbm", "torch", "pandas", "scikit-learn"]
@@ -47,6 +47,26 @@ pythonpath = ["src"]
 # 模型 pickle 由 scikit-learn 1.7 生成; 升级环境会报 InconsistentVersionWarning。
 # 它是提示而非错误, 但不该淹没真实失败 —— 见 test_pipeline.py 的加载断言。
 filterwarnings = ["ignore::UserWarning:sklearn"]
+markers = [
+    # 慢用例: 跑真实子进程链 (造图→make_dataset→train_model), 约 20 秒
+    "slow: 端到端冒烟, 允许在快速反馈时用 -m 'not slow' 跳过",
+]
+
+# 覆盖率: 2026-09-14 起纳入 CI (此前 34 个用例 / 16.6k 行 Python, 但没有任何度量)。
+# 门槛设在实测基线上, 目的是"不许掉下去", 而不是追求数字。
+[tool.coverage.run]
+branch = true
+source = ["src"]
+omit = ["src/test_*.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
 
 [project.urls]
 Homepage = "https://github.com/Yukinoshita-lin/nsf5-steganography"
@@ -62,4 +82,5 @@ py-modules = [
     "cppembed", "cpplib", "fsfeatures", "ml_predict", "make_dataset",
     "train_model", "matrix_demo", "scan_panel", "featurize_v2",
     "py_features", "srm_filter", "run_e2e",
+    "pathutil",
 ]

@@ -5,9 +5,11 @@
   "scripts": {
     "test": "node interactive.mjs",
     "test:layout": "node layout.mjs",
-    "test:dom": "node dom-smoke.mjs"
+    "test:dom": "node dom-smoke.mjs",
+    "test:a11y": "node a11y.mjs"
   },
   "devDependencies": {
+    "axe-core": "^4.10.2",
     "linkedom": "^0.18.13",
     "playwright-core": "^1.50.0"
   }
