@@ -138,7 +138,13 @@ def main(seed=0):
     from sklearn.preprocessing import StandardScaler
     from sklearn.pipeline import make_pipeline
     from sklearn.calibration import CalibratedClassifierCV
-    from xgboost import XGBClassifier
+    # xgboost 是声明依赖, 但没装也不该让整个训练崩掉 —— 少一个候选而已。
+    # (2026-09-14 CI 实测: 冒烟测试在没装 xgboost 的环境里直接 ModuleNotFoundError)
+    try:
+        from xgboost import XGBClassifier
+    except ImportError:
+        XGBClassifier = None
+        print("  [提示] 未安装 xgboost, 跳过 XGB 候选 (pip install xgboost 可启用)")
     from sklearn.metrics import roc_auc_score, accuracy_score, balanced_accuracy_score, classification_report
 
     def lr(seed=0):  return make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000, C=0.1, random_state=seed))
@@ -155,7 +161,9 @@ def main(seed=0):
     def xg(seed=0):  return XGBClassifier(n_estimators=xgb_n, learning_rate=xgb_lr, max_depth=xgb_depth,
                                            subsample=0.9, colsample_bytree=0.8, eval_metric="logloss",
                                            random_state=seed, n_jobs=-1)
-    make_clf = {"LR": lr, "RF": rf, "GB": gb, "XGB": xg}
+    make_clf = {"LR": lr, "RF": rf, "GB": gb}
+    if XGBClassifier is not None:
+        make_clf["XGB"] = xg
 
     # 1) 预留 held-out
     gss = GroupShuffleSplit(n_splits=1, test_size=0.25, random_state=seed)

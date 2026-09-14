@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.7] - 2026-09-14
+
+**v1.6.6 上线后 CI 报红的两处修复**（tag 已归档到 Zenodo，因此按补丁版本向前修，
+不回改已发布的 tag）。
+
+### Fixed
+
+- **`train_model.py` 硬依赖 xgboost**：CI 的 pytest 作业没有安装它（虽然
+  `pyproject.toml` 里声明了），于是新增的"实验链冒烟"在 Linux 上直接
+  `ModuleNotFoundError` 退出，覆盖率随之掉到 44%，撞破 65% 门槛。现在 xgboost
+  缺失时**只跳过 XGB 候选并打印提示**（少一个候选，不该让整条训练崩掉），
+  同时 CI 的"完整依赖"作业把 xgboost 装上。
+- **手册里两段示例依赖 `output/` 目录**：ch02 的 `save_image(..., "output/my_copy.png")`
+  与 ch03 的 `output/lab3_stego.png` 在**全新 clone** 上会 `FileNotFoundError`
+  （该目录是 gitignore 的运行时产物，作者本机有、CI 没有）。两语言各加一行
+  `os.makedirs("output", exist_ok=True)` —— 学员照抄也能跑。
+
+### Verification
+
+- 在"无 C++ 库 + 无 torch + 无 xgboost"的模拟 Linux 环境下：`pytest` 38 项通过，
+  覆盖率 **66.1%** ≥ 门槛 65%；手册片段 46 个（21 执行 / 13 条期望输出断言）全过。
+- 顺带确认：v1.6.6 的 `pypi` 作业按设计被跳过（仓库变量未设），发布步骤不会误触发。
+
 ## [1.6.6] - 2026-09-14
 
 **发布链路 + 仓库治理 + 质量保障。** 这一版不加新功能，只补"项目能不能被正确

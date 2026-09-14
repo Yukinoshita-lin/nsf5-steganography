@@ -46,7 +46,7 @@ jobs:
           # lightgbm 是必需的: 随仓库分发的两个部署模型就是 LGBMClassifier,
           # 缺它 ml_predict 会静默退回 available=False。
           python -m pip install numpy pillow matplotlib joblib \
-            scikit-learn pandas lightgbm pytest pytest-cov
+            scikit-learn pandas lightgbm xgboost pytest pytest-cov
       # 覆盖率在 2026-09-14 之前没有任何度量 (34 用例 / 16.6k 行)。当时实测 52%,
       # 补上"实验链冒烟"(造图→make_dataset→train_model→run_e2e) 后到 69%。
       # 门槛 65 是"不许掉下去"的护栏, 留了跨平台差异的余量 (Linux 上 C++ 库不在)。
