@@ -401,6 +401,15 @@ def main() -> int:
     os.makedirs(os.path.dirname(OUT_CSV), exist_ok=True)
     pd.DataFrame(rows).to_csv(OUT_CSV, index=False, float_format="%.4f")
     print(f"\n指标已写入 -> {rel_from_proj(OUT_CSV, PROJ)}")
+
+    # 模型卡紧跟模型走: 卡里含 sha256, 所以"重训了模型但没更新卡"必须由生产者
+    # 自己消灭, 而不是留给下一个人发现 (发现方式会是 CI 里 pytest 报红)。
+    if args.save:
+        import model_card as MC  # 同目录
+        saved = [MODEL_FILES[k] for k in keys if k in MODEL_FILES]
+        print("\n刷新模型卡:")
+        MC.write_cards([f for f in saved if f in MC.SPECS])
+
     print("下一步: python experiments/build_results_table.py  (刷新唯一权威结果表)")
     return 0
 

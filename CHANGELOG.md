@@ -3,6 +3,49 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.0] - 2026-09-15
+
+**模型治理：给两个部署模型补上模型卡。**
+
+`models/stego_classifier.joblib`（143d）与 `models/stego_classifier_v2_jpeg_lgb_51d.joblib`
+（53d）随仓库分发，但一直是**裸二进制**：语料/协议/指标只存在于 README 的散文里，
+payload 虽写了 provenance 却要先装齐 lightgbm + scikit-learn 再反序列化才能读到，
+而且没有任何机制阻止"模型换了、文档没换"。一个想引用这两个模型的人拿到手的，
+就是两个 2.8 MB 的不明文件。
+
+### Added
+
+- **入库的 JSON 模型卡** `models/<模型名>.card.json`
+  （`experiments/model_card.py` 生成）：
+  - 语料与协议：414 张校园照片 x 14（12 档嵌入 + 2 干净）= 5796 样本，
+    按**源图** holdout（test_size=0.25, seed=0）与 seed 0..7 的 8-split 均值；
+  - 指标：held-out AUC、8-split 均值 ± 标准差、验证集干净误报、逐档检出率
+    （弱档 nsF5 p3 d=0.25 单列）、OOD 真实干净照片误报率（ALL / campus /
+    ALASKA#2 / DIV2K，含 Wilson 95% CI 与中位概率）；
+  - **特征列表与顺序**（143 / 53 列，逐位列全）、超参、训练环境、git 版本、训练时间；
+  - 适用场景、不适用场景、已知局限、跨语料（BOSSbase）参考值；
+  - 该 `.joblib` 的 `sha256` 与字节数。
+- **契约测试** `src/test_model_cards.py`（8 条）：sha256 硬绑定、payload 逐字段
+  一致（含特征顺序）、provenance 一致、特征分组求和 = 维数、边界与局限非空、
+  卡片 JSON 结构。有指标 CSV 时额外与 `experiments/data/*.csv` 交叉核对；
+  CSV 不在库（CI）时明确打印 `[skip]`，不把"没数据"当成"通过"。
+- `models/README.md`：模型卡入口，校验/重训/引用注意事项。
+- Makefile：`make model-cards`、`make model-cards-check`。
+
+### Changed
+
+- `experiments/train_deploy_models.py` 在保存模型后**自动刷新模型卡** —— 卡片含
+  sha256，所以"重训了模型但忘了更新卡"由生产者自己消灭，而不是留给 CI 报红。
+- README 的"双版本部署策略"与 CI 小节补上模型卡入口与校验方式。
+
+### Notes
+
+- 模型卡如实写下边界，而不是只报喜：143d 在 1514 张公开真实干净照片上误报
+  **9.58%**（53d **28.86%**；DIV2K 的 100 张是 51% / 47%），因此两者都只适合
+  单图辅助判读与批量排序，不适合单独定案。对外引用用 BOSSbase 口径
+  （0.8062 / 0.7172），不要用校园语料的 0.8939 / 0.8391。
+- 校验命令：`python experiments/model_card.py --check`（CI 里由 `pytest` 执行）。
+
 ## [1.6.9] - 2026-09-15
 
 **性能 + 一处训练/推理偏差。** 这版把最贵的一步实验从 20 分钟压到 1.7 分钟，

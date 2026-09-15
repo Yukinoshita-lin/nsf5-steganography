@@ -19,7 +19,8 @@ endif
 .PHONY: help install test core steg fp pipeline pytest pyfeatures cpp cpp-clean \
 	e2e gui notebooks dataset docker web-convert web-build exp-data exp-figs \
 	exp-models results results-check ood gain-importance handbook-check handbook-fix \
-	notebooks-run hooks attribution-check handbook-snippets coverage
+	notebooks-run hooks attribution-check handbook-snippets coverage \
+	model-cards model-cards-check
 
 help:
 	@echo "Targets:"
@@ -29,6 +30,8 @@ help:
 	@echo "  make cpp          - build the C++ accelerators into cpp/ (optional)"
 	@echo "  make exp-figs     - rebuild experiment figures from experiments/data/*.csv"
 	@echo "  make exp-models   - retrain the two deployed models (reproducible producer)"
+	@echo "  make model-cards  - regenerate models/*.card.json (model cards)"
+	@echo "  make model-cards-check - verify model cards match the .joblib binaries (CI uses this)"
 	@echo "  make results      - rebuild docs/RESULTS.md (canonical results table)"
 	@echo "  make results-check - verify docs/RESULTS.md is in sync"
 	@echo "  make ood          - OOD real-photo false-positive evaluation (1514 photos)"
@@ -119,6 +122,14 @@ exp-data:
 # 指标落在 experiments/data/deploy_model_metrics.csv。
 exp-models:
 	$(PY) experiments/train_deploy_models.py
+
+# 部署模型卡 (models/*.card.json): 语料/协议/指标/特征顺序/适用边界 + sha256。
+# 校验失败几乎总是意味着 .joblib 换了而卡没重生成 —— 先跑 exp-models。
+model-cards:
+	$(PY) experiments/model_card.py
+
+model-cards-check:
+	$(PY) experiments/model_card.py --check
 
 # 唯一权威结果表: 合并所有实验产物, 逐行标注语料/协议/可溯源性。
 results:

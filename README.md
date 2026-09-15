@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.6.9-blue)
+![version](https://img.shields.io/badge/version-1.7.0-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543628.svg)](https://doi.org/10.5281/zenodo.22543628)
@@ -628,6 +628,14 @@ DS_FILES="dataset_campus_v2_jpeg.csv" python src/train_model.py
 | 可解释性 | 一般(143 维,LIME/SHAP 可对单图解释) | **强**(51 维有明确统计定义,可直接列 Top 贡献) |
 | 推荐场景 | 通用部署 / 异构数据 / 真实图像 | 论文 / 答辩 / 教学 / 单图分析 |
 
+> **模型卡（2026-09-15）**：两个模型各有一份**入库的 JSON 模型卡** ——
+> 语料与协议、held-out / 8-split 指标、逐档检出率、OOD 误报率、特征列表与顺序、
+> 超参、训练环境、适用边界与已知局限，以及该 `.joblib` 的 `sha256`。
+> 入口：[`models/README.md`](models/README.md)（说明）与
+> `models/*.card.json`（机器可读）。
+> 校验：`python experiments/model_card.py --check` —— 它检查卡片与二进制是否脱钩，
+> CI 里随 `pytest` 一起跑；重训后由 `experiments/train_deploy_models.py` 自动刷新。
+
 **核心结论（审计后）**:
 - **143d 在 AUC 与弱档检出上更好**：去掉 SRM 90 维后消融 OOF AUC 从 0.9010 掉到 0.8513
 - 53d 的价值在**可解释性**：53 维里 51 维有明确统计含义，可逐维列出贡献；代价是 AUC 低约 0.05
@@ -859,6 +867,9 @@ py src/train_model.py                                     # 合并两源训练(�
 
 - **CI**（`.github/workflows/ci.yml`）：任何对 `main` 的推送 / PR 都会自动运行
   `test_core.py` 与 `test_steg.py`（Python 3.9 / 3.11），并构建 `wheel + sdist`。
+  `pytest` 作业另外守着**模型卡与二进制不脱钩**（`src/test_model_cards.py`：
+  sha256 + payload + 指标交叉核对）、**手册事实与代码片段**、**notebook 可执行**。
+  浏览器回归（含 axe 无障碍审计）在 `webapp-tests.yml` 里单独跑。
 - **自动发布**：推送形如 `v1.1.0` 的 tag 时，CI 会构建包并自动创建 **GitHub Release**，
   附带 `wheel` 与 `sdist` 作为资产，同时自动生成发布说明。
 - **发布流程**：
@@ -871,7 +882,29 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.6.0 (当前) — 可验证性加固**
+- **v1.7.0 (当前) — 模型治理：模型卡**
+  - 两个随仓库分发的 `.joblib` 此前是**裸二进制**：语义只存在于 README 的散文
+    与 pickle 的 payload 里，读 payload 得先装齐依赖再反序列化，而且
+    "模型换了、文档没换"没有任何护栏。现在每个模型配一份**入库的 JSON 模型卡**
+    （`models/*.card.json`）：语料与协议、指标（held-out / 8-split / 逐档检出 /
+    真实照片误报率 / 跨语料参考）、**特征列表与顺序**、超参、训练环境与 git 版本、
+    适用边界、不适用场景、已知局限，以及 `sha256`。
+  - 新增契约测试 `src/test_model_cards.py`（sha256 硬绑定 + payload 逐字段核对 +
+    有数据时与 `experiments/data/*.csv` 交叉核对），随 `pytest` 进 CI；
+    生产者 `experiments/train_deploy_models.py` 在落盘后自动刷新模型卡，
+    `make model-cards` / `make model-cards-check` 是本地入口。
+  - 卡里如实写下边界：143d 在 1514 张公开真实干净照片上误报 **9.58%**、53d
+    **28.86%**（DIV2K 那 100 张是 51% / 47%），因此两者都不适合单独定案；
+    对外引用请用 BOSSbase 口径（0.8062 / 0.7172），而不是校园语料的
+    0.8939 / 0.8391。
+
+- **v1.6.1–v1.6.9 — 审计修复、发布链路与性能**
+  - 逐版记录见 [`CHANGELOG.md`](CHANGELOG.md)。要点：源图泄漏与 SRM 特征尺度
+    两处缺陷的修复（1.6.2）、DOI/PyPI 发布链路与仓库治理（1.6.6）、
+    覆盖率测量口径的三次修正（1.6.7/1.6.8）、SRM 残差向量化与 OOD 并行
+    （20 分钟 → 1.7 分钟）以及彩色输入的训练/推理偏差修复（1.6.9）。
+
+- **v1.6.0 — 可验证性加固**
   - **CNN 对比实验补上真实实现与真实数据**：`gpu/train_cnn.py` 与
     `gpu/models/{xunet,yenet}.py` 此前并不存在（论文引用的路径是悬空的），
     而 `sota_compare.py` 会把 53 维请求静默降级成 11 维、仍标成 `LGB-53d`。

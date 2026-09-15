@@ -15,8 +15,8 @@ authors:
 repository-code: "https://github.com/Yukinoshita-lin/nsf5-steganography"
 url: "https://github.com/Yukinoshita-lin/nsf5-steganography"
 license: Apache-2.0
-version: 1.6.9
-date-released: 2026-09-14
+version: 1.7.0
+date-released: 2026-09-15
 # concept DOI: 始终解析到最新归档版本 (每个 GitHub Release 会在同一 concept
 # 下生成一个新的版本 DOI)
 doi: 10.5281/zenodo.22543628
