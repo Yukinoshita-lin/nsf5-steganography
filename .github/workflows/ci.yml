@@ -184,6 +184,32 @@ jobs:
         run: python -m build
       - name: 校验 wheel
         run: pip install dist/*.whl && python -c "import ns5_core, steganalysis; print('import ok')"
+      - name: 干净 env 里验证模型随包安装且能打分 (安装布局)
+        # 2026-09-15: 此前 wheel 里根本没有 models/, 而 ml_predict 只按仓库布局
+        # 找 —— `pip install nsf5stego` 之后 ML 判定永远 available=False (依赖里
+        # 却装着 lightgbm, README 也写着有 ML 功能)。这一步在**干净 venv +
+        # 安装布局**里验证三件事: 模型在包里、路径解析走安装布局、模型能真的
+        # 打出一个概率。合约测试 (src/test_model_cards.py) 只能检查 pyproject
+        # 的声明, 这里才是"装了真的能用"。
+        run: |
+          python -m venv /tmp/wheel-venv
+          /tmp/wheel-venv/bin/pip install --quiet --upgrade pip
+          /tmp/wheel-venv/bin/pip install --quiet dist/*.whl
+          cd /tmp
+          /tmp/wheel-venv/bin/python - <<'PY'
+          import pathlib
+          import numpy as np
+          import ml_predict
+
+          p = ml_predict.MLPredictor()
+          assert p.available, f"ML 模型未随包安装: {p.load_error}"
+          assert "site-packages" in ml_predict.MODEL_PATH, ml_predict.MODEL_PATH
+          assert pathlib.Path(ml_predict.MODEL_PATH).name == "stego_classifier.joblib"
+          img = np.random.default_rng(0).integers(0, 256, (256, 256), dtype=np.uint8)
+          r = p.predict(img)
+          assert isinstance(r["probability"], float), r
+          print("OK", ml_predict.MODEL_PATH, r["probability"])
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: dist

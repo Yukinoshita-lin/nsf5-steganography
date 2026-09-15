@@ -76,11 +76,25 @@ Repository = "https://github.com/Yukinoshita-lin/nsf5-steganography"
 nsf5stego = "gui:main"
 
 [tool.setuptools]
-package-dir = { "" = "src" }
+# 两个部署模型随 wheel 一起分发 (nsf5_models -> 仓库里的 models/)。
+# 为什么必须打包: 只发 py 模块的话, `pip install nsf5stego` 之后
+# MLPredictor 会找不到 .joblib, 于是 available=False —— 依赖里装了 lightgbm
+# 却静默没有模型可用。见 src/ml_predict.py 的 _model_candidates()。
+package-dir = { "" = "src", "nsf5_models" = "models" }
+packages = ["nsf5_models"]
 py-modules = [
     "ns5_core", "steganalysis", "efficiency", "image_io", "gui",
     "cppembed", "cpplib", "fsfeatures", "ml_predict", "make_dataset",
     "train_model", "matrix_demo", "scan_panel", "featurize_v2",
     "py_features", "srm_filter", "run_e2e",
     "pathutil",
+]
+
+[tool.setuptools.package-data]
+# 只列随仓库分发的这两个 (models/ 下还有一堆本地训练产物, 不能用 *.joblib)
+nsf5_models = [
+    "stego_classifier.joblib",
+    "stego_classifier_v2_jpeg_lgb_51d.joblib",
+    "stego_classifier.card.json",
+    "stego_classifier_v2_jpeg_lgb_51d.card.json",
 ]

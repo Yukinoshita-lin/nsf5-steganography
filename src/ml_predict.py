@@ -17,9 +17,37 @@ import os
 import numpy as np
 from PIL import Image
 
-PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(PROJ, "models", "stego_classifier.joblib")
+THIS = os.path.dirname(os.path.abspath(__file__))
+PROJ = os.path.dirname(THIS)
 TRAIN_CSV = os.path.join(PROJ, "data", "dataset.csv")  # v1 训练集 (基线)
+
+
+def _model_candidates(name: str) -> list:
+    """部署模型的查找顺序: **仓库布局** -> **安装布局**。
+
+    两种布局的差别不是洁癖: 2026-09-15 之前 wheel 里根本没有模型文件, 而这里
+    又只按 `PROJ/models/` 找, 于是 `pip install nsf5stego` 之后 MLPredictor
+    永远 `available=False` —— 依赖里装了 lightgbm、README 也写了 ML 功能, 但
+    装出来是静默不可用的。修法分两半: pyproject 把 models/ 作为 `nsf5_models`
+    包打进去 (package-dir 映射, 不复制文件), 这里按顺序找两处。
+
+    仓库布局: <repo>/models/<name>            (开发/教学用法)
+    安装布局: <site-packages>/nsf5_models/<name>  (wheel 安装用法)
+    """
+    return [os.path.join(PROJ, "models", name),
+            os.path.join(THIS, "nsf5_models", name)]
+
+
+def _resolve_model(name: str) -> str:
+    """返回第一个存在的候选路径; 都不存在时返回仓库布局那条 (报错信息更好读)。"""
+    cands = _model_candidates(name)
+    for p in cands:
+        if os.path.exists(p):
+            return p
+    return cands[0]
+
+
+MODEL_PATH = _resolve_model("stego_classifier.joblib")
 
 V1_FEAT_KEYS = ["Rm", "Sm", "Rn", "Sn", "RS_Gr", "RS_Gn",
                 "chi2_pvalue", "diff_entropy", "lsb_diff_entropy",

@@ -25,9 +25,10 @@ payload 虽写了 provenance 却要先装齐 lightgbm + scikit-learn 再反序�
   - **特征列表与顺序**（143 / 53 列，逐位列全）、超参、训练环境、git 版本、训练时间；
   - 适用场景、不适用场景、已知局限、跨语料（BOSSbase）参考值；
   - 该 `.joblib` 的 `sha256` 与字节数。
-- **契约测试** `src/test_model_cards.py`（8 条）：sha256 硬绑定、payload 逐字段
+- **契约测试** `src/test_model_cards.py`（10 条）：sha256 硬绑定、payload 逐字段
   一致（含特征顺序）、provenance 一致、特征分组求和 = 维数、边界与局限非空、
-  卡片 JSON 结构。有指标 CSV 时额外与 `experiments/data/*.csv` 交叉核对；
+  卡片 JSON 结构、`ml_predict` 的安装布局查找、wheel 必须打进这两个模型。
+  有指标 CSV 时额外与 `experiments/data/*.csv` 交叉核对；
   CSV 不在库（CI）时明确打印 `[skip]`，不把"没数据"当成"通过"。
 - `models/README.md`：模型卡入口，校验/重训/引用注意事项。
 - Makefile：`make model-cards`、`make model-cards-check`。
@@ -37,6 +38,25 @@ payload 虽写了 provenance 却要先装齐 lightgbm + scikit-learn 再反序�
 - `experiments/train_deploy_models.py` 在保存模型后**自动刷新模型卡** —— 卡片含
   sha256，所以"重训了模型但忘了更新卡"由生产者自己消灭，而不是留给 CI 报红。
 - README 的"双版本部署策略"与 CI 小节补上模型卡入口与校验方式。
+
+### Fixed
+
+- **wheel 里没有模型文件**：两个部署模型只存在于仓库的 `models/` 目录,
+  `pyproject.toml` 没有把它们打进包, 而 `src/ml_predict.py` 又只按
+  `<repo>/models/` 找路径。实测在安装布局下 (解包 wheel 到临时目录再导入
+  `ml_predict`) 行到 `available=False` / `FileNotFoundError` ——
+  `pip install nsf5stego` 之后, 依赖里装着 lightgbm、README 也写着有 ML 判定,
+  但 ML 判定**恒不可用**, 且只提示"模型未加载"。修法:
+  - `models/` 作为 `nsf5_models` 包打进 wheel (`package-dir` 映射, 不复制文件;
+    `package-data` 逐个列出四个文件, 不用 `*.joblib` 通配, 免得把本地未入库的
+    训练产物一起发出去);
+  - `ml_predict` 按"仓库布局 -> 安装布局"查找, 并新增
+    `_model_candidates()` / `_resolve_model()` 供测试断言。
+- CI 的 `build` 作业增加一步**干净 venv + 安装布局**的验证 (模型在包里、路径解析
+  走安装布局、模型能真的打出一个概率) —— 合约测试只能检查 `pyproject` 的声明,
+  这一步才是"装了真的能用"。
+- README 的 wheel 小节原写着"模型不打进 wheel, 请自行取 `models/` 目录", 现改为
+  实际情况; "更正记录"新增第 13 条。
 
 ### Notes
 

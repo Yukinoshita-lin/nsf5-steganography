@@ -216,6 +216,7 @@ r = pred.predict(image)
 | 10 | **教学 notebook 从未被执行过** | 03 号让学员嵌入 5000 字符，而封面图容量只有 3494 字节 —— 这个 cell 一直在抛 `ValueError` | 已修并进 CI：10/10 逐本执行通过，另有"入库 notebook 与生成器一致"的漂移检查 |
 | 11 | **LICENSE 缺 APPENDIX 段**，结尾被换成自定义版权块 | GitHub 把 Apache-2.0 识别成 `NOASSERTION`，与徽章不符 | 已恢复标准 Apache-2.0 全文 |
 | 12 | **若干使用即踩的缺陷**：`python src/run_e2e.py` 在中文 Windows 控制台崩溃（`✓` 无法用 GBK 编码）；`make_dataset` 打印的样本数恒比真实值多 1；`train_model` 遇到空环境变量直接崩溃；README 引用过从未存在的 `src/_add_jpeg_clean.py`；wheel 安装示例版本过期 | 使用者直接踩到 | 均已修复，并新增控制台编码护栏测试 |
+| 13 | **wheel 里没有模型文件**：两个部署模型只在仓库里，`pyproject` 没有把它们打进包，而 `ml_predict` 也只按仓库布局找路径 | `pip install nsf5stego` 之后依赖里装着 lightgbm、README 写着有 ML 判定，但 `MLPredictor.available` **恒为 False**（真实验证：安装布局下 `FileNotFoundError`） | 已修（2026-09-15）：`models/` 以 `nsf5_models` 包打进 wheel，`ml_predict` 按"仓库布局 → 安装布局"查找；CI 的 build 作业在**干净 venv** 里断言模型可用并能打出概率 |
 
 > **为什么保留这些记录，而不是悄悄把数字改掉：** 第 1 条和第 3 条恰好是"评测设计本身
 > 出错"的两个典型样本 —— 前者说明"按源图分组"这种纪律会在 id 分配这种细节上悄悄失效，
@@ -279,8 +280,18 @@ pip install dist/nsf5stego-<版本>-py3-none-any.whl
 ```
 
 > 注意：wheel 仅含纯 Python 核心；C++ 加速库需自行 `make cpp` 编译，缺失时
-> 自动回退纯 Python。两个部署模型（`models/*.joblib`）随仓库分发，但不打进
-> wheel——从 wheel 安装时请一并取仓库里的 `models/` 目录。
+> 自动回退纯 Python。两个部署模型（`models/*.joblib`）**已打进 wheel**
+> （安装为 `nsf5_models/`，含模型卡），`ml_predict` 会按"仓库布局 → 安装布局"
+> 的顺序查找，所以 `pip install` 之后 ML 判定直接可用：
+>
+> ```python
+> from ml_predict import MLPredictor
+> p = MLPredictor()
+> assert p.available, p.load_error      # 缺 lightgbm/pickle 版本不符时这里会说明原因
+> print(p.predict(img))                  # {probability, verdict, threshold}
+> ```
+>
+> （2026-09-15 修正：此前 wheel 里没有模型文件，安装后 `available` 恒为 False。）
 
 ### 运行测试
 

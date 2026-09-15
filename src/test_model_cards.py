@@ -20,6 +20,8 @@ import json
 import os
 import sys
 
+import pytest
+
 PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 for _p in (os.path.join(PROJ, "src"), os.path.join(PROJ, "experiments")):
     if _p not in sys.path:
@@ -139,3 +141,51 @@ def test_cards_are_valid_json_with_expected_keys():
             blob = fh.read()
         assert not blob.startswith(b"\xef\xbb\xbf")
         assert blob.endswith(b"\n")
+
+
+# --------------------------------------------------------------------------- #
+#  2. 打包: 安装布局下模型必须可用
+# --------------------------------------------------------------------------- #
+def test_ml_predict_looks_in_installed_layout_too():
+    """路径解析必须同时覆盖仓库布局与安装布局 (wheel 里的 nsf5_models/)。
+
+    2026-09-15 修的是一个真实缺口: wheel 里没有模型文件, 而 ml_predict 只按
+    `PROJ/models/` 找 —— `pip install nsf5stego` 之后 ML 判定永远
+    available=False, 但依赖里装着 lightgbm、README 也写着有 ML 功能。
+    """
+    import ml_predict as MP
+    cands = MP._model_candidates("stego_classifier.joblib")
+    assert len(cands) == 2
+    assert cands[0] == os.path.join(MP.PROJ, "models", "stego_classifier.joblib")
+    # 第二条必须紧挨着模块自身 —— 那正是安装后的 site-packages/nsf5_models/
+    assert cands[1] == os.path.join(MP.THIS, "nsf5_models", "stego_classifier.joblib")
+    assert os.path.exists(MP.MODEL_PATH), f"仓库布局下也找不到模型: {MP.MODEL_PATH}"
+
+
+def _pyproject():
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # Python 3.9/3.10
+        pytest.skip("tomllib 需要 Python 3.11+ (CI 的 pytest 作业跑在 3.11)")
+    with open(os.path.join(PROJ, "pyproject.toml"), "rb") as fh:
+        return tomllib.load(fh)
+
+
+def test_wheel_ships_the_two_deploy_models():
+    """pyproject 必须把 models/ 作为 nsf5_models 包打进去, 且只打这两个模型。
+
+    只打这两个: models/ 下还有作者的本地训练产物 (几百 MB), 一旦用 `*.joblib`
+    通配, 本地构建出的 wheel 会把它们一起发出去。
+    """
+    cfg = _pyproject()["tool"]["setuptools"]
+    assert cfg["package-dir"].get("nsf5_models") == "models"
+    assert "nsf5_models" in cfg["packages"]
+    declared = set(cfg["package-data"]["nsf5_models"])
+    for name in ("stego_classifier.joblib",
+                 "stego_classifier_v2_jpeg_lgb_51d.joblib",
+                 "stego_classifier.card.json",
+                 "stego_classifier_v2_jpeg_lgb_51d.card.json"):
+        assert name in declared, f"wheel 不会包含 {name}"
+        assert os.path.exists(os.path.join(MC.MODEL_DIR, name)), name
+    assert not any("*" in d for d in declared), \
+        "package-data 不能通配, 否则本地未入库的模型会被打进 wheel"
