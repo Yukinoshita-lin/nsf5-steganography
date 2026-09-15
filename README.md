@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.7.0-blue)
+![version](https://img.shields.io/badge/version-1.7.1-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543628.svg)](https://doi.org/10.5281/zenodo.22543628)
@@ -133,9 +133,14 @@ GitHub Pages 首页已升级为**交互式双语教学网站**（不依赖手册
 
 - 🖥 网页版: [中文](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html) · [English](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
 - 🇨🇳 [`docs/学习手册-从零读懂nsF5隐写项目.pdf`](docs/学习手册-从零读懂nsF5隐写项目.pdf) — 中文版, 67 页
-- 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 74 pages
+- 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 75 pages
 - 📓 按章 Colab/Jupyter Notebook: 见 [`teaching/README.md`](teaching/README.md)
 - 🐳 Docker/JupyterLab 教学镜像: `docker compose up --build`
+
+**姊妹项目**：[`yccstego`](https://github.com/Yukinoshita-lin/yccstego)（`pip install yccstego`）——
+把 nsF5 搬到 JPEG 量化 DCT 系数（Y 通道）上的压缩域实现，含自写的 DCT/Huffman 编解码。
+它**不在本仓库内**（独立仓库与 PyPI 包），是第 11 章与附录 F 推荐的下一步方向；手册里
+提到它的地方都给出了地址。
 
 涵盖: 数字图像基础 → Python 入门 → LSB 隐写 → 卡方/RS 分析 → 汉明矩阵编码 → F5/nsF5 → 湿纸编码 → 哈希键控 → 机器学习基础 → v1/v2 特征工程 → SRM 滤波 → 143d/53d 双版本模型 → C++/GPU 加速 → 综合实验。每章配有"动手做"实验与"想一想"思考题, 适合本科毕设自学。
 
@@ -218,6 +223,7 @@ r = pred.predict(image)
 | 12 | **若干使用即踩的缺陷**：`python src/run_e2e.py` 在中文 Windows 控制台崩溃（`✓` 无法用 GBK 编码）；`make_dataset` 打印的样本数恒比真实值多 1；`train_model` 遇到空环境变量直接崩溃；README 引用过从未存在的 `src/_add_jpeg_clean.py`；wheel 安装示例版本过期 | 使用者直接踩到 | 均已修复，并新增控制台编码护栏测试 |
 | 13 | **wheel 里没有模型文件**：两个部署模型只在仓库里，`pyproject` 没有把它们打进包，而 `ml_predict` 也只按仓库布局找路径 | `pip install nsf5stego` 之后依赖里装着 lightgbm、README 写着有 ML 判定，但 `MLPredictor.available` **恒为 False**（真实验证：安装布局下 `FileNotFoundError`） | 已修（2026-09-15）：`models/` 以 `nsf5_models` 包打进 wheel，`ml_predict` 按"仓库布局 → 安装布局"查找；CI 的 build 作业在**干净 venv** 里断言模型可用并能打出概率 |
 | 14 | **事实校验器把一处陈旧引用放过去了**：图 9-2 的图注写着"论文图 / thesis figure"，而论文稿 2026-09-14 已删除；`FORBIDDEN` 用的是 `"（论文图"` / `"(thesis figure"`（左括号紧贴），实际文本是 `"（log–log 坐标，论文图）"`，子串匹配被绕过 —— 于是这句话同时留在 DOCX、网页版和**入库 PDF** 里 | 教学材料指向不存在的文件；而"进了 CI 就不会再犯"的假设也因此不成立 | 已修：匹配放宽到 `"论文图"` / `"thesis figure"`（另禁 `"project thesis"`，注意不能用裸 `"thesis"` —— 会命中 `"hypothesis"`），三处共 6 处修正并重新导出 PDF（67 / 74 页）；PDF 的导出步骤也补成了脚本 `teaching/export_handbook_pdf_word.py`（`make handbook-pdf`） |
+| 15 | **手册把姊妹项目说成本项目的一部分**：中英文 ch03 / ch11 / 附录 F 都写"项目 `yccstego` 扩展"，而 `yccstego` 是独立仓库与 PyPI 包（`pip install yccstego`），本仓库里没有它的代码、也没有任何链接 | 读者按手册去找，什么也找不到 —— 与第 14 条同类：教学材料指向不存在的东西 | 已修（1.7.1）：中英各 5 处改成"姊妹项目 `yccstego`"并给出仓库地址，README 增"姊妹项目"一行，PDF 重新导出（英文 75 页）；`handbook_facts.py` 的 `REQUIRED` 加上该地址，三份材料缺它就红 |
 
 > **为什么保留这些记录，而不是悄悄把数字改掉：** 第 1 条和第 3 条恰好是"评测设计本身
 > 出错"的两个典型样本 —— 前者说明"按源图分组"这种纪律会在 id 分配这种细节上悄悄失效，
@@ -894,7 +900,14 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.7.0 (当前) — 模型治理：模型卡**
+- **v1.7.1 (当前) — 教学材料的悬空引用**
+  - 手册（中英文 ch03 / ch11 / 附录 F）把 `yccstego` 写成"项目 `yccstego` 扩展"，
+    但它是**独立仓库与 PyPI 包**（`pip install yccstego`），本仓库里没有它的代码 ——
+    读者按手册去找会一无所获。现已改为"姊妹项目 `yccstego`"并给出仓库地址，
+    README 新增"姊妹项目"一行；`handbook_facts.py` 把该地址列进 `REQUIRED`，
+    DOCX / 网页 / 入库 PDF 三份材料缺它即 CI 红。入库 PDF 重新导出（英文 74 → 75 页）。
+
+- **v1.7.0 — 模型治理：模型卡**
   - 两个随仓库分发的 `.joblib` 此前是**裸二进制**：语义只存在于 README 的散文
     与 pickle 的 payload 里，读 payload 得先装齐依赖再反序列化，而且
     "模型换了、文档没换"没有任何护栏。现在每个模型配一份**入库的 JSON 模型卡**

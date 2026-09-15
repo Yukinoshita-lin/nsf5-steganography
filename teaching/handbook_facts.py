@@ -64,6 +64,10 @@ VIDEO_REQUIRED = [
 # --------------------------------------------------------------------------
 REQUIRED = [
     "docs/RESULTS.md",       # 权威结果表成为唯一出处
+    # 手册里提到姊妹项目 yccstego 时必须给出**能找到它的地址**: 2026-09-15 之前
+    # 中英文手册都写成"项目 yccstego 扩展", 但 yccstego 是独立仓库与 PyPI 包,
+    # 克隆本仓库根本找不到它 —— 和已删除的 thesis/ 是同一种悬空引用。
+    "github.com/Yukinoshita-lin/yccstego",
     "0.8980",                # 143d 8-split 平均
     "0.8461",                # 53d 8-split 平均
     "0.8939",                # 143d held-out
@@ -111,6 +115,19 @@ INLINE = {
     "zh": [
         ("也不代替论文，", ""),
         ("论文图", "项目图"),
+        # 姊妹项目 yccstego: 独立仓库与 PyPI 包, 不在本仓库里 —— 给出地址
+        ("（yccstego 扩展正是走量化 DCT 系数路线）",
+         "（姊妹项目 yccstego 走的正是量化 DCT 系数路线："
+         "https://github.com/Yukinoshita-lin/yccstego ，独立仓库与 PyPI 包，不在本仓库内）"),
+        ("JPEG 域需要 yccstego 那样的 DCT 系数实现。",
+         "JPEG 域需要 yccstego 那样的 DCT 系数实现（姊妹项目，独立仓库与 PyPI 包："
+         "https://github.com/Yukinoshita-lin/yccstego ）。"),
+        ("yccstego：Y 通道量化 DCT 系数 nsF5",
+         "yccstego：Y 通道量化 DCT 系数 nsF5（姊妹项目，独立仓库："
+         "https://github.com/Yukinoshita-lin/yccstego ）"),
+        ("再用 yccstego 对照学习 JPEG 量化域",
+         "再用姊妹项目 yccstego（https://github.com/Yukinoshita-lin/yccstego ）"
+         "对照学习 JPEG 量化域"),
         ("论文与 README 都把这个列为后续工作", "README 把这个列为后续工作"),
         ("选论文/README 中的 1～2 个结论", "选 README / docs/RESULTS.md 中的 1～2 个结论"),
         ("10.4 论文与代码对照阅读表", "10.4 文档与代码对照阅读表"),
@@ -124,6 +141,20 @@ INLINE = {
         ("It does not replace a textbook or the project thesis.",
          "It does not replace a textbook."),
         ("thesis figure", "project figure"),
+        # companion project yccstego — same reasoning as the Chinese rules above
+        ("(the yccstego extension goes the quantized-DCT-coefficient route)",
+         "(the companion project yccstego goes the quantized-DCT-coefficient route: "
+         "https://github.com/Yukinoshita-lin/yccstego , a separate repository and PyPI "
+         "package, not part of this repository)"),
+        ("JPEG-domain work needs the yccstego-style DCT coefficient design.",
+         "JPEG-domain work needs the yccstego-style DCT coefficient design (companion "
+         "project: https://github.com/Yukinoshita-lin/yccstego )."),
+        ("yccstego: nsF5 on quantized DCT coefficients of Y",
+         "yccstego: nsF5 on quantized DCT coefficients of Y (companion project: "
+         "https://github.com/Yukinoshita-lin/yccstego )"),
+        ("study yccstego's quantized-DCT pipeline",
+         "study the companion project yccstego's quantized-DCT pipeline "
+         "(https://github.com/Yukinoshita-lin/yccstego )"),
         ("The README and thesis list a keyed MAC as future work",
          "The README lists a keyed MAC as future work"),
         ("Choose one or two claims from the README/thesis",
@@ -324,6 +355,21 @@ WEB = {
     "zh": [
         ("它不代替教科书，也不代替论文，而是把", "它不代替教科书，而是把"),
         ("论文图", "项目图"),
+        # 姊妹项目 yccstego: 网页版用 markdown 链接 (渲染后可直接点)
+        ("（yccstego 扩展正是走量化 DCT 系数路线）",
+         "（姊妹项目 [`yccstego`](https://github.com/Yukinoshita-lin/yccstego) 走的正是量化 "
+         "DCT 系数路线；它是独立仓库与 PyPI 包，不在本仓库内）"),
+        ("JPEG 域需要 yccstego 那样的 DCT 系数实现。",
+         "JPEG 域需要 [`yccstego`](https://github.com/Yukinoshita-lin/yccstego) 那样的 "
+         "DCT 系数实现（姊妹项目，独立仓库与 PyPI 包）。"),
+        ("| JPEG 域隐写 | yccstego：Y 通道量化 DCT 系数 nsF5 | 本项目即可扩展 |",
+         "| JPEG 域隐写 | [`yccstego`](https://github.com/Yukinoshita-lin/yccstego)："
+         "Y 通道量化 DCT 系数 nsF5 | 姊妹项目（独立仓库与 PyPI 包） |"),
+        ("再用 `yccstego` 对照学习 JPEG 量化域",
+         "再用姊妹项目 [`yccstego`](https://github.com/Yukinoshita-lin/yccstego) "
+         "对照学习 JPEG 量化域"),
+        ("（项目 `yccstego` 扩展即此方向）",
+         "（姊妹项目 [`yccstego`](https://github.com/Yukinoshita-lin/yccstego) 即此方向）"),
         ("- 项目 README 与论文草稿 thesis/thesis1.pdf（SRM/143d/53d 与多源实验见论文实验章）；",
          "- 项目 README 与权威结果表 `docs/RESULTS.md`（SRM/143d/53d 与多源实验的现口径）；"),
         ("| 研究主线 | 复现论文→找 gap→做改进→诚实评估 | 论文（appE）与 `thesis/`；",
@@ -395,6 +441,24 @@ WEB = {
     "en": [
         ("It does not replace a textbook or the project thesis.", "It does not replace a textbook."),
         ("thesis figure", "project figure"),
+        ("(the yccstego extension goes the quantized-DCT-coefficient route)",
+         "(the companion project [yccstego](https://github.com/Yukinoshita-lin/yccstego) "
+         "goes the quantized-DCT-coefficient route; it is a separate repository and PyPI "
+         "package, not part of this repository)"),
+        ("JPEG-domain work needs the yccstego-style DCT coefficient design.",
+         "JPEG-domain work needs the [yccstego](https://github.com/Yukinoshita-lin/yccstego)"
+         "-style DCT coefficient design (companion project, separate repository and PyPI "
+         "package)."),
+        ("| JPEG-domain hiding | yccstego: nsF5 on quantized DCT coefficients of Y | Direct extension of this project |",
+         "| JPEG-domain hiding | [yccstego](https://github.com/Yukinoshita-lin/yccstego): "
+         "nsF5 on quantized DCT coefficients of Y | Companion project (separate repository "
+         "and PyPI package) |"),
+        ("study yccstego's quantized-DCT pipeline",
+         "study the companion project [yccstego](https://github.com/Yukinoshita-lin/yccstego)"
+         "'s quantized-DCT pipeline"),
+        ("(the project's `yccstego` extension is this direction)",
+         "(the companion project [yccstego](https://github.com/Yukinoshita-lin/yccstego) "
+         "is this direction)"),
         ("- The project README and the thesis draft thesis/thesis1.pdf "
          "(SRM / 143-D / 53-D experiments are in the experimental chapter);",
          "- The project README and the canonical results table `docs/RESULTS.md` "

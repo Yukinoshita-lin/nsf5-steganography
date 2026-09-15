@@ -36,7 +36,7 @@ To produce results, do not spread evenly. Go deep on one track; keep the rest at
 
 ## F.3 Optional "Go Further" Topics (pick 1-2 by track)
 
-- **JPEG-domain hiding**: move ch04-05 to quantized DCT coefficients (the project's `yccstego` extension is this direction); feel "spatial vs transform domain" difference;
+- **JPEG-domain hiding**: move ch04-05 to quantized DCT coefficients (the companion project [yccstego](https://github.com/Yukinoshita-lin/yccstego) is this direction); feel "spatial vs transform domain" difference;
 - **Deep steganalysis**: under small-sample constraints, use explainable features first to verify the signal, then cautiously introduce deep models (the ch08.1 lesson);
 - **Domain adaptation / cross-source robustness**: In the v1-era protocol SRM gains on same-source but loses on cross-source (ch08.8.1; not reproduced in the current revision); study how adaptation makes features stable across cameras/compression;
 - **Adversarial robustness and false-positive control**: study "loose vs strict" thresholds and Youden / low-FP trade-offs (ch07), and the physical ceiling of undetectable embedding;

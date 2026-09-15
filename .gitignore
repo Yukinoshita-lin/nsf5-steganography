@@ -102,4 +102,7 @@ data/external/
 webapp/tests/node_modules/
 webapp/tests/.npm-cache/
 
+# 姊妹项目 yccstego 的本地开发副本: 它有**自己的仓库与 PyPI 包**
+# (pip install yccstego, github.com/Yukinoshita-lin/yccstego), 不是本仓库的一部分。
+# 手册提到它时必须给出那个地址 —— 见 teaching/handbook_facts.py 的 REQUIRED。
 yccstego/

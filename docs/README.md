@@ -14,7 +14,7 @@
 
 [📄 Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf](Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf)
 
-- 74 pages, 12-week roadmap (6–8 hours/week)
+- 75 pages, 12-week roadmap (6–8 hours/week)
 - Covers: digital images → Python → LSB hiding → chi-square/RS analysis → Hamming matrix embedding → F5/nsF5 → wet paper coding → hash keying → ML foundations → v1/v2 feature engineering → SRM filtering → 143d/53d dual-version ML models → C++/GPU acceleration → capstone experiments
 - Each chapter includes hands-on experiments and review questions
 

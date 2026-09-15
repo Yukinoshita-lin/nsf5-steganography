@@ -3,6 +3,39 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.1] - 2026-09-15
+
+**教学材料里一处悬空引用：`yccstego`。**
+
+中英文手册的 ch03 / ch11 / 附录 F 都把 `yccstego` 说成"项目 `yccstego` 扩展"、"
+the project's `yccstego` extension"，但 `yccstego` 是**独立仓库与 PyPI 包**
+（`pip install yccstego`，当前 0.1.4，另有自己的 GitHub 仓库），本仓库里既没有它的
+代码（`yccstego/` 被 `.gitignore` 排除），也没有任何链接。读者按手册去 clone，什么也
+找不到 —— 与之前那条指向已删除 `thesis/` 的图注是同一类错误：教学材料把读者指向了
+不存在的东西。
+
+### Fixed
+
+- 手册中英各 5 处（DOCX 4 + 网页 5，按文本出现次数；DOCX 与网页是两套源）改为
+  "姊妹项目 yccstego"，并给出 <https://github.com/Yukinoshita-lin/yccstego>；表格里
+  的"本项目即可扩展"改成"姊妹项目（独立仓库与 PyPI 包）"。
+- README 的"学习手册"一节新增**姊妹项目**一行（含 `pip install yccstego` 与仓库地址），
+  读者不必先翻到手册附录才知道它在哪里。
+- 入库 PDF 按修正后的 DOCX 重新导出：英文 74 → **75 页**（新增的地址使正文多了一页），
+  中文仍 67 页；`docs/README.md`、`README.md`、`teaching/README.md` 的页数声明同步更新。
+
+### Added
+
+- `teaching/handbook_facts.py` 的 `REQUIRED` 增加
+  `github.com/Yukinoshita-lin/yccstego`：DOCX、网页、入库 PDF 三份材料都必须能给出
+  这个地址，谁把正文改回"项目扩展"都会在 CI 红。
+
+### Verification
+
+- `python teaching/handbook_facts.py --check` → 通过（中英 DOCX + 网页 + PDF 六处）。
+- `python -m pytest -q` → 50 项通过（含模型卡与解析契约）。
+- 两份 PDF 的文本里各含 3 处 yccstego 仓库地址，页数 67 / 75。
+
 ## [1.7.0] - 2026-09-15
 
 **模型治理：给两个部署模型补上模型卡。**
