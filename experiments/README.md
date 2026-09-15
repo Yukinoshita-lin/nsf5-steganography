@@ -72,7 +72,7 @@ gpu/data/imageset_bossbase.npz           2000 源图 × 5 变体 (1 干净 + 4 �
 | `density_grid.py` | `density_grid.csv` | 校园 v2 CSV | 分钟级 |
 | `train_deploy_models.py` | `deploy_model_metrics.csv` + `models/*.joblib` | `data/dataset_campus_v2_jpeg.csv` | ~3 min（8-split）/ ~10 s（单 seed） |
 | `build_results_table.py` | `results_canonical.csv` + `docs/RESULTS.md` | `experiments/data/*.csv` | < 5 s |
-| `ood_eval.py` | `ood_eval.csv` + `ood_summary.csv` | `data/campus_jpg` + `data/external/{div2k,alaska2}` | ~20 min（1514 张 × 2 模型 × 2 配置） |
+| `ood_eval.py` | `ood_eval.csv` + `ood_summary.csv` | `data/campus_jpg` + `data/external/{div2k,alaska2}` | **~1.7 min**（1514 张 × 2 模型 × 2 配置, 8 进程; 特征每图只算一次） |
 | `gain_importance.py` | `gain_importance*.csv` + `gain_group_share.csv` | `data/dataset_campus_v2_jpeg.csv` | < 1 min |
 
 ## 评测纪律（三条，违反任何一条结论就不成立）

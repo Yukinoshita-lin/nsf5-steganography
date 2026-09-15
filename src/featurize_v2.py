@@ -101,9 +101,12 @@ def _srm_stats(x_u8: np.ndarray, T: float = 4.0) -> np.ndarray:
     from srm_filter import srm_residuals_np
     r = srm_residuals_np(x_u8)               # (30,H,W) float32
     rc = np.clip(r, -T, T)
+    # abs(rc) 只算一次 (原来 mean 与 std 各算一遍, 是同一份 26 MB 数组上的
+    # 两次逐元素 pass)。数值与原来**完全一致**, 只是少一遍遍历。
+    arc = np.abs(rc)
     mu = rc.mean(axis=(-2, -1))               # (30,)
-    am = np.abs(rc).mean(axis=(-2, -1))       # (30,)
-    sd = np.abs(rc).std(axis=(-2, -1))        # (30,)
+    am = arc.mean(axis=(-2, -1))              # (30,)
+    sd = arc.std(axis=(-2, -1))               # (30,)
     return np.concatenate([mu, am, sd]).astype(np.float32)
 
 

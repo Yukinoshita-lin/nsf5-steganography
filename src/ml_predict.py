@@ -97,10 +97,18 @@ class MLPredictor:
 
     @staticmethod
     def preprocess(image: np.ndarray) -> np.ndarray:
+        """与**训练语料**一致的预处理: 转灰度(亮度) → 512×512 LANCZOS。
+
+        2026-09-15 修正: 这里原来对彩色图取 `img[..., 0]` (第一个通道, RGB 时即红
+        通道), 而语料是 `make_dataset.py` 用 `.convert("L")` (亮度) 建的 —— 彩色
+        输入因此存在训练/推理偏差。实测在 30 张真实照片上平均概率差 0.24、最大
+        0.97, OOD 误报率从 9.58% 变成 29.71%。现在统一走亮度转换。
+        (灰度输入两者等价, 所以 GUI 与既有灰度用法不受影响。)
+        """
         img = np.ascontiguousarray(image)
-        if img.ndim == 3:
-            img = img[..., 0]
         a = Image.fromarray(img)
+        if a.mode != "L":
+            a = a.convert("L")
         if a.size != WORK_SIZE:
             a = a.resize(WORK_SIZE, Image.LANCZOS)
         return np.asarray(a, dtype=np.uint8)
@@ -110,7 +118,6 @@ class MLPredictor:
         if not self.available:
             return {"probability": None, "verdict": "ML 模型未加载", "threshold": None}
         a = self.preprocess(image)
-        # 自动按模型 features 列数选择特征集
         feats_model = self._pkg.get("features", V1_FEAT_KEYS)
         if len(feats_model) == 11:
             try:
@@ -120,22 +127,45 @@ class MLPredictor:
                 from py_features import features as py_features_fn
                 feats = py_features_fn(a)
             x = np.array([feats[k] for k in V1_FEAT_KEYS], dtype=np.float64).reshape(1, -1)
-        elif len(feats_model) == 143:
+            return self._score(x)
+        if len(feats_model) in (143, 53):
             from featurize_v2 import featurize_v2
-            x = featurize_v2(a).reshape(1, -1)
-        elif len(feats_model) == 53:
+            return self.predict_from_v2(featurize_v2(a).reshape(1, -1))
+        return {"probability": None, "verdict": f"模型特征数 {len(feats_model)} 暂不支持",
+                "threshold": None}
+
+    def predict_from_v2(self, x143: np.ndarray) -> dict:
+        """用**已算好的 143 维 v2 特征**打分。
+
+        与 `predict()` 共用同一条打分路径 (特征裁剪 → 模型 → 阈值 → 判词), 区别只是
+        特征由调用方提供。用途: 一张图要喂给多个模型时 (例如 OOD 评估里 143d 与 53d
+        都要打分), 143 维特征只需算一次 —— 53d 本身就是 143d 的子集, 重复计算纯属浪费。
+        输入必须是 `featurize_v2(preprocess(image))` 的结果, 否则与部署口径不一致。
+        """
+        if not self.available:
+            return {"probability": None, "verdict": "ML 模型未加载", "threshold": None}
+        feats_model = self._pkg.get("features", V1_FEAT_KEYS)
+        x = np.asarray(x143, dtype=np.float64).reshape(1, -1)
+        if len(feats_model) == 53:
             # 53-D interpretable model = 143-D minus the 90 SRM statistics.
             import featurize_v2 as F2
-            x143 = F2.featurize_v2(a).reshape(1, -1)
             names = F2.ALL_FEATURE_NAMES
             idx = [names.index(name) for name in feats_model if name in names]
             if len(idx) != len(feats_model):
                 return {"probability": None,
                         "verdict": f"53d 模型特征名与 v2 特征集不匹配 ({len(idx)}/{len(feats_model)})",
                         "threshold": None}
-            x = x143[:, idx]
-        else:
-            return {"probability": None, "verdict": f"模型特征数 {len(feats_model)} 暂不支持", "threshold": None}
+            x = x[:, idx]
+        elif len(feats_model) != 143:
+            return {"probability": None,
+                    "verdict": f"predict_from_v2 只适用于 143/53 维模型 (当前 {len(feats_model)})",
+                    "threshold": None}
+        return self._score(x)
+
+    # ---- 内部: 打分尾段 (predict / predict_from_v2 共用) ----
+    def _score(self, x: np.ndarray) -> dict:
+        """特征已就绪: 裁剪 → 模型 → 阈值 → 判词。"""
+        feats_model = self._pkg.get("features", V1_FEAT_KEYS)
         if self.clip_outliers and self._clip_stats is not None and len(feats_model) > 11:
             lo, hi = self._clip_stats
             x = np.clip(x, lo, hi)

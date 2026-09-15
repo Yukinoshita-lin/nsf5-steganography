@@ -3,6 +3,43 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.9] - 2026-09-15
+
+**性能 + 一处训练/推理偏差。** 这版把最贵的一步实验从 20 分钟压到 1.7 分钟，
+并修掉一个只在彩色输入下才暴露的口径问题。
+
+### Performance
+
+- **SRM 残差向量化**（`src/srm_filter.py`）：原来 30 个 5×5 核各自做 25 次切片累加
+  （512² 约 72 ms），现在把图像一次变成滑动窗口视图、与 (30,5,5) 核张量做一次收缩
+  （约 19 ms，**3.9×**）。两种写法都是"零填充 + 互相关"，与 `torch.nn.functional.conv2d`
+  同口径，差别只是 float32 求和顺序（实测 max|Δ| = 5.5e-05）。慢速参考实现保留为
+  `srm_residuals_np_reference()` 供测试逐位对照。
+- `featurize_v2._srm_stats` 少算一遍 `abs(rc)`（同一份 26 MB 数组上的两次逐元素 pass
+  合成一次，数值完全不变）。整条 `featurize_v2` 从 ~139 ms 降到 ~103 ms。
+- **特征只算一次**（`MLPredictor.predict_from_v2`）：53 维是 143 维的子集，以前同一张图
+  要为两个模型各跑一遍 `featurize_v2`。现在算一次 143 维、由 `predict_from_v2()` 选列
+  打分，打分路径与 `predict()` 共用（新增逐位相等的契约测试）。
+- **OOD 评估并行**（`experiments/ood_eval.py --workers N`，默认 min(8, CPU)）：
+  1514 张 × 2 模型 × 2 配置从 **约 20 分钟 → 1.7 分钟**，误报数与中位概率逐位不变。
+
+### Fixed
+
+- **彩色图像的训练/推理偏差**：`MLPredictor.preprocess` 原来对 3 通道输入取
+  `img[..., 0]`（RGB 时即红通道），而语料是 `make_dataset.py` 用 `.convert("L")`
+  （亮度）建的。实测 30 张真实照片上平均概率差 **0.24**、最大 **0.97**；用部署口径
+  重跑 OOD 会把 143d 误报率从 9.58% 抬到 **29.71%**、53d 从 28.86% 抬到 36.00%。
+  现在 `preprocess` 统一走亮度转换 —— 灰度输入逐位不变（GUI 与既有用法不受影响），
+  彩色输入与训练口径一致。修正后 OOD 评估**逐位复现**此前公布的数字
+  （143d 9.58% / 53d 28.86%，中位概率 0.025021 / 0.527863 也一致）。
+- OOD 评估的协议串补上"grayscale"，`docs/RESULTS.md` 里的口径描述随之更新。
+
+### Verification
+
+- `pytest` **40 项通过**（新增 2 条：预处理=训练口径、predict_from_v2=predict 逐位相等），
+  覆盖率 **69.2%** ≥ 门槛 65%。
+- OOD 评估重跑（亮度口径 + 8 进程）：误报数 145/1514 与 437/1514，与修正前公布值一致。
+
 ## [1.6.8] - 2026-09-14
 
 **覆盖率门槛的第三个坑：测的是"有没有屏幕"。** v1.6.7 的 tag CI 仍然红在 pytest

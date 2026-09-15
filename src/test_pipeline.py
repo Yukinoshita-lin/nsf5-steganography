@@ -7,6 +7,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 
+PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 import numpy as np
 
 import steganalysis as SA
@@ -226,6 +228,66 @@ def test_ml_model_is_loadable():
     print(f"[OK] 部署模型可加载: {os.path.basename(MP.MODEL_PATH)}")
 
 
+def test_ml_preprocess_matches_training_grayscale():
+    """推理端的预处理必须与建语料时的一致: 彩色图走**亮度**转换。
+
+    2026-09-15: 原先 `MLPredictor.preprocess` 对彩色取 `img[..., 0]` (RGB 的红
+    通道), 而语料是 `make_dataset.py` 的 `.convert("L")` = 亮度。两者在真实照片上
+    平均概率差 0.24, 直接把 OOD 误报率从 9.58% 抬到 29.71%。这条测试把口径钉死。
+    """
+    from PIL import Image
+    import ml_predict as MP
+    rng = np.random.default_rng(3)
+    rgb = rng.integers(0, 256, (300, 200, 3), dtype=np.uint8)   # 非灰度彩色图
+    got = MP.MLPredictor.preprocess(rgb)
+    want = np.asarray(Image.fromarray(rgb).convert("L").resize((512, 512), Image.LANCZOS),
+                      dtype=np.uint8)
+    assert got.shape == (512, 512) and got.dtype == np.uint8, got.shape
+    assert np.array_equal(got, want), (
+        f"preprocess 与训练口径不一致: max|Δ|={int(np.abs(got.astype(int)-want.astype(int)).max())}")
+    # 灰度输入应逐位不变 (GUI / 既有用法不受影响)
+    gray = rgb[..., 0]
+    assert np.array_equal(MP.MLPredictor.preprocess(gray),
+                          np.asarray(Image.fromarray(gray).resize((512, 512), Image.LANCZOS),
+                                     dtype=np.uint8))
+    print("[OK] ML 预处理 = 训练口径 (彩色走亮度, 灰度不变)")
+
+
+def test_ml_predict_from_v2_matches_predict():
+    """`predict_from_v2(featurize_v2(preprocess(img)))` 必须与 `predict(img)` 逐位一致。
+
+    2026-09-15: `ood_eval` 要拿同一张图的特征喂给 143d 与 53d 两个模型 (53d 本来就是
+    143d 的子集), 以前会把 featurize_v2 跑两遍。优化成"算一次、共用"之后, 这条测试
+    负责证明省掉的只是重复计算, 而不是换了打分口径 —— 任何一处 (选列/裁剪/阈值/判词)
+    走偏都会在这里红。
+    """
+    import ml_predict as MP
+    from featurize_v2 import featurize_v2
+    img = _photo(shape=(256, 256))
+    checked = 0
+    for path in ("models/stego_classifier.joblib",
+                 "models/stego_classifier_v2_jpeg_lgb_51d.joblib"):
+        full = os.path.join(PROJ, path)
+        if not os.path.exists(full):
+            continue
+        for clip in (False, True):
+            pred = MP.MLPredictor(model_path=full, clip_outliers=clip)
+            if not pred.available:
+                continue
+            r1 = pred.predict(img)
+            x143 = featurize_v2(pred.preprocess(img)).reshape(1, -1)
+            r2 = pred.predict_from_v2(x143)
+            assert r1["probability"] == r2["probability"], (
+                f"{path} clip={clip}: predict={r1['probability']} "
+                f"predict_from_v2={r2['probability']}")
+            assert r1["threshold"] == r2["threshold"] and r1["verdict"] == r2["verdict"]
+            checked += 1
+    if checked == 0:
+        print("[SKIP] 没有可加载的部署模型")
+        return
+    print(f"[OK] predict_from_v2 与 predict 逐位一致 ({checked} 个模型×配置组合)")
+
+
 def test_ml_predict_routing():
     import ml_predict as MP
     pred = MP.MLPredictor()
@@ -254,5 +316,7 @@ if __name__ == "__main__":
     test_cpp_features_match_python()
     test_cpp_python_embed_contract()
     test_ml_model_is_loadable()
+    test_ml_preprocess_matches_training_grayscale()
+    test_ml_predict_from_v2_matches_predict()
     test_ml_predict_routing()
     print("\n全部通过")
