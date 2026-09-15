@@ -217,6 +217,7 @@ r = pred.predict(image)
 | 11 | **LICENSE 缺 APPENDIX 段**，结尾被换成自定义版权块 | GitHub 把 Apache-2.0 识别成 `NOASSERTION`，与徽章不符 | 已恢复标准 Apache-2.0 全文 |
 | 12 | **若干使用即踩的缺陷**：`python src/run_e2e.py` 在中文 Windows 控制台崩溃（`✓` 无法用 GBK 编码）；`make_dataset` 打印的样本数恒比真实值多 1；`train_model` 遇到空环境变量直接崩溃；README 引用过从未存在的 `src/_add_jpeg_clean.py`；wheel 安装示例版本过期 | 使用者直接踩到 | 均已修复，并新增控制台编码护栏测试 |
 | 13 | **wheel 里没有模型文件**：两个部署模型只在仓库里，`pyproject` 没有把它们打进包，而 `ml_predict` 也只按仓库布局找路径 | `pip install nsf5stego` 之后依赖里装着 lightgbm、README 写着有 ML 判定，但 `MLPredictor.available` **恒为 False**（真实验证：安装布局下 `FileNotFoundError`） | 已修（2026-09-15）：`models/` 以 `nsf5_models` 包打进 wheel，`ml_predict` 按"仓库布局 → 安装布局"查找；CI 的 build 作业在**干净 venv** 里断言模型可用并能打出概率 |
+| 14 | **事实校验器把一处陈旧引用放过去了**：图 9-2 的图注写着"论文图 / thesis figure"，而论文稿 2026-09-14 已删除；`FORBIDDEN` 用的是 `"（论文图"` / `"(thesis figure"`（左括号紧贴），实际文本是 `"（log–log 坐标，论文图）"`，子串匹配被绕过 —— 于是这句话同时留在 DOCX、网页版和**入库 PDF** 里 | 教学材料指向不存在的文件；而"进了 CI 就不会再犯"的假设也因此不成立 | 已修：匹配放宽到 `"论文图"` / `"thesis figure"`（另禁 `"project thesis"`，注意不能用裸 `"thesis"` —— 会命中 `"hypothesis"`），三处共 6 处修正并重新导出 PDF（67 / 74 页）；PDF 的导出步骤也补成了脚本 `teaching/export_handbook_pdf_word.py`（`make handbook-pdf`） |
 
 > **为什么保留这些记录，而不是悄悄把数字改掉：** 第 1 条和第 3 条恰好是"评测设计本身
 > 出错"的两个典型样本 —— 前者说明"按源图分组"这种纪律会在 id 分配这种细节上悄悄失效，

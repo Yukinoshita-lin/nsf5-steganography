@@ -79,7 +79,10 @@ REQUIRED = [
 FORBIDDEN = {
     "zh": [
         "也不代替论文",
-        "（论文图",
+        # 2026-09-15: 原来只禁 "（论文图" (左括号紧贴), 而实际文本是
+        # "（log–log 坐标，论文图）" —— 子串匹配绕过, 于是这句指向已删除
+        # thesis/ 的图注同时留在网页版与入库 PDF 里。现在按 "论文图" 匹配。
+        "论文图",
         "thesis/thesis1.pdf", "thesis/data/",
         "0.9085", "0.9227", "0.9100", "0.8946",
         "85.3%", "87.2%", "1/8 fp", "3/8 fp",
@@ -89,7 +92,9 @@ FORBIDDEN = {
     ],
     "en": [
         "or the project thesis",
-        "(thesis figure", "thesis/thesis1.pdf", "thesis/data/",
+        # 同上: 原文是 "(log-log axes, thesis figure)", 只禁 "(thesis figure"
+        # 拦不住。注意不能用裸 "thesis" —— 它会命中 "hypothesis"。
+        "thesis figure", "project thesis", "thesis/thesis1.pdf", "thesis/data/",
         "0.9085", "0.9227", "0.9100", "0.8946",
         "85.3%", "87.2%", "1/8 FP", "3/8 FP", "1/8 OOD FP",
         "0.50-0.52", "~73% of the gain",
@@ -105,7 +110,7 @@ FORBIDDEN = {
 INLINE = {
     "zh": [
         ("也不代替论文，", ""),
-        ("（论文图", "（项目图"),
+        ("论文图", "项目图"),
         ("论文与 README 都把这个列为后续工作", "README 把这个列为后续工作"),
         ("选论文/README 中的 1～2 个结论", "选 README / docs/RESULTS.md 中的 1～2 个结论"),
         ("10.4 论文与代码对照阅读表", "10.4 文档与代码对照阅读表"),
@@ -118,7 +123,7 @@ INLINE = {
     "en": [
         ("It does not replace a textbook or the project thesis.",
          "It does not replace a textbook."),
-        ("(thesis figure", "(project figure"),
+        ("thesis figure", "project figure"),
         ("The README and thesis list a keyed MAC as future work",
          "The README lists a keyed MAC as future work"),
         ("Choose one or two claims from the README/thesis",
@@ -318,7 +323,7 @@ ROW = {
 WEB = {
     "zh": [
         ("它不代替教科书，也不代替论文，而是把", "它不代替教科书，而是把"),
-        ("（论文图", "（项目图"),
+        ("论文图", "项目图"),
         ("- 项目 README 与论文草稿 thesis/thesis1.pdf（SRM/143d/53d 与多源实验见论文实验章）；",
          "- 项目 README 与权威结果表 `docs/RESULTS.md`（SRM/143d/53d 与多源实验的现口径）；"),
         ("| 研究主线 | 复现论文→找 gap→做改进→诚实评估 | 论文（appE）与 `thesis/`；",
@@ -389,7 +394,7 @@ WEB = {
     ],
     "en": [
         ("It does not replace a textbook or the project thesis.", "It does not replace a textbook."),
-        ("(thesis figure", "(project figure"),
+        ("thesis figure", "project figure"),
         ("- The project README and the thesis draft thesis/thesis1.pdf "
          "(SRM / 143-D / 53-D experiments are in the experimental chapter);",
          "- The project README and the canonical results table `docs/RESULTS.md` "

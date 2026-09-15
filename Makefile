@@ -20,7 +20,7 @@ endif
 	e2e gui notebooks dataset docker web-convert web-build exp-data exp-figs \
 	exp-models results results-check ood gain-importance handbook-check handbook-fix \
 	notebooks-run hooks attribution-check handbook-snippets coverage \
-	model-cards model-cards-check
+	model-cards model-cards-check handbook-pdf
 
 help:
 	@echo "Targets:"
@@ -42,6 +42,7 @@ help:
 	@echo "  make hooks        - enable the repo git hooks (.githooks, strips AI co-author trailers)"
 	@echo "  make attribution-check - verify no AI co-author trailer in history"
 	@echo "  make handbook-snippets - execute the python code blocks in the handbook"
+	@echo "  make handbook-pdf - re-export docs/*.pdf from the DOCX sources (needs Word)"
 	@echo "  make coverage     - full suite with coverage report"
 	@echo "  make e2e          - full embed/decode/analyze demo"
 	@echo "  make notebooks    - regenerate per-chapter notebooks"
@@ -170,6 +171,11 @@ attribution-check:
 # 手册里的 python 片段必须真的能跑 (可执行片段全部执行, 例外见脚本里的清单)
 handbook-snippets:
 	$(PY) teaching/verify_handbook_experiments.py
+
+# 入库 PDF 由 DOCX 导出 (Word COM)。Word 不在时脚本会明确跳过并返回 0,
+# 所以在 Linux/CI 上调它也安全。
+handbook-pdf:
+	$(PY) teaching/export_handbook_pdf_word.py
 
 # 带覆盖率的完整测试 (门槛见 pyproject / CI)
 coverage:

@@ -41,6 +41,23 @@ payload 虽写了 provenance 却要先装齐 lightgbm + scikit-learn 再反序�
 
 ### Fixed
 
+- **手册里指向已删除论文稿的图注**：中文 ch09 图 9-2 写"（log–log 坐标，**论文图**）"、
+  英文 ch09 写 "(log-log axes, **thesis figure**)" —— `thesis/` 与全部论文稿在
+  2026-09-14 已删除。更糟的是这条**同时存在于入库的两份 PDF 里**，而 CI 的事实校验
+  没抓到：`FORBIDDEN` 里写的是 `"（论文图"` / `"(thesis figure"`（左括号紧贴图字），
+  而实际文本是 `"（log–log 坐标，论文图）"` / `"(log-log axes, thesis figure)"`，
+  子串匹配被绕过。现在改成 `"论文图"` / `"thesis figure"` 匹配（并顺带禁掉英文的
+  `"project thesis"`；不能用裸 `"thesis"`，那会命中 `"hypothesis"`），
+  DOCX + 网页 + 入库 PDF 的 6 处全部修正并重新导出（中文 67 页 / 英文 74 页不变）。
+- **入库 PDF 的导出步骤此前没有脚本**：两份 `docs/*.pdf` 是"用 Word 从 DOCX 另存为
+  PDF"得到的，但这个步骤只存在于某次提交信息里。新增
+  `teaching/export_handbook_pdf_word.py` 把它固定下来（`make handbook-pdf`），
+  Word 不可用时明确跳过并返回 0。
+- **`teaching/README.md` 描述与实际文件不符**：原文写"Markdown 是唯一内容源，
+  `build_handbook_pdf.py` 编译出 `docs/` 下的 PDF，所以 PDF 与网页会同步"。
+  实际入库的 PDF 来自 DOCX（67 / 74 页），而用同一份 Markdown 编译得到的是
+  100 / 112 页（网页版内容更丰富）。现在用一张表写清三份交付物各自的源与同步方式。
+
 - **wheel 里没有模型文件**：两个部署模型只存在于仓库的 `models/` 目录,
   `pyproject.toml` 没有把它们打进包, 而 `src/ml_predict.py` 又只按
   `<repo>/models/` 找路径。实测在安装布局下 (解包 wheel 到临时目录再导入

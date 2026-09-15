@@ -257,10 +257,31 @@ python src/test_gui.py # GUI 冒烟测试（含教学动画）
 - `en/` — English handbook
 - 构建/部署：`.github/workflows/pages.yml`（推送到 `teaching/web/**` 时自动构建并发布 GitHub Pages）
 
-**内容来源与同步**：`teaching/web/{zh,en}/content/*.md` 是手册的唯一内容源（初次由
-`docx2md.py` 从 DOCX 母本导入并提交）。`build_handbook_pdf.py` 用同一份 Markdown 编译出
-`docs/` 下的单册 PDF，Jupyter Book 用同一份 Markdown 生成网页版。**因此改正文只需改
-Markdown，PDF 与网页会同步**；若只改 PDF 或网页，则二者会不一致。
+**内容来源与同步（2026-09-15 更正）**：此前这里写着"`teaching/web/*/content/*.md`
+是唯一内容源，`build_handbook_pdf.py` 用它编译出 `docs/` 下的 PDF，所以改 Markdown
+PDF 与网页会同步"。这与仓库里的实际文件不符 —— 入库的两份 PDF 是**从 DOCX 导出**的
+（版式是 Word 的，中文 67 页 / 英文 74 页），而 Markdown 比 DOCX **内容丰富得多**
+（用 `build_handbook_pdf.py` 编译同一份 Markdown 会得到 100 / 112 页）。三份材料
+因此各有各的来源，改一处不会自动同步别处。现在的实际情况是：
+
+| 交付物 | 源 | 生成方式 | 同步方式 |
+|---|---|---|---|
+| 网页版（Jupyter Book / GitHub Pages） | `teaching/web/{zh,en}/content/*.md` | `jupyter-book build` | 改 Markdown 即生效 |
+| 入库 PDF `docs/*.pdf`（67 / 74 页） | `docs/src/*.docx` | `teaching/export_handbook_pdf_word.py`（Word COM） | 改 DOCX 后重新导出 |
+| 备用 PDF（100 / 112 页，内容更全） | 同一份 Markdown | `teaching/build_handbook_pdf.py`（xelatex） | 改 Markdown 后重新编译 |
+
+改**事实/数字**时不要手改某一份：三处都要走 `teaching/handbook_facts.py`
+（`--check` 会同时校验 DOCX、网页与入库 PDF 的文本）：
+
+```bash
+python teaching/handbook_facts.py --fix --web   # 修 DOCX 与网页 markdown
+python teaching/export_handbook_pdf_word.py     # 重新导出入库 PDF (需要 Word)
+python teaching/handbook_facts.py --check       # 三份材料一起校验
+```
+
+两个 PDF 生成器的取舍：`export_handbook_pdf_word.py` 得到的是交付过的那一版版式
+（Word 会做字体回退）；`build_handbook_pdf.py` 不依赖 Word、但也没有字体回退 ——
+正文里的 `①` `ᵖ` `₄` 这类符号会缺字形，所以它现在是备用路径。
 
 - 本地构建网页：`pip install -r teaching/web/requirements.txt && jupyter-book build teaching/web/zh`（en 同理）
 - 打开：`teaching/web/{zh,en}/_build/html/index.html`
@@ -289,4 +310,3 @@ python teaching/gen_videos_v2.py --ch all --voice zh-CN-XiaoxiaoNeural
   （本机为 `D:\Users\32403\.zcode\bin`）→ `PATH` → `imageio-ffmpeg` 包；不在 C 盘留存项目产物
 
 早期纯静态幻灯版生成器 `gen_videos.py`（Windows SAPI 离线语音、无动画）保留作为备用。
-
