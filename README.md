@@ -307,6 +307,8 @@ python src/test_core.py    # 核心算法自测（嵌入/解码 + 汉明矩阵 +
 python src/test_steg.py    # 盲隐写分析自测（区分 干净/含密 图）
 python src/run_e2e.py      # 端到端验证（嵌入→保存→解码→分析→绘图）
 python src/test_gui.py     # GUI 冒烟测试（构建窗口/载入/预览）
+python -m pytest -q        # 全部 50 项（含模型卡契约、实验链冒烟、权威表同步）
+make coverage              # 同上 + 覆盖率报告（门槛 65%，当前约 69%）
 ```
 
 ---

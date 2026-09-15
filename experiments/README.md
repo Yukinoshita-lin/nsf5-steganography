@@ -107,6 +107,15 @@ gpu/data/imageset_bossbase.npz           2000 源图 × 5 变体 (1 干净 + 4 �
    这正是 2026-09-14 审计最严重缺陷（414 个 `clean_jpeg` 行各占一个 photo_id）
    的形态 —— 修正分组后 143d held-out AUC 0.8946 → 0.7555。
 
+6. **生产者的口径要有测试兜底。** 头条数字的生产者不能只有"代码在那里"这一条保障：
+   - `src/test_results_contract.py` —— 生产者算哪些列 / 权威表是否带语料与协议；
+   - `src/test_model_cards.py` —— 随包模型的模型卡与二进制不脱钩；
+   - `src/test_ood_smoke.py` —— OOD 评估（`ood_eval.py`）用**合成语料**在 CI 里跑通：
+     判据必须是 payload 里的部署阈值、`--workers` 并行与单进程逐位一致、
+     汇总的 fp_rate / Wilson CI / ALL 行自洽。
+   合成语料不代替真实照片，所以这些测试**只断言口径与统计结构，不断言具体误报率**；
+   真实数字仍然只能由 `ood_eval.py` + 外部语料产出。
+
 ## 语料的可复现性边界
 
 | 语料 | 能否从零重建 | 说明 |

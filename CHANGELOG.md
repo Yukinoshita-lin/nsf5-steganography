@@ -29,11 +29,25 @@ the project's `yccstego` extension"，但 `yccstego` 是**独立仓库与 PyPI �
 - `teaching/handbook_facts.py` 的 `REQUIRED` 增加
   `github.com/Yukinoshita-lin/yccstego`：DOCX、网页、入库 PDF 三份材料都必须能给出
   这个地址，谁把正文改回"项目扩展"都会在 CI 红。
+- **`src/test_ood_smoke.py`**（6 条）：OOD 误报率评估在 CI 里此前**从未被执行过**
+  （它要 1514 张外部照片），而它产出的正是 README 的头条数字。现在用自造的合成照片
+  在 CI 里跑通这条链，并钉住三类不变量：
+  - **口径**：判据必须等于模型 payload 里的部署阈值，`pred_stego` 必须由
+    `prob >= threshold` 得来，概率落在 [0,1]；
+  - **并行不改数**：`--workers 2` 与 `--workers 1` 的逐图概率**逐位相同**
+    （并行是 1.6.9 之后 20 分钟 → 1.7 分钟的默认路径，此前没有任何测试碰过它）；
+  - **统计自洽**：`fp_rate = 误报数/张数`、Wilson CI 覆盖点估计且随 n 变窄、
+    按来源分组的行加起来等于 `ALL` 行、缺语料时必须打印原因而不是静默少行。
+  合成语料不代替真实照片，所以测试**不断言具体误报率**。
+- `Makefile` 的 `help` 补上此前漏掉的 `core/steg/fp/pipeline/pyfeatures/cpp-clean/gui/
+  exp-data/handbook-check`，并修掉一个笔误（`make handbook-check-` —— 那个 target
+  并不存在，`make help` 却把它列了出来）。
 
 ### Verification
 
 - `python teaching/handbook_facts.py --check` → 通过（中英 DOCX + 网页 + PDF 六处）。
-- `python -m pytest -q` → 50 项通过（含模型卡与解析契约）。
+- `python -m pytest -q` → **56 项通过**（新增 6 条 OOD 冒烟），覆盖率 69.3% ≥ 门槛 65%。
+- `python teaching/run_notebooks.py` → 10/10 通过。
 - 两份 PDF 的文本里各含 3 处 yccstego 仓库地址，页数 67 / 75。
 
 ## [1.7.0] - 2026-09-15
