@@ -154,7 +154,7 @@ GitHub Pages 首页已升级为**交互式双语教学网站**（不依赖手册
 
 - 🖥 网页版: [中文](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html) · [English](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
 - 🇨🇳 [`docs/学习手册-从零读懂nsF5隐写项目.pdf`](docs/学习手册-从零读懂nsF5隐写项目.pdf) — 中文版, 67 页
-- 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 75 pages
+- 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 76 pages
 - 📓 按章 Colab/Jupyter Notebook: 见 [`teaching/README.md`](teaching/README.md)
 - 🐳 Docker/JupyterLab 教学镜像: `docker compose up --build`
 
@@ -935,6 +935,11 @@ git tag v1.1 && git push origin main --tags
     inf，弱可分数据上 `argmax` 常落在那里）——阈值成了 inf 之后，模型对任何图都不判
     含密且**不报错**。两处实现都已加 `np.isfinite` 过滤；随仓库分发的两个模型没踩到
     （0.9493 / 0.9595 都是有限值），重跑真实语料与入库指标**逐项一致**。
+  - **手册里的"置换加速 263 倍"被更正**：它与项目自己的 `bench_permute.csv` 对不上，
+    而且自己给的耗时（12.3 s / 0.223 s）算出来也只有约 55 倍。现在重跑基准并统一为
+    "4096²：15.6 s → 0.24 s（约 65×），小 N 处最高约 240×，数据见
+    `experiments/data/bench_permute.csv`"，网页 / DOCX / PDF / 视频脚本七处一致，
+    并让 `handbook_facts.py` 守住（`263` 列入禁词、产物名列入必填）。
 
 - **v1.7.1 — 教学材料的悬空引用**
   - 手册（中英文 ch03 / ch11 / 附录 F）把 `yccstego` 写成"项目 `yccstego` 扩展"，

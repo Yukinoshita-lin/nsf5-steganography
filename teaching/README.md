@@ -260,14 +260,14 @@ python src/test_gui.py # GUI 冒烟测试（含教学动画）
 **内容来源与同步（2026-09-15 更正）**：此前这里写着"`teaching/web/*/content/*.md`
 是唯一内容源，`build_handbook_pdf.py` 用它编译出 `docs/` 下的 PDF，所以改 Markdown
 PDF 与网页会同步"。这与仓库里的实际文件不符 —— 入库的两份 PDF 是**从 DOCX 导出**的
-（版式是 Word 的，中文 67 页 / 英文 75 页），而 Markdown 比 DOCX **内容丰富得多**
+（版式是 Word 的，中文 67 页 / 英文 76 页），而 Markdown 比 DOCX **内容丰富得多**
 （用 `build_handbook_pdf.py` 编译同一份 Markdown 会得到 100 / 112 页）。三份材料
 因此各有各的来源，改一处不会自动同步别处。现在的实际情况是：
 
 | 交付物 | 源 | 生成方式 | 同步方式 |
 |---|---|---|---|
 | 网页版（Jupyter Book / GitHub Pages） | `teaching/web/{zh,en}/content/*.md` | `jupyter-book build` | 改 Markdown 即生效 |
-| 入库 PDF `docs/*.pdf`（67 / 75 页） | `docs/src/*.docx` | `teaching/export_handbook_pdf_word.py`（Word COM） | 改 DOCX 后重新导出 |
+| 入库 PDF `docs/*.pdf`（67 / 76 页） | `docs/src/*.docx` | `teaching/export_handbook_pdf_word.py`（Word COM） | 改 DOCX 后重新导出 |
 | 备用 PDF（100 / 112 页，内容更全） | 同一份 Markdown | `teaching/build_handbook_pdf.py`（xelatex） | 改 Markdown 后重新编译 |
 
 改**事实/数字**时不要手改某一份：三处都要走 `teaching/handbook_facts.py`

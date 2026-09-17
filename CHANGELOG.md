@@ -19,6 +19,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **教学材料里的"置换加速 263 倍"没有出处，而且算错了**：中文网页版 / 英文网页版 /
+  两本 DOCX / 两份入库 PDF / 旁白视频脚本（`video_scenes_zh.py` 的画面与旁白、
+  `video_decks_zh.py` 的要点页）一共 7 处都写着"最高约 263 倍（4096²：12.3 s → 223 ms）"。
+  两个问题：① 项目自己的 `experiments/data/bench_permute.csv` 里 4096² 是
+  37.3 s → 0.56 s（66.7×），教学材料引的是另一个数；② 即便按它自己给的耗时算，
+  12.3 / 0.223 ≈ **55×**，不是 263×（263 那个量级出现在小 N 处，是两种口径混算）。
+  现在：
+  - 用 `gen_bench.py --only permute` **重跑基准**（本次机器：4096² = 1600 万位置，
+    Python 15.6 s → C++ 0.24 s ≈ 65×；同一份 CSV 小 N 处最高约 240×），CSV 随之刷新；
+  - 七处文字统一改成"加速随规模变化"并**点名数据文件**（`bench_permute.csv`）与复现命令；
+  - `handbook_facts.py` 把 `263` 列入 FORBIDDEN（中英 DOCX/网页/PDF + 视频脚本），
+    把 `bench_permute.csv` 列入 REQUIRED —— 性能数字必须指向可复现的产物；
+  - `gen_bench.py` 新增 `--only permute|embed|feat|all`（刷新那一个数字不必重跑 GPU 段）；
+  - 入库 PDF 重新导出：英文 75 → **76 页**，中文仍 67 页。
 - **`youden_threshold` 可能返回 `inf` —— 一个静默失效的阈值**（新增的生产者冒烟测试
   当场抓到）：`sklearn.metrics.roc_curve` 的 `thresholds[0]` 是 **inf**（表示"没有
   任何样本被判为正"），而 `argmax(J)` 在小样本/弱可分数据上经常正落在这一点 ——
@@ -45,6 +59,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **`youden_threshold` 在退化输入下仍是有限值**（两处实现都测）。
   测试**不断言具体 AUC**（12 行合成数据没有意义），只断言结构与护栏。
 - `train_deploy_models.py` 新增 `--out-csv`（试跑/冒烟测试不再覆盖权威表用的那一份）。
+- `experiments/tools/gen_bench.py` 新增 `--only permute|embed|feat|all`（默认 all）。
 - `src/test_experiment_smoke.py` 两条慢测试（`make_dataset` 的并行分支）：
   **`workers=2` 与 `workers=1` 逐行一致**（走 CLI 子进程，实测 35 样本逐行相同）、
   **超时断路器**（`--pool-timeout 0.001` 必须以非零码退出）。

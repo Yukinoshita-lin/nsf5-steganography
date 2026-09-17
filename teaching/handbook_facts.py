@@ -53,10 +53,12 @@ VIDEO_FORBIDDEN = [
     "推到 0.81",         # v1 时期的 OOF 数字
     "OOF ≈ 0.814",
     "四者 AUC ≈ 0.70–0.72，几乎重叠",   # 该说法只在 11 维语料成立, 需写明范围
+    "263",               # 置换加速比算错了: 4096² 实测约 65x (见 bench_permute.csv)
 ]
 VIDEO_REQUIRED = [
     "未在当前版本复现",   # v1 时期的 SRM 预处理口径必须带这个限定
     "0.898",             # 现口径
+    "bench_permute.csv", # 性能数字必须指向可复现的产物
 ]
 
 # --------------------------------------------------------------------------
@@ -74,6 +76,9 @@ PDF_GLYPH_MUST_MAP = "ᵖⱼ₁₂₃₄₅₆₇⁻⁸′↔①②③④⑤⑥�
 # --------------------------------------------------------------------------
 REQUIRED = [
     "docs/RESULTS.md",       # 权威结果表成为唯一出处
+    # 性能数字必须指向可复现的产物: 2026-09-17 发现手册里的"置换加速 263 倍"既没有
+    # 出处、也与项目自己的 bench_permute.csv 对不上 (4096² 实测 15.6s -> 0.24s ≈ 65x)。
+    "bench_permute.csv",
     # 手册里提到姊妹项目 yccstego 时必须给出**能找到它的地址**: 2026-09-15 之前
     # 中英文手册都写成"项目 yccstego 扩展", 但 yccstego 是独立仓库与 PyPI 包,
     # 克隆本仓库根本找不到它 —— 和已删除的 thesis/ 是同一种悬空引用。
@@ -97,6 +102,10 @@ FORBIDDEN = {
         # "（log–log 坐标，论文图）" —— 子串匹配绕过, 于是这句指向已删除
         # thesis/ 的图注同时留在网页版与入库 PDF 里。现在按 "论文图" 匹配。
         "论文图",
+        # 2026-09-17: 置换加速比 263 是把"4096² 的耗时"与"小 N 的加速比"混在
+        # 一起算出来的 —— 4096² 实测 15.6 s / 0.24 s ≈ 65x, 同一份 CSV 里小 N 处
+        # 最高约 240x。数字见 experiments/data/bench_permute.csv。
+        "263",
         "thesis/thesis1.pdf", "thesis/data/",
         "0.9085", "0.9227", "0.9100", "0.8946",
         "85.3%", "87.2%", "1/8 fp", "3/8 fp",
@@ -109,6 +118,7 @@ FORBIDDEN = {
         # 同上: 原文是 "(log-log axes, thesis figure)", 只禁 "(thesis figure"
         # 拦不住。注意不能用裸 "thesis" —— 它会命中 "hypothesis"。
         "thesis figure", "project thesis", "thesis/thesis1.pdf", "thesis/data/",
+        "263",                 # 同上: 加速比算错了 (见 experiments/data/bench_permute.csv)
         "0.9085", "0.9227", "0.9100", "0.8946",
         "85.3%", "87.2%", "1/8 FP", "3/8 FP", "1/8 OOD FP",
         "0.50-0.52", "~73% of the gain",
@@ -125,6 +135,14 @@ INLINE = {
     "zh": [
         ("也不代替论文，", ""),
         ("论文图", "项目图"),
+        # 置换加速比: 把"4096² 的耗时"(15.6 s -> 0.24 s ≈ 65x) 与"小 N 的最高加速比"
+        # (约 240x) 分开说, 并给出产物出处 —— 原来的 "263 倍 + 12.3s -> 223ms" 是
+        # 两个口径混算出来的。
+        ("置换加速最高约 263 倍（4096² 图：Python ≈12.3 秒 → C++ ≈223 毫秒）",
+         "置换加速随规模变化（数据见 experiments/data/bench_permute.csv，可用 "
+         "`python experiments/tools/gen_bench.py --only permute` 复现；性能与机器相关）："
+         "4096²（1600 万像素）Py ≈15.6 秒 → C++ ≈0.24 秒（约 65 倍），"
+         "同一份基准里小规模（6.5 万）最高约 240 倍。"),
         # 姊妹项目 yccstego: 独立仓库与 PyPI 包, 不在本仓库里 —— 给出地址
         ("（yccstego 扩展正是走量化 DCT 系数路线）",
          "（姊妹项目 yccstego 走的正是量化 DCT 系数路线："
@@ -151,6 +169,11 @@ INLINE = {
         ("It does not replace a textbook or the project thesis.",
          "It does not replace a textbook."),
         ("thesis figure", "project figure"),
+        ("permutation speedup up to ~263x (4096^2 image: ~12.3 s in Python -> ~223 ms in C++)",
+         "permutation speedup grows with N (data: experiments/data/bench_permute.csv, "
+         "reproduce with `python experiments/tools/gen_bench.py --only permute`; timings are "
+         "machine-dependent): at 4096^2 (16M positions) Python ~15.6 s -> C++ ~0.24 s "
+         "(~65x), while the small-N end of the same benchmark peaks around ~240x (65k)"),
         # companion project yccstego — same reasoning as the Chinese rules above
         ("(the yccstego extension goes the quantized-DCT-coefficient route)",
          "(the companion project yccstego goes the quantized-DCT-coefficient route: "
@@ -365,6 +388,11 @@ WEB = {
     "zh": [
         ("它不代替教科书，也不代替论文，而是把", "它不代替教科书，而是把"),
         ("论文图", "项目图"),
+        ("置换加速最高约 **263 倍**（4096² 图：Python ≈12.3 秒 → C++ ≈223 毫秒）",
+         "置换加速随规模变化（数据见 `experiments/data/bench_permute.csv`，可用 "
+         "`python experiments/tools/gen_bench.py --only permute` 复现；性能与机器相关）："
+         "4096²（1600 万像素）Python ≈15.6 秒 → C++ ≈0.24 秒（约 65 倍），"
+         "同一份基准里小规模（6.5 万）最高约 240 倍"),
         # 姊妹项目 yccstego: 网页版用 markdown 链接 (渲染后可直接点)
         ("（yccstego 扩展正是走量化 DCT 系数路线）",
          "（姊妹项目 [`yccstego`](https://github.com/Yukinoshita-lin/yccstego) 走的正是量化 "
@@ -451,6 +479,11 @@ WEB = {
     "en": [
         ("It does not replace a textbook or the project thesis.", "It does not replace a textbook."),
         ("thesis figure", "project figure"),
+        ("permutation speedup up to ~263x (4096^2 image: ~12.3 s in Python -> ~223 ms in C++)",
+         "permutation speedup grows with N (data: `experiments/data/bench_permute.csv`, "
+         "reproduce with `python experiments/tools/gen_bench.py --only permute`; timings are "
+         "machine-dependent): at 4096^2 (16M positions) Python ~15.6 s -> C++ ~0.24 s (~65x), "
+         "while the small-N end of the same benchmark peaks around ~240x (65k)"),
         ("(the yccstego extension goes the quantized-DCT-coefficient route)",
          "(the companion project [yccstego](https://github.com/Yukinoshita-lin/yccstego) "
          "goes the quantized-DCT-coefficient route; it is a separate repository and PyPI "
@@ -722,12 +755,16 @@ def check(include_web: bool) -> int:
         if not os.path.exists(p):
             continue
         txt = io.open(p, encoding="utf-8").read()
+        # 只检查**旁白/字幕文本**: 以 # 开头的注释是给维护者看的 (那里会解释历史
+        # 数字为什么被改掉), 不该因为出现旧数字而判失败 —— 例如
+        # "此前写的 263 倍是把两种口径混算"。非注释部分仍然严格检查。
+        body = "\n".join(ln for ln in txt.splitlines() if not ln.lstrip().startswith("#"))
         for s in VIDEO_FORBIDDEN:
-            if s in txt:
+            if s in body:
                 print(f"  [陈旧结论] video/{os.path.basename(p)}: 仍含 {s!r}")
                 bad += 1
         for s in VIDEO_REQUIRED:
-            if s not in txt:
+            if s not in body:
                 print(f"  [缺现口径] video/{os.path.basename(p)}: 缺 {s!r}")
                 bad += 1
     # 备用 PDF 路径 (xelatex) 的字形映射: 少一条映射 = PDF 里少一个符号

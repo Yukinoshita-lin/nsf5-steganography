@@ -519,8 +519,11 @@ def anim_speedup(img, beat, t, d):
     lmin, lmax = math.log10(0.05), math.log10(30)
     def X(sec):
         return x0 + (math.log10(max(sec, 0.05)) - lmin) / (lmax - lmin) * (x1 - x0)
-    rows = [("确定性置换 · Python", 12.3, (120, 128, 148)),
-            ("确定性置换 · C++", 0.223, ACCENT)]
+    # 2026-09-17: 换成 experiments/data/bench_permute.csv 的真实测量 (同一台机器,
+    # 4096² = 1600 万像素): Python 15.6 s -> C++ 0.24 s ≈ 65x。此前写的
+    # "12.3 s -> 0.223 s, 263 倍" 是把 4096² 的耗时与"小 N 处的最高加速比"混算了。
+    rows = [("确定性置换 · Python", 15.6, (120, 128, 148)),
+            ("确定性置换 · C++", 0.24, ACCENT)]
     d.text((x0, 240), "4096² 图像确定性置换耗时（对数刻度）", font=f34, fill=TEXT)
     for lo, lab in ((0.1, "0.1s"), (1, "1s"), (10, "10s")):
         x = X(lo)
@@ -537,7 +540,7 @@ def anim_speedup(img, beat, t, d):
         d.text((x0 + full + 24 if i == 0 else x0 + X(sec) - x0 + 24, y + 14),
                f"{shown:.2f} s" if i else f"{shown:.1f} s", font=f30, fill=col)
     if beat == 0 and t > 0.8 or beat == 1:
-        d.text((640, 580), "≈ 263 ×", font=F_B(72), fill=(214, 51, 108))
+        d.text((640, 580), "≈ 65 ×", font=F_B(72), fill=(214, 51, 108))
     if beat == 1:
         # 优化：底部说明文字上移，远离字幕安全区
         d.text((x0, 760), "前提：两条路径输出像素级一致（cppembed.selfcheck）",
@@ -1123,8 +1126,8 @@ dict(num=9, title="工程化：C++、GPU、GUI 与测试", weeks="第 10 周", s
     ], ["四层：DLL 加速 → ns5_core → 功能层 → GUI",
         "~算法层不依赖 GUI：服务器 / CI 可裸跑",
         "DLL 缺失自动回退 Python：功能永远可用"]),
-    S("anim", "快 263 倍，前提是“完全一样”", [
-        B("Python 逐元素循环很慢，隐写恰好有两个热路径：像素置换和特征提取。看这组真实测量：四千见方的图做置换，Python 要 12 秒，C++ 只要 0.22 秒——263 倍。特征提取下沉到 GPU 批量算，每秒四百多张。", 0, anim_beat=0),
+    S("anim", "快约 65 倍，前提是“完全一样”", [
+        B("Python 逐元素循环很慢，隐写恰好有两个热路径：像素置换和特征提取。看这组真实测量：四千见方的图做置换，Python 要 15.6 秒，C++ 只要 0.24 秒——约 65 倍（同一份基准里小规模处最高约 240 倍）。数据见 experiments/data/bench_permute.csv。特征提取下沉到 GPU 批量算，每秒四百多张。", 0, anim_beat=0),
         B("但快不是重点，重点是“结果完全一样”。项目专门写了自校验：同一张图分别走 C++ 和 Python 两路嵌入，输出必须像素级一致；特征也逐个核对。遇到“有库能嵌、没库解不了”的灵异事件，先跑自检，不要碰算法。", 0, anim_beat=1),
     ], anim="speedup"),
     S("bullets", "GUI 与测试：重构不翻车靠护栏", [

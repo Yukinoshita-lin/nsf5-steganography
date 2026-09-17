@@ -809,8 +809,9 @@ DECKS = [
                 "特征也逐个核对。遇到“有库能嵌、没库解不了”的诡异问题，先跑自校验，别改算法。"),
                 bullets=[
                     "热路径：确定性置换 + 特征提取",
-                    "置换加速约 263 倍（4096²：12.3s → 223ms）",
+                    "置换加速约 65 倍（4096²：15.6s → 0.24s；小 N 处最高约 240 倍）",
                     "前提：像素级一致（selfcheck 双路对比）",
+                    "数据：experiments/data/bench_permute.csv",
                 ]),
             dict(t="GPU 版：批量向量化 + 诚实评测", layout="side",
                 img=f"{ASSETS}/img007.png", caption="真实测量：v1 特征提取吞吐，CPU(C++) vs GPU(torch 批量)", say=(
