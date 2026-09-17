@@ -64,11 +64,19 @@ def load_data(files=None):
 
 
 def youden_threshold(y_true, p):
+    """Youden J 最大点。
+
+    2026-09-17: 与 `experiments/train_deploy_models.py::youden_threshold` 同步加上
+    `np.isfinite` 过滤 —— `roc_curve` 的 `thresholds[0]` 是 inf, argmax 落在它上面
+    会把阈值写成 inf, 模型从此对任何图都不判含密, 且没有任何报错。
+    """
     from sklearn.metrics import roc_curve
     fpr, tpr, th = roc_curve(y_true, p)
     j = tpr - fpr
-    if len(j) == 0: return 0.5
-    return float(th[np.argmax(j)])
+    cand = [(ji, t) for ji, t in zip(j, th) if np.isfinite(t)]
+    if not cand:
+        return 0.5
+    return float(max(cand)[1])
 
 
 def threshold_for_fp(y_true, p, max_fp=0.10):

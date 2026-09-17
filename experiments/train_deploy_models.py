@@ -169,11 +169,23 @@ def check_corpus_grouping(df: pd.DataFrame, csv_path: str) -> None:
 
 
 def youden_threshold(y_true, p) -> float:
-    """Youden J 最大点。与 src/train_model.py::youden_threshold 同定义。"""
+    """Youden J 最大点。与 src/train_model.py::youden_threshold 同定义。
+
+    2026-09-17: 加了 np.isfinite 过滤。`sklearn.metrics.roc_curve` 的
+    `thresholds[0]` 是 **inf**(表示"没有任何样本被判为正"), 而 `argmax(J)` 在
+    小样本/弱可分数据上经常正落在这一点 —— 于是阈值被写成 inf, 模型此后对任何图
+    都不会判含密 (`p >= inf` 恒假), 而且**没有任何报错**。实测触发: 4 张合成照片
+    x 3 档的语料上, 生产者直接写出 `threshold_youden=inf` (随仓库分发的两个模型
+    恰好没踩到, 它们的阈值是 0.9493 / 0.9595)。同文件的 `threshold_for_fp()` 一直
+    有这个过滤, 只有这里漏了。
+    """
     from sklearn.metrics import roc_curve
     fpr, tpr, th = roc_curve(y_true, p)
     j = tpr - fpr
-    return float(th[np.argmax(j)]) if len(j) else 0.5
+    cand = [(ji, t) for ji, t in zip(j, th) if np.isfinite(t)]
+    if not cand:
+        return 0.5
+    return float(max(cand)[1])          # J 最大的**有限**阈值
 
 
 def threshold_for_fp(y_true, p, max_fp: float = LOW_FP) -> float:
@@ -384,6 +396,9 @@ def main() -> int:
                     help="模型输出目录 (默认 models/)")
     ap.add_argument("--no-save", dest="save", action="store_false", default=True,
                     help="只评估, 不写模型文件")
+    ap.add_argument("--out-csv", default=OUT_CSV,
+                    help="指标 CSV 落点 (默认 experiments/data/deploy_model_metrics.csv; "
+                         "试跑/冒烟测试请改这里, 别覆盖权威表用的那一份)")
     args = ap.parse_args()
 
     keys = [k.strip() for k in args.models.split(",") if k.strip()]
@@ -398,9 +413,10 @@ def main() -> int:
 
     rows = [run(k, args) for k in keys]
 
-    os.makedirs(os.path.dirname(OUT_CSV), exist_ok=True)
-    pd.DataFrame(rows).to_csv(OUT_CSV, index=False, float_format="%.4f")
-    print(f"\n指标已写入 -> {rel_from_proj(OUT_CSV, PROJ)}")
+    out_csv = os.path.abspath(args.out_csv)
+    os.makedirs(os.path.dirname(out_csv), exist_ok=True)
+    pd.DataFrame(rows).to_csv(out_csv, index=False, float_format="%.4f")
+    print(f"\n指标已写入 -> {rel_from_proj(out_csv, PROJ)}")
 
     # 模型卡紧跟模型走: 卡里含 sha256, 所以"重训了模型但没更新卡"必须由生产者
     # 自己消灭, 而不是留给下一个人发现 (发现方式会是 CI 里 pytest 报红)。

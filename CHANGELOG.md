@@ -5,34 +5,51 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [1.7.2] - 2026-09-17
 
-**把"fork 死锁"从单个脚本扩成一次全仓排查。**
+**两条线：把"fork 死锁"做成一次全仓排查，以及一个由新冒烟测试当场抓到的静默 bug。**
 
 1.7.1 查出 OOD 评估的并行路径在 Linux 上 fork 出子进程后与 LightGBM 的 OpenMP
-线程池死锁（CI 的 pytest 作业因此挂满 6 小时）。修完那一处之后，这次做的是**同类
-隐患的全仓扫描**：`multiprocessing` / `Pool` / `DataLoader` / `joblib.Parallel`
-一共只有三处进程池 —— `experiments/ood_eval.py`（已修）、`src/make_dataset.py`
-（本次修）、`teaching/video_engine_v2.py`（本来就是 spawn）；`gpu/train_cnn.py` 与
+线程池死锁（CI 的 pytest 作业因此挂满 6 小时）。这次先做**同类隐患的全仓扫描**：
+`multiprocessing` / `Pool` / `DataLoader` / `joblib.Parallel` 一共只有三处进程池 ——
+`experiments/ood_eval.py`（1.7.1 已修）、`src/make_dataset.py`（本次修）、
+`teaching/video_engine_v2.py`（本来就是 spawn）；`gpu/train_cnn.py` 与
 `experiments/run_cnn_sota.py` 的 DataLoader 默认 `num_workers=0`，不会 fork。
+
+然后给**部署模型的生产者**补上第一条端到端冒烟测试（此前它只有"契约比对"），
+而这条测试第一次跑就抓到了 `youden_threshold` 会返回 `inf` 的问题（见下）。
 
 ### Fixed
 
+- **`youden_threshold` 可能返回 `inf` —— 一个静默失效的阈值**（新增的生产者冒烟测试
+  当场抓到）：`sklearn.metrics.roc_curve` 的 `thresholds[0]` 是 **inf**（表示"没有
+  任何样本被判为正"），而 `argmax(J)` 在小样本/弱可分数据上经常正落在这一点 ——
+  阈值于是被写成 `inf`，模型此后对任何图都不判含密（`p >= inf` 恒假），且**不报错**。
+  两处实现（`experiments/train_deploy_models.py` 与 `src/train_model.py`）都加了
+  `np.isfinite` 过滤；同文件的 `threshold_for_fp()` 一直有这个过滤，只有它漏了。
+  - 触发证据：4 张合成照片 × 3 档的小语料上，生产者写出 `threshold_youden=inf`。
+  - 影响范围：随仓库分发的两个模型没踩到（阈值 0.9493 / 0.9595 都是有限值）；
+    用 `--no-save` 重跑真实校园语料，指标 CSV 与入库的那份**逐项一致**。
 - **`src/make_dataset.py` 的多进程分支**（此前**从未被执行过**：CLI 冒烟只看 `--help`，
   功能测试传的是 `workers=1`）。现在显式 `mp.get_context("spawn")`，并加
   `--pool-timeout`（默认 1800 秒）—— 卡住就报错退出，不再"永远在跑"。
+- `scripts/readme_toc.py` 打印路径时对跨盘符做兜底（`--file` 指向别的盘符时不再在
+  最后一行 `os.path.relpath` 上崩）—— 与 1.7.1 修的 OOD `--out-dir` 同一类。
 
 ### Added
 
-- `src/test_experiment_smoke.py` 两条慢测试：
-  - **`workers=2` 与 `workers=1` 逐行一致**（走 CLI 子进程，覆盖参数解析与 CSV 落盘，
-    不在 pytest 进程里起进程池）；实测 5 张合成照片 × 7 档 = 35 样本逐行相同。
-  - **超时断路器**：`--pool-timeout 0.001` 必须以非零码退出并打印"并行特征提取超时"。
+- **`src/test_deploy_producer_smoke.py`**（3 条，覆盖此前只有"契约比对"的生产者）：
+  - **端到端跑通**：自造 143 维小语料（4 张合成照片 × 3 档 = 12 行，走
+    `nsF5 嵌入 → featurize_v2 → CSV`）→ `train_deploy_models.py --models 143d
+    --no-splits --no-save --out-csv <tmp>`，断言指标 CSV 的列、语料计数、
+    `n_train+n_val`、AUC/阈值范围与 `model_file`；
+  - **孤儿 photo_id 必须被拒**（源图泄漏护栏走 CLI，而不只是单元层）；
+  - **`youden_threshold` 在退化输入下仍是有限值**（两处实现都测）。
+  测试**不断言具体 AUC**（12 行合成数据没有意义），只断言结构与护栏。
+- `train_deploy_models.py` 新增 `--out-csv`（试跑/冒烟测试不再覆盖权威表用的那一份）。
+- `src/test_experiment_smoke.py` 两条慢测试（`make_dataset` 的并行分支）：
+  **`workers=2` 与 `workers=1` 逐行一致**（走 CLI 子进程，实测 35 样本逐行相同）、
+  **超时断路器**（`--pool-timeout 0.001` 必须以非零码退出）。
 - 真实语料抽查（一次性，不进 CI）：`DS_LIMIT=8 python src/make_dataset.py data/campus_jpg
   512x512 --out _parcheck --workers 4` → `photo=8 clean=8 stego=48 合计=56 耗时 2s (4 进程)`。
-
-### Fixed (小)
-
-- `scripts/readme_toc.py` 打印路径时对跨盘符做了兜底（`--file` 指向别的盘符时
-  不再在最后一行 `os.path.relpath` 上崩）—— 与 1.7.1 修的 OOD `--out-dir` 同一类。
 
 ## [1.7.1] - 2026-09-17
 

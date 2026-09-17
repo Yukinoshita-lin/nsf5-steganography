@@ -930,6 +930,11 @@ git tag v1.1 && git push origin main --tags
     DataLoader 默认 `num_workers=0`。`src/make_dataset.py` 改为显式 spawn +
     `--pool-timeout` 断路器，并补两条慢测试：`workers=2` 与 `workers=1` **逐行一致**、
     超时必须以非零码报错 —— 这条多进程分支此前从未被执行过（CLI 冒烟只看 `--help`）。
+  - 给**部署模型的生产者**补上第一条端到端冒烟测试（自造 143 维小语料跑完整条链），
+    它第一次跑就抓到：`youden_threshold` 会返回 `inf`（`roc_curve` 的首个阈值就是
+    inf，弱可分数据上 `argmax` 常落在那里）——阈值成了 inf 之后，模型对任何图都不判
+    含密且**不报错**。两处实现都已加 `np.isfinite` 过滤；随仓库分发的两个模型没踩到
+    （0.9493 / 0.9595 都是有限值），重跑真实语料与入库指标**逐项一致**。
 
 - **v1.7.1 — 教学材料的悬空引用**
   - 手册（中英文 ch03 / ch11 / 附录 F）把 `yccstego` 写成"项目 `yccstego` 扩展"，
