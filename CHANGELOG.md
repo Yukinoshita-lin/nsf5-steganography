@@ -68,7 +68,8 @@ the project's `yccstego` extension"，但 `yccstego` 是**独立仓库与 PyPI �
 ### Verification
 
 - `python teaching/handbook_facts.py --check` → 通过（中英 DOCX + 网页 + PDF 六处）。
-- `python -m pytest -q` → **57 项通过**（新增 7 条 OOD 冒烟/断路器），覆盖率 69.3% ≥ 门槛 65%。
+- `python -m pytest -q` → **63 项通过**（新增 7 条 OOD 冒烟/断路器 + 6 条 README 目录守卫），
+  覆盖率 69.3% ≥ 门槛 65%。
 - `python teaching/run_notebooks.py` → 10/10 通过。
 - 两份 PDF 的文本里各含 3 处 yccstego 仓库地址，页数 67 / 75。
 
