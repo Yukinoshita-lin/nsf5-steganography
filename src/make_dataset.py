@@ -147,7 +147,7 @@ _PROC_FE = [None]
 
 def main(photo_dir: str = DEFAULT_PHOTO_DIR, work=(512, 512), out_name: str = "",
          id_offset: int = 0, workers: int = 0, preprocess: str = "none",
-         feature_set: str = "v1", variants=None):
+         feature_set: str = "v1", variants=None, pool_timeout: float = 1800.0):
     import multiprocessing as mp
     photos = sorted({os.path.normcase(p) for ext in IM_EXTS
                      for p in glob.glob(os.path.join(photo_dir, ext))})
@@ -203,8 +203,21 @@ def main(photo_dir: str = DEFAULT_PHOTO_DIR, work=(512, 512), out_name: str = ""
         chunks = [tasks[i:i + batch] for i in range(0, len(tasks), batch)]
         tmp_paths = [csv_path + f".j{p}" for p in range(len(chunks))]
         work_items = list(zip(chunks, tmp_paths))
-        with mp.Pool(n_proc) as pool:
-            pool.map(_chunk_worker, work_items)
+        # spawn, 不要 fork —— 与 experiments/ood_eval.py 同一个坑 (2026-09-17):
+        # `mp.Pool` 在 Linux 上默认 fork, 而调用方进程往往已经初始化过 OpenMP/BLAS
+        # (LightGBM、numpy、torch 都会), fork 出来的子进程再碰这些运行时就可能死锁。
+        # 实测代价: 一次 OOD 冒烟测试把 CI 的 pytest 作业从 1 分 44 秒拖成**挂满 6 小时**。
+        # 这里同样显式 spawn + 带超时: 卡住必须报错, 不能"永远在跑"。
+        ctx = mp.get_context("spawn")
+        with ctx.Pool(n_proc) as pool:
+            try:
+                pool.map_async(_chunk_worker, work_items).get(timeout=pool_timeout)
+            except mp.TimeoutError:
+                pool.terminate()
+                raise SystemExit(
+                    f"并行特征提取超时: {pool_timeout:.0f} 秒未完成 "
+                    f"({len(work_items)} 个分片)。"
+                    f"用 `--workers 1` 复跑确认, 或调大 `--pool-timeout`。")
         with open(csv_path, "w", newline="", encoding="utf-8") as fo:
             wo = csv.writer(fo); wo.writerow(header)
             for tp in tmp_paths:
@@ -241,6 +254,8 @@ if __name__ == "__main__":
     ap.add_argument("--out", default="", help="输出 dataset_<NAME>.csv (默认 dataset.csv)")
     ap.add_argument("--id-offset", type=int, default=0)
     ap.add_argument("--workers", "-j", type=int, default=0)
+    ap.add_argument("--pool-timeout", type=float, default=1800.0,
+                    help="并行特征提取的等待上限 (秒); 超时直接报错, 不无限等")
     ap.add_argument("--preprocess", choices=("none", "srm"), default="none")
     ap.add_argument("--feature-set", choices=("v1", "v2"), default="v1",
                     help="v1=11维 C++ (CPU); v2=143维 (GPU, 30残差统计+20段前缀p+texture/est_rate+lsb20段)")
@@ -267,4 +282,5 @@ if __name__ == "__main__":
             a.work = sizes[0]
     for i, d in enumerate(dirs or [DEFAULT_PHOTO_DIR]):
         work = tuple(map(int, a.work.lower().split("x"))) if "x" in a.work else WORK
-        main(d, work, a.out, a.id_offset, a.workers, a.preprocess, a.feature_set, variants)
+        main(d, work, a.out, a.id_offset, a.workers, a.preprocess, a.feature_set,
+             variants, a.pool_timeout)

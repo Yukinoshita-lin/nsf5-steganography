@@ -102,6 +102,77 @@ def test_make_dataset_cli_surface():
     print("[OK] make_dataset --help: 文档里的参数都在")
 
 
+@pytest.mark.slow
+def test_make_dataset_parallel_matches_serial(tmp_path):
+    """`--workers 2` 与 `--workers 1` 必须产出同一份数据集。
+
+    为什么值得单独测 (2026-09-17): 多进程那条分支此前**从未被执行过** —— CLI 冒烟
+    只看 --help, 而 test_make_dataset_produces_the_declared_schema 传的是 workers=1。
+    而它恰是最危险的一条: `mp.Pool` 在 Linux 默认 fork, 调用方若已初始化
+    OpenMP/BLAS (LightGBM / numpy / torch 都会), 子进程可能死锁 —— 同一个坑已经在
+    OOD 评估上把 CI 的 pytest 作业挂满 6 小时。现在实现改成显式 spawn + 超时,
+    并由这条测试真的把并行分支跑一遍, 逐行比对结果。
+
+    走 CLI 子进程而不是进程内调用: 与 ood_eval 的教训一致 (不要在 pytest 进程里起
+    进程池), 顺带覆盖参数解析与 CSV 落盘。
+    """
+    photos = _make_photos(str(tmp_path / "photos"), n=5)
+    assert photos
+    out_files = []
+    try:
+        for workers, name in ((1, "partest1"), (2, "partest2")):
+            r = subprocess.run(
+                [sys.executable, "src/make_dataset.py", str(tmp_path / "photos"),
+                 "192x192", "--out", name, "--workers", str(workers),
+                 "--variants", "minimal", "--pool-timeout", "600"],
+                cwd=PROJ, capture_output=True, text=True, encoding="utf-8",
+                errors="replace", timeout=900)
+            assert r.returncode == 0, \
+                f"workers={workers} 失败:\n{r.stdout[-1500:]}\n{r.stderr[-1500:]}"
+            out_files.append(os.path.join(PROJ, "data", f"dataset_{name}.csv"))
+
+        def rows(path):
+            with io.open(path, newline="", encoding="utf-8") as fh:
+                rd = list(csv.reader(fh))
+            return rd[0], sorted(tuple(r) for r in rd[1:])
+
+        h1, r1 = rows(out_files[0])
+        h2, r2 = rows(out_files[1])
+        assert h1 == h2, "并行与单进程的表头不一致"
+        assert r1, "数据集为空"
+        diff = next(((a, b) for a, b in zip(r1, r2) if a != b), None)
+        assert r1 == r2, (f"并行改变了数据集: 单进程 {len(r1)} 行 / 并行 {len(r2)} 行; "
+                          f"首个差异 {str(diff)[:300]}")
+        print(f"[OK] make_dataset: workers=1 与 workers=2 逐行一致 ({len(r1)} 样本)")
+    finally:
+        for p in out_files + [f + ".j0" for f in out_files]:
+            if os.path.exists(p):
+                os.remove(p)
+
+
+@pytest.mark.slow
+def test_make_dataset_parallel_timeout_is_loud(tmp_path):
+    """并行卡住必须是**报错**, 不是"永远在跑"（--pool-timeout 的断路器）。
+
+    2026-09-17: 一次 fork 死锁让 CI 的 pytest 作业挂满 6 小时才被取消。超时是给
+    这类事故装的断路器 —— 这里把上限压到 1 毫秒, 进程池必然来不及返回。
+    """
+    _make_photos(str(tmp_path / "p3"), n=3)
+    out = os.path.join(PROJ, "data", "dataset_partest_to.csv")
+    try:
+        r = subprocess.run(
+            [sys.executable, "src/make_dataset.py", str(tmp_path / "p3"), "192x192",
+             "--out", "partest_to", "--workers", "2", "--variants", "minimal",
+             "--pool-timeout", "0.001"],
+            cwd=PROJ, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=600)
+        assert r.returncode != 0, "超时没有报错, 说明断路器没接上"
+        assert "并行特征提取超时" in (r.stdout + r.stderr), (r.stdout + r.stderr)[-600:]
+    finally:
+        if os.path.exists(out):
+            os.remove(out)
+
+
 # --------------------------------------------------------------------------- #
 #  2) train_model: 小数据上跑完整训练
 # --------------------------------------------------------------------------- #

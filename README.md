@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.7.1-blue)
+![version](https://img.shields.io/badge/version-1.7.2-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543628.svg)](https://doi.org/10.5281/zenodo.22543628)
@@ -924,7 +924,14 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.7.1 (当前) — 教学材料的悬空引用**
+- **v1.7.2 (当前) — 同类隐患的全仓排查**
+  - 1.7.1 修掉 OOD 评估的 fork 死锁之后，把这类隐患全仓扫了一遍：进程池只有三处
+    （`ood_eval` 已修、`make_dataset` 本次修、`video_engine_v2` 本来就是 spawn），
+    DataLoader 默认 `num_workers=0`。`src/make_dataset.py` 改为显式 spawn +
+    `--pool-timeout` 断路器，并补两条慢测试：`workers=2` 与 `workers=1` **逐行一致**、
+    超时必须以非零码报错 —— 这条多进程分支此前从未被执行过（CLI 冒烟只看 `--help`）。
+
+- **v1.7.1 — 教学材料的悬空引用**
   - 手册（中英文 ch03 / ch11 / 附录 F）把 `yccstego` 写成"项目 `yccstego` 扩展"，
     但它是**独立仓库与 PyPI 包**（`pip install yccstego`），本仓库里没有它的代码 ——
     读者按手册去找会一无所获。现已改为"姊妹项目 `yccstego`"并给出仓库地址，

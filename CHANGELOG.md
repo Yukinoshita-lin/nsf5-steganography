@@ -3,6 +3,37 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.2] - 2026-09-17
+
+**把"fork 死锁"从单个脚本扩成一次全仓排查。**
+
+1.7.1 查出 OOD 评估的并行路径在 Linux 上 fork 出子进程后与 LightGBM 的 OpenMP
+线程池死锁（CI 的 pytest 作业因此挂满 6 小时）。修完那一处之后，这次做的是**同类
+隐患的全仓扫描**：`multiprocessing` / `Pool` / `DataLoader` / `joblib.Parallel`
+一共只有三处进程池 —— `experiments/ood_eval.py`（已修）、`src/make_dataset.py`
+（本次修）、`teaching/video_engine_v2.py`（本来就是 spawn）；`gpu/train_cnn.py` 与
+`experiments/run_cnn_sota.py` 的 DataLoader 默认 `num_workers=0`，不会 fork。
+
+### Fixed
+
+- **`src/make_dataset.py` 的多进程分支**（此前**从未被执行过**：CLI 冒烟只看 `--help`，
+  功能测试传的是 `workers=1`）。现在显式 `mp.get_context("spawn")`，并加
+  `--pool-timeout`（默认 1800 秒）—— 卡住就报错退出，不再"永远在跑"。
+
+### Added
+
+- `src/test_experiment_smoke.py` 两条慢测试：
+  - **`workers=2` 与 `workers=1` 逐行一致**（走 CLI 子进程，覆盖参数解析与 CSV 落盘，
+    不在 pytest 进程里起进程池）；实测 5 张合成照片 × 7 档 = 35 样本逐行相同。
+  - **超时断路器**：`--pool-timeout 0.001` 必须以非零码退出并打印"并行特征提取超时"。
+- 真实语料抽查（一次性，不进 CI）：`DS_LIMIT=8 python src/make_dataset.py data/campus_jpg
+  512x512 --out _parcheck --workers 4` → `photo=8 clean=8 stego=48 合计=56 耗时 2s (4 进程)`。
+
+### Fixed (小)
+
+- `scripts/readme_toc.py` 打印路径时对跨盘符做了兜底（`--file` 指向别的盘符时
+  不再在最后一行 `os.path.relpath` 上崩）—— 与 1.7.1 修的 OOD `--out-dir` 同一类。
+
 ## [1.7.1] - 2026-09-17
 
 **两件事：教学材料里一处悬空引用（`yccstego`），以及一次把 CI 挂满 6 小时的事故。**

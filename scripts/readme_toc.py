@@ -161,10 +161,18 @@ def main() -> int:
     new = replace_block(text, block)
     if new != text:
         io.open(args.file, "w", encoding="utf-8", newline="\n").write(new)
-        print(f"[ok] 已重写目录 ({len(_doc_h2(text))} 条) -> {os.path.relpath(args.file, PROJ)}")
+        print(f"[ok] 已重写目录 ({len(_doc_h2(text))} 条) -> {_show(args.file)}")
     else:
         print("[ok] 目录本来就是最新的")
     return 0
+
+
+def _show(path: str) -> str:
+    """显示路径: 跨盘符时 `os.path.relpath` 会抛 ValueError, 退回绝对路径。"""
+    try:
+        return os.path.relpath(path, PROJ).replace("\\", "/")
+    except ValueError:
+        return os.path.abspath(path).replace("\\", "/")
 
 
 if __name__ == "__main__":
