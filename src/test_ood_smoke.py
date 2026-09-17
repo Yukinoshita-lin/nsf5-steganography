@@ -86,19 +86,68 @@ def test_rows_match_部署口径(corpus):
     assert df["ml_prob"].between(0.0, 1.0).all()
 
 
-def test_parallel_matches_single_process(corpus):
-    """workers=2 的逐图结果必须与 workers=1 逐位相同。
+def _run_cli(src_dir, out_dir, workers, timeout=600):
+    """跑真的 CLI (`python experiments/ood_eval.py`), 读回它写的逐图 CSV。
 
-    这条守的是 1.6.9 的承诺: `--workers` 只改变耗时, 不改变任何数字。
-    并行路径现在是默认路径 (min(8, CPU)), 却没有别的测试碰过它。
+    为什么用子进程而不是在 pytest 里直接起进程池: 2026-09-17 的教训 ——
+    在 pytest 进程里 `multiprocessing.Pool` 走 fork, 而该进程已经加载过 LightGBM
+    (OpenMP 线程池已初始化), 子进程再碰 LightGBM 会**死锁**: CI 的 pytest 作业因此
+    从 1 分 44 秒变成挂满 6 小时被取消。CLI 子进程是"干净进程 + spawn",
+    既避开这个坑, 又顺带覆盖了参数解析与 CSV 落盘 —— 那两处此前也没有测试。
     """
-    a = _evaluate(corpus, workers=1)
-    b = _evaluate(corpus, workers=2)
+    import subprocess
+    import pandas as pd
+    os.makedirs(out_dir, exist_ok=True)
+    cmd = [sys.executable, os.path.join(EXP, "ood_eval.py"),
+           "--sources", "campus", "--campus-dir", src_dir,
+           "--models", f"143d={MODEL_143}", "--clips", "0",
+           "--workers", str(workers), "--chunk-timeout", "120",
+           "--out-dir", out_dir]
+    r = subprocess.run(cmd, capture_output=True, text=True,
+                       encoding="utf-8", errors="replace", timeout=timeout)
+    assert r.returncode == 0, f"CLI 失败:\n{r.stdout[-2000:]}\n{r.stderr[-2000:]}"
+    return pd.read_csv(os.path.join(out_dir, "ood_eval.csv")), r.stdout
+
+
+def test_parallel_cli_matches_single_process(corpus, tmp_path):
+    """`--workers 2` 与 `--workers 1` 的逐图概率必须逐位相同 (走真的 CLI)。
+
+    这条守的是 1.6.9 的承诺: 并行只改变耗时, 不改变任何数字 —— 而并行现在是
+    **默认路径** (min(8, CPU))。
+    """
+    src = tmp_path / "corpus"
+    src.mkdir(exist_ok=True)
+    for p in corpus:
+        (src / os.path.basename(p)).write_bytes(open(p, "rb").read())
+    df1, _ = _run_cli(str(src), str(tmp_path / "out1"), workers=1)
+    df2, _ = _run_cli(str(src), str(tmp_path / "out2"), workers=2)
     cols = ["model", "clip", "source", "photo_name", "ml_prob", "threshold", "pred_stego"]
-    a = a[cols].sort_values("photo_name").reset_index(drop=True)
-    b = b[cols].sort_values("photo_name").reset_index(drop=True)
-    assert a.equals(b), "并行评估改变了结果:\n" + str(
-        a.compare(b) if hasattr(a, "compare") else "")
+    a = df1[cols].sort_values("photo_name").reset_index(drop=True)
+    b = df2[cols].sort_values("photo_name").reset_index(drop=True)
+    assert len(a) == len(corpus)
+    assert a.equals(b), f"并行改变结果:\n{a.compare(b)}"
+
+
+def test_parallel_timeout_raises_instead_of_hanging(corpus, tmp_path):
+    """并行卡住必须是**报错**, 不能是"永远在跑"。
+
+    2026-09-17: 一次 fork 死锁让 CI 的 pytest 作业挂了 6 小时才被取消。
+    超时参数 (`--chunk-timeout`) 是给这类事故装的断路器: 这里把上限压到 1 秒,
+    进程池必然来不及返回, 必须抛错并以非零码退出。
+    """
+    import subprocess
+    src = tmp_path / "corpus_t"
+    src.mkdir(exist_ok=True)
+    for p in corpus[:2]:
+        (src / os.path.basename(p)).write_bytes(open(p, "rb").read())
+    cmd = [sys.executable, os.path.join(EXP, "ood_eval.py"),
+           "--sources", "campus", "--campus-dir", str(src),
+           "--models", f"143d={MODEL_143}", "--clips", "0", "--workers", "2",
+           "--chunk-timeout", "1", "--out-dir", str(tmp_path / "out_t")]
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=300)
+    assert r.returncode != 0, "超时没有报错, 说明断路器没接上"
+    assert "没有返回任何分片" in (r.stdout + r.stderr)
 
 
 def test_summary_is_self_consistent(corpus):

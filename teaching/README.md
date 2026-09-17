@@ -280,8 +280,16 @@ python teaching/handbook_facts.py --check       # 三份材料一起校验
 ```
 
 两个 PDF 生成器的取舍：`export_handbook_pdf_word.py` 得到的是交付过的那一版版式
-（Word 会做字体回退）；`build_handbook_pdf.py` 不依赖 Word、但也没有字体回退 ——
-正文里的 `①` `ᵖ` `₄` 这类符号会缺字形，所以它现在是备用路径。
+（Word 会做字体回退）；`build_handbook_pdf.py` 不依赖 Word，但没有字体回退，
+正文里的 `①` `ᵖ` `₄` 这类符号要靠脚本里的 `\newunicodechar` 表逐个映射。
+
+```bash
+python teaching/build_handbook_pdf.py zh --out _pdf_build/out/zh   # 验证这条路径, 不动 docs/
+```
+
+2026-09-15 补齐了 22 个易缺字形（此前 xelatex 只往日志里写 `Missing character`、
+退出码仍是 0，两份 PDF 各有 80 余处符号会变成空白）；现在脚本会统计日志里的缺字，
+**缺一个就返回非零**，`handbook_facts.py --check` 也会校验映射表没被删。
 
 - 本地构建网页：`pip install -r teaching/web/requirements.txt && jupyter-book build teaching/web/zh`（en 同理）
 - 打开：`teaching/web/{zh,en}/_build/html/index.html`

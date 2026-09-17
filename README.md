@@ -908,6 +908,17 @@ git tag v1.1 && git push origin main --tags
     读者按手册去找会一无所获。现已改为"姊妹项目 `yccstego`"并给出仓库地址，
     README 新增"姊妹项目"一行；`handbook_facts.py` 把该地址列进 `REQUIRED`，
     DOCX / 网页 / 入库 PDF 三份材料缺它即 CI 红。入库 PDF 重新导出（英文 74 → 75 页）。
+  - **OOD 评估进 CI**：`experiments/ood_eval.py` 产出 README 的头条数字，此前从未
+    在 CI 里跑过（要 1514 张外部照片），1.6.9 新增的 `--workers` 并行路径更是零覆盖。
+    新增 `src/test_ood_smoke.py`：用合成照片跑通这条链，钉住"判据=payload 阈值""并行
+    与单进程逐位一致""fp_rate/Wilson CI/ALL 行自洽"。
+  - **备用 PDF 路径补字形**：xelatex 那条路径此前有 22 个符号（`① ᵖ ₄` 等）在字体里
+    没有字形，日志里只有一行 `Missing character`、退出码仍是 0，两份 PDF 各有 80 余处
+    会变空白；现已逐个映射并让脚本缺字形时返回非零。
+  - **一次 CI 挂死事故的修复**：新加的 OOD 冒烟测试在 pytest 进程里 fork 出进程池
+    （Linux 默认），与已初始化的 LightGBM/OpenMP 线程池撞成死锁，让 `pytest` 作业从
+    1 分 44 秒变成**挂满 6 小时**。现在 `ood_eval.py` 显式用 spawn、每个分片带超时
+    （卡住即报错）、冒烟测试改跑 CLI 子进程，CI 各作业也设了 `timeout-minutes` 兜底。
 
 - **v1.7.0 — 模型治理：模型卡**
   - 两个随仓库分发的 `.joblib` 此前是**裸二进制**：语义只存在于 README 的散文

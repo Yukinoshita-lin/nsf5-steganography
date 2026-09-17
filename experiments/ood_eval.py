@@ -24,6 +24,16 @@ README 与文档里长期挂着两个数字："143d OOD 误报 1/8"、"53d 3/8"�
       * **并行**: `--workers N` (默认 min(8, CPU))。1514 张 × 2 模型 × 2 配置的
         全量评估从约 20 分钟降到 **1.7 分钟**, 结果逐位不变。
 
+    2026-09-17 并行实现的两个补丁 (都由真实事故驱动):
+      * **显式用 spawn 起进程池**。原来用 `multiprocessing.Pool`, 在 Linux 上默认
+        是 **fork**: 调用方进程如果已经加载过 LightGBM (OpenMP 线程池已初始化),
+        fork 出来的子进程再碰 LightGBM 就会**死锁**。实测证据: 加了调用并行路径的
+        冒烟测试之后, CI 的 pytest 作业从 1 分 44 秒变成**挂满 6 小时被取消**
+        (残留 `xvfb-run` + 5 个 python 孤儿进程); Windows 本地是 spawn, 所以一直
+        没暴露。现在显式 `mp.get_context("spawn")`, 与平台无关。
+      * **每个分片都有超时** (`--chunk-timeout`, 默认 600 秒)。并行卡住必须是
+        **报错**, 不能是"永远在跑" —— 6 小时的 CI 只是最贵的那种表现。
+
     同时评估两种配置:
       clip=False  部署默认 (GUI / CLI 走的 get_predictor() 默认值)
       clip=True   文档里的抗分布偏移缓解手段 (特征 clip 到训练集 mu±5σ)
@@ -62,9 +72,20 @@ from PIL import Image
 PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PROJ, "src"))
 
+from pathutil import rel_from_proj  # noqa: E402  (src/ 里的跨盘符安全 relpath)
+
 OUT_DIR = os.path.join(PROJ, "experiments", "data")
 OUT_RAW = os.path.join(OUT_DIR, "ood_eval.csv")
 OUT_SUM = os.path.join(OUT_DIR, "ood_summary.csv")
+
+
+def configure_out(out_dir: str) -> None:
+    """改输出目录 (产物默认落在 experiments/data/, 测试与试跑用 --out-dir 走别处,
+    免得覆盖已经用于 docs/RESULTS.md 的那两份 CSV)。"""
+    global OUT_DIR, OUT_RAW, OUT_SUM
+    OUT_DIR = os.path.abspath(out_dir)
+    OUT_RAW = os.path.join(OUT_DIR, "ood_eval.csv")
+    OUT_SUM = os.path.join(OUT_DIR, "ood_summary.csv")
 
 WORK = (512, 512)
 DEFAULT_MODELS = [
@@ -175,8 +196,16 @@ def _score_one(item: tuple) -> list:
     return out
 
 
+def _score_chunk(chunk: list) -> list:
+    """一个分片: 逐图打分并拼平 (给 apply_async 用, 便于给每个分片设超时)。"""
+    rows = []
+    for item in chunk:
+        rows.extend(_score_one(item))
+    return rows
+
+
 def evaluate(models: list, sources: dict, clips: tuple, n_sigma: float,
-             workers: int = 1) -> pd.DataFrame:
+             workers: int = 1, chunk_timeout: float = 600.0) -> pd.DataFrame:
     specs = [(label, path, clip) for label, path in models for clip in clips]
     for label, path in models:
         if not os.path.exists(path):
@@ -191,12 +220,38 @@ def evaluate(models: list, sources: dict, clips: tuple, n_sigma: float,
     rows = []
     if workers > 1:
         import multiprocessing as mp
+        from collections import deque
         used = [s for s in specs if os.path.exists(s[1])]
-        with mp.Pool(workers, initializer=_init_worker, initargs=(used, n_sigma)) as pool:
-            for i, chunk in enumerate(pool.imap_unordered(_score_one, items, chunksize=8), 1):
-                rows.extend(chunk)
-                if i % 200 == 0:
-                    print(f"    进度 {i}/{len(items)}  ({time.time()-t0:.0f}s)", flush=True)
+        # spawn, **不要** fork: 见文件头 2026-09-17 的说明 (fork + OpenMP 死锁,
+        # 实测在 CI 上挂了 6 小时)。spawn 的额外开销是每个 worker 重新导入一次
+        # 模块 + 加载模型 (约 1 s), 相对"一张图要算 143 维特征"可以忽略。
+        ctx = mp.get_context("spawn")
+        # 分片 + `apply_async(...).get(timeout=...)`: 比 `imap_unordered` 啰嗦, 但
+        # 它是**跨版本可移植**的 —— Python 3.14 的 imap_unordered 返回的是普通
+        # 生成器 (没有 `.next(timeout=...)`), 用那个 API 写超时会在新版本直接崩。
+        chunks = [items[i:i + 8] for i in range(0, len(items), 8)] or [[]]
+        with ctx.Pool(workers, initializer=_init_worker, initargs=(used, n_sigma)) as pool:
+            inflight = deque()
+            nxt, done = 0, 0
+            while nxt < len(chunks) or inflight:
+                while nxt < len(chunks) and len(inflight) < workers * 2:
+                    inflight.append(pool.apply_async(_score_chunk, (chunks[nxt],)))
+                    nxt += 1
+                ar = inflight.popleft()
+                try:
+                    got = ar.get(timeout=chunk_timeout)
+                except mp.TimeoutError:
+                    pool.terminate()
+                    raise RuntimeError(
+                        f"并行评估在 {chunk_timeout:.0f} 秒内没有返回任何分片 "
+                        f"(已完成 {done}/{len(items)} 张)。这通常是子进程卡死 —— "
+                        f"用 `--workers 1` 复跑确认, 或调大 `--chunk-timeout`。")
+                rows.extend(got)
+                done += len(got) or 0
+                if len(inflight) == 0 or done % 200 < 8:
+                    if done:
+                        print(f"    进度 {done}/{len(items)}  ({time.time()-t0:.0f}s)",
+                              flush=True)
     else:
         for i, item in enumerate(items, 1):
             rows.extend(_score_one(item))
@@ -204,6 +259,10 @@ def evaluate(models: list, sources: dict, clips: tuple, n_sigma: float,
                 print(f"    进度 {i}/{len(items)}  ({time.time()-t0:.0f}s)", flush=True)
     df = pd.DataFrame(rows)
     if len(df):
+        # 排序后再落盘: 并行返回分片的顺序取决于进程调度, 不排序的话同一份语料
+        # 每次跑出来的 CSV 行序都不同 (内容一样, 但 diff 全是噪声, 也没法用
+        # 哈希断言"重跑一致")。按 (模型, 配置, 来源, 文件名) 排成确定顺序。
+        df = df.sort_values(["model", "clip", "source", "photo_name"]).reset_index(drop=True)
         for (label, clip, src), g in df.groupby(["model", "clip", "source"]):
             print(f"  {label:>5} clip={int(clip)} {src:>7}: "
                   f"{int(g['pred_stego'].sum())}/{len(g)} 误报", flush=True)
@@ -250,6 +309,11 @@ def main() -> int:
     ap.add_argument("--n-sigma", type=float, default=5.0)
     ap.add_argument("--workers", type=int, default=0,
                     help="并行进程数 (0 = min(8, CPU 核数); 1 = 单进程)")
+    ap.add_argument("--chunk-timeout", type=float, default=600.0,
+                    help="并行时每个分片的等待上限 (秒); 超时直接报错, 不无限等")
+    ap.add_argument("--out-dir", default=OUT_DIR,
+                    help="产物目录 (默认 experiments/data/; 试跑请改这里, "
+                         "别覆盖权威表用的那两份 CSV)")
     args = ap.parse_args()
 
     models = DEFAULT_MODELS
@@ -260,6 +324,7 @@ def main() -> int:
                 label, path = item.split("=", 1)
                 models.append((label.strip(), path.strip()))
     clips = tuple(bool(int(c)) for c in args.clips.split(",") if c.strip() != "")
+    configure_out(args.out_dir)
 
     print("OOD 干净真实照片误报率评估")
     print(f"  模型: {[m[0] for m in models]}   clip_outliers={clips}")
@@ -269,15 +334,20 @@ def main() -> int:
     print(f"  合计 {sum(len(v) for v in sources.values())} 张干净照片\n")
 
     n_workers = args.workers if args.workers > 0 else min(8, os.cpu_count() or 1)
-    df = evaluate(models, sources, clips, args.n_sigma, workers=n_workers)
+    df = evaluate(models, sources, clips, args.n_sigma, workers=n_workers,
+                  chunk_timeout=args.chunk_timeout)
     if df.empty:
         sys.exit("评估没有产出任何行。")
     os.makedirs(OUT_DIR, exist_ok=True)
     df.to_csv(OUT_RAW, index=False)
     summary = summarize(df)
     summary.to_csv(OUT_SUM, index=False)
-    print(f"\n逐图 -> {os.path.relpath(OUT_RAW, PROJ)}  ({len(df)} 行)")
-    print(f"汇总 -> {os.path.relpath(OUT_SUM, PROJ)}\n")
+    # 用 rel_from_proj 而不是 os.path.relpath: `--out-dir` 完全可能指到别的盘符
+    # (Windows 上 temp 在 C:、仓库在别的盘), 那时 relpath 会抛 ValueError ——
+    # 而且是在**跑完全部评估之后**才抛, 白跑一遍。src/pathutil.py 的文件头就是
+    # 为这个坑写的。2026-09-17 加 --out-dir 的冒烟测试第一次跑就撞上了。
+    print(f"\n逐图 -> {rel_from_proj(OUT_RAW, PROJ)}  ({len(df)} 行)")
+    print(f"汇总 -> {rel_from_proj(OUT_SUM, PROJ)}\n")
     print(summary.to_string(index=False))
     print("\n下一步: python experiments/build_results_table.py  (刷新权威结果表)")
     return 0

@@ -35,6 +35,11 @@ jobs:
   pytest:
     name: pytest (完整依赖)
     runs-on: ubuntu-latest
+    # 2026-09-17: 一次 fork + OpenMP 死锁让这个作业从 1 分 44 秒变成挂满
+    # **6 小时**才被 GitHub 的默认上限取消 (日志里只剩 5 个 python 孤儿进程)。
+    # 死锁本身已经在 experiments/ood_eval.py 里修掉 (显式 spawn + 分片超时),
+    # 这里的 timeout 是兜底: 任何"永远在跑"都必须变成 25 分钟内的失败。
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -100,6 +105,7 @@ jobs:
 
   notebooks:
     name: 教学 notebook (生成一致 + 可执行)
+    timeout-minutes: 20
     # 2026-09-14 审计: notebooks/ 是教学交付物, 却从未被执行过 —— 03 号笔记本
     # 让学员嵌入 5000 字符, 而 img/cover.png 的容量只有 3494 字节, 一直抛
     # ValueError 而无人发现。这个 job 把"可执行"变成 CI 事实:
@@ -130,6 +136,7 @@ jobs:
 
   handbook:
     name: 手册事实校验
+    timeout-minutes: 15
     # 2026-09-14 审计: 两本手册 (DOCX + 网页版) 长期带着被推翻的结论
     # (0.9085/0.9227、"53d AUC 更高"、"SRM 是噪声"、"OOD 1/8/3/8"、指向已删除的
     # thesis/)。教学材料带错结论比没结论更糟, 所以把它变成 CI 事实。
@@ -175,6 +182,7 @@ jobs:
     name: 构建 wheel + sdist
     runs-on: ubuntu-latest
     needs: test
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

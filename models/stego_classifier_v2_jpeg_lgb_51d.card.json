@@ -135,7 +135,7 @@
       "source": "experiments/data/deploy_model_metrics.csv"
     },
     "ood_clean_real_photos": {
-      "protocol": "clean real photos, 512x512 LANCZOS, verdict = prob >= payload threshold",
+      "protocol": "clean real photos, grayscale -> 512x512 LANCZOS, verdict = prob >= payload threshold",
       "per_source": {
         "ALL": {
           "n_photos": 1514,

@@ -60,6 +60,16 @@ VIDEO_REQUIRED = [
 ]
 
 # --------------------------------------------------------------------------
+#  0) 备用 PDF 路径 (xelatex) 的字形映射
+#     2026-09-15: 用 Microsoft YaHei 作 CJK 主字体时, 这 22 个符号在字体里没有
+#     字形, xelatex 只在日志里写 "Missing character"、退出码仍然是 0, 于是 PDF 里
+#     直接变成空白 (中英各 80 余处)。已逐个映射到等价 LaTeX 排版, 这里把它们
+#     钉住: 谁删掉一条映射, CI 就红。
+# --------------------------------------------------------------------------
+PDF_BUILDER = os.path.join(PROJ, "teaching", "build_handbook_pdf.py")
+PDF_GLYPH_MUST_MAP = "ᵖⱼ₁₂₃₄₅₆₇⁻⁸′↔①②③④⑤⑥■●✔"
+
+# --------------------------------------------------------------------------
 #  1) 必须出现的现口径 (两种语言都要有)
 # --------------------------------------------------------------------------
 REQUIRED = [
@@ -720,6 +730,18 @@ def check(include_web: bool) -> int:
             if s not in txt:
                 print(f"  [缺现口径] video/{os.path.basename(p)}: 缺 {s!r}")
                 bad += 1
+    # 备用 PDF 路径 (xelatex) 的字形映射: 少一条映射 = PDF 里少一个符号
+    if os.path.exists(PDF_BUILDER):
+        src = io.open(PDF_BUILDER, encoding="utf-8").read()
+        mapped = set(re.findall(r"newunicodechar\{(.)\}", src))
+        missing = [c for c in PDF_GLYPH_MUST_MAP if c not in mapped]
+        if missing:
+            print(f"  [缺字形映射] teaching/build_handbook_pdf.py: "
+                  f"{''.join(missing)} 没有 \\newunicodechar 映射 "
+                  f"(这些字符在 xelatex 出的 PDF 里会变成空白)")
+            bad += 1
+        else:
+            print(f"  [OK] 备用 PDF 路径的 {len(PDF_GLYPH_MUST_MAP)} 个易缺字形都有映射")
     if bad:
         print(f"\n手册校验未通过: {bad} 处。跑 `python teaching/handbook_facts.py --fix` 修正源稿。")
         return 1

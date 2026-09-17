@@ -3,9 +3,15 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [1.7.1] - 2026-09-15
+## [1.7.1] - 2026-09-17
 
-**教学材料里一处悬空引用：`yccstego`。**
+**两件事：教学材料里一处悬空引用（`yccstego`），以及一次把 CI 挂满 6 小时的事故。**
+
+先说事故：1.7.1 把新写的 OOD 冒烟测试并入 CI 之后，`pytest` 作业**挂了 6 小时**才被
+GitHub 取消（前一版只要 1 分 44 秒）。根因是新测试在 pytest 进程里起
+`multiprocessing.Pool`，Linux 默认 fork，而该进程已经初始化过 LightGBM 的 OpenMP
+线程池 —— 子进程再进 LightGBM 就死锁。修法、断路器与 CI 超时见下面的 Fixed 一节；
+这条事故本身也值得留在案上：**"测试跑得通"与"测试在 CI 上跑得通"是两件事**。
 
 中英文手册的 ch03 / ch11 / 附录 F 都把 `yccstego` 说成"项目 `yccstego` 扩展"、"
 the project's `yccstego` extension"，但 `yccstego` 是**独立仓库与 PyPI 包**
@@ -42,6 +48,16 @@ the project's `yccstego` extension"，但 `yccstego` 是**独立仓库与 PyPI �
 - `Makefile` 的 `help` 补上此前漏掉的 `core/steg/fp/pipeline/pyfeatures/cpp-clean/gui/
   exp-data/handbook-check`，并修掉一个笔误（`make handbook-check-` —— 那个 target
   并不存在，`make help` 却把它列了出来）。
+- `experiments/ood_eval.py` 新增 `--out-dir`（试跑不再覆盖权威表用的那两份 CSV）
+  与 `--chunk-timeout`（并行分片的等待上限）。
+- **备用 PDF 路径（xelatex）不再缺字形**：`teaching/build_handbook_pdf.py` 用
+  `Microsoft YaHei` 作 CJK 主字体，而正文里的 `① ᵖ ₄ ′ ↔ ■ ● ✔ ᵖ` 等 22 个符号在
+  该字体里没有字形 —— xelatex 只在日志里写一行 `Missing character`，**退出码仍是 0**，
+  于是两份 PDF 各有 80 余处会渲染成空白。现在逐个 `\newunicodechar` 映射到等价排版
+  （上/下标、圈号、箭头、几何符号），实测两份 PDF 的日志里 `Missing character` 归零；
+  脚本还会统计缺字并在缺字形时**返回非零**（交付物坏了不该只是一个警告）。
+  同时新增 `--out` 参数：可以在 `_pdf_build/out/` 里验证这条路径而不覆盖入库 PDF
+  （入库 PDF 仍走 Word 那条线）。`handbook_facts.py --check` 会校验这 22 个映射没被删。
 
 ### Verification
 
@@ -87,6 +103,35 @@ payload 虽写了 provenance 却要先装齐 lightgbm + scikit-learn 再反序�
 - README 的"双版本部署策略"与 CI 小节补上模型卡入口与校验方式。
 
 ### Fixed
+
+- **CI 的 pytest 作业挂满 6 小时**（这个 bug 是新加的 OOD 冒烟测试自己揭出来的）：
+  1.7.1 把 `src/test_ood_smoke.py` 加进 CI 之后，pytest 作业从 **1 分 44 秒**
+  （v1.7.0 tag 的实测）变成 **14:04 起跑、20:06 被取消**，日志里除了
+  `##[error]The operation was canceled.` 和 5 个 `python` 孤儿进程之外什么都没有。
+  根因：`experiments/ood_eval.py` 用 `multiprocessing.Pool`，在 Linux 上默认是
+  **fork**；pytest 进程此前已经加载过 LightGBM（OpenMP 线程池已初始化），
+  fork 出来的子进程再进 LightGBM 就死锁 —— Windows 本地是 spawn，所以一直没暴露。
+  三处修复：
+  - `ood_eval.py` 显式 `mp.get_context("spawn")`（与平台无关）；
+  - 每个分片有 `--chunk-timeout`（默认 600 秒），卡住就 **报错退出**，不再无限等；
+  - 冒烟测试改成**跑真的 CLI 子进程**（干净进程 + spawn），既避开 fork，
+    又顺带覆盖了此前零测试的 CLI 参数解析与 CSV 落盘。
+  另加两道防线：CI 的 `pytest`/`notebooks`/`handbook`/`build` 作业都设了
+  `timeout-minutes` —— 任何"永远在跑"必须是 15–25 分钟内的失败，而不是 6 小时。
+- **`--out-dir` 指到别的盘符会崩**：`ood_eval.py` 用 `os.path.relpath(OUT_RAW, PROJ)`
+  打印产物路径，Windows 上输出目录与仓库不同盘符时会抛
+  `ValueError: path is on mount 'C:', start on mount 'F:'` —— 而且是在**跑完全部评估
+  之后**才抛（`src/pathutil.py` 的文件头正是为这个坑写的，只是这里没接上）。
+  现在改用 `rel_from_proj()`（跨盘符时退回绝对路径，永不抛错）。
+- **模型卡里的 OOD 协议串落后了一版**：卡片生成于 1.7.0，写的是
+  `clean real photos, 512x512 LANCZOS, ...`，而 1.6.9 之后的产物 CSV 已经是
+  `... grayscale -> 512x512 LANCZOS ...`（数字完全相同，只是口径描述）。这条漂移是被
+  `src/test_model_cards.py` 在**有指标 CSV 的本地**抓到的（CI 上那部分明确 skip）——
+  正是这个测试存在的意义。已重新生成两张卡。
+- `ood_eval.py` 现在**排序后再落盘**（按 模型/配置/来源/文件名）：并行返回分片的顺序
+  取决于进程调度，不排序的话同一份语料每次跑出来的 CSV 行序都不同，既无法用哈希断言
+  "重跑一致"，diff 也全是噪声。实测 150 张真实照片上用 `--workers 1` 与 `--workers 4`
+  跑出的逐图 CSV 与汇总 CSV **字节完全相同**。
 
 - **手册里指向已删除论文稿的图注**：中文 ch09 图 9-2 写"（log–log 坐标，**论文图**）"、
   英文 ch09 写 "(log-log axes, **thesis figure**)" —— `thesis/` 与全部论文稿在

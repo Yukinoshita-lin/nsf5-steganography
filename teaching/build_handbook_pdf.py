@@ -1,14 +1,23 @@
 # -*- coding: utf-8 -*-
 """把 Markdown 手册(teaching/web)转成单册 PDF(用 xelatex + ctex 编译)。
 
-用法: python teaching/build_handbook_pdf.py [zh|en]
-- ps > xelatex(两次) 产生 docs/<name>.pdf
+用法
+----
+    python teaching/build_handbook_pdf.py zh              # -> docs/<中文手册>.pdf
+    python teaching/build_handbook_pdf.py en --out _alt   # 只写到别处, 不动 docs/
+
+与 `export_handbook_pdf_word.py` 的分工: 那份从 DOCX 导出、版式是 Word 的,
+是入库交付物; 这份从**网页 markdown** 编译, 内容更全 (网页版增量最丰富),
+但**没有字体回退** —— 正文里的 ① ᵖ ₄ 这类符号要靠本文件里的
+`\\newunicodechar` 映射, 漏一个就会在 PDF 里静默缺字 (2026-09-15 补齐 22 个)。
+`--out` 就是给"想验证这条路径但不覆盖入库 PDF"用的。
 """
 from __future__ import annotations
 import os, sys, re, subprocess, shutil
+import argparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LANG = sys.argv[1] if len(sys.argv) > 1 else "zh"
+LANG = "zh"
 WEB = os.path.join(ROOT, "teaching", "web", LANG)
 CONTENT = os.path.join(WEB, "content")
 ASSETS = os.path.join(WEB, "assets")
@@ -16,6 +25,22 @@ BUILD = os.path.join(ROOT, "_pdf_build", LANG)
 PDF_OUT = os.path.join(ROOT, "docs",
                        "学习手册-从零读懂nsF5隐写项目.pdf" if LANG == "zh"
                        else "Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf")
+
+PDF_NAME = {
+    "zh": "学习手册-从零读懂nsF5隐写项目.pdf",
+    "en": "Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf",
+}
+
+
+def configure(lang: str, out_dir: str) -> None:
+    """切换语言与输出目录 (模块级的路径常量都依赖它们)。"""
+    global LANG, WEB, CONTENT, ASSETS, BUILD, PDF_OUT
+    LANG = lang
+    WEB = os.path.join(ROOT, "teaching", "web", LANG)
+    CONTENT = os.path.join(WEB, "content")
+    ASSETS = os.path.join(WEB, "assets")
+    BUILD = os.path.join(ROOT, "_pdf_build", LANG)
+    PDF_OUT = os.path.join(os.path.abspath(out_dir), PDF_NAME[LANG])
 
 TOC_ORDER = ["intro", "ch01", "ch02", "ch03", "ch04", "ch05", "ch06",
              "ch07", "ch08", "ch09", "ch10", "ch11",
@@ -209,7 +234,7 @@ def md_to_tex(text: str) -> str:
     return "\n\n".join(out)
 
 
-def main():
+def main() -> int:
     os.makedirs(BUILD, exist_ok=True)
     shutil.rmtree(os.path.join(BUILD, "assets"), ignore_errors=True)
     shutil.copytree(ASSETS, os.path.join(BUILD, "assets"))
@@ -236,6 +261,7 @@ def main():
 \usepackage[most]{tcolorbox}
 \tcbuselibrary{breakable,skins}
 \usepackage{newunicodechar}
+\usepackage{amssymb}   % \blacksquare / \checkmark (下面几张映射表要用)
 % 常用数学/符号映射(正文中出现, 非数学环境)
 \newunicodechar{≈}{\ensuremath{\approx}}
 \newunicodechar{≤}{\ensuremath{\leq}}
@@ -255,6 +281,32 @@ def main():
 \newunicodechar{–}{--}
 \newunicodechar{—}{---}
 \newunicodechar{°}{\ensuremath{^{\circ}}}
+% --- 2026-09-15: 补齐 xelatex 路径上会**静默缺字**的 22 个字符 ---
+% 用 Microsoft YaHei 作 CJK 主字体时, 下面这些符号在字体里没有字形, xelatex 只会在
+% 日志里写一行 "Missing character", PDF 里就是空白 —— 正文里的 ① ᵖ ₄ 会凭空消失。
+% 逐个映射到 LaTeX 能排出来的等价物 (上/下标、圈号、箭头、几何符号)。
+\newunicodechar{ᵖ}{\textsuperscript{p}}
+\newunicodechar{ⱼ}{\textsubscript{j}}
+\newunicodechar{₁}{\textsubscript{1}}
+\newunicodechar{₂}{\textsubscript{2}}
+\newunicodechar{₃}{\textsubscript{3}}
+\newunicodechar{₄}{\textsubscript{4}}
+\newunicodechar{₅}{\textsubscript{5}}
+\newunicodechar{₆}{\textsubscript{6}}
+\newunicodechar{₇}{\textsubscript{7}}
+\newunicodechar{⁻}{\textsuperscript{-}}
+\newunicodechar{⁸}{\textsuperscript{8}}
+\newunicodechar{′}{\ensuremath{\prime}}
+\newunicodechar{↔}{\ensuremath{\leftrightarrow}}
+\newunicodechar{①}{\textcircled{\scriptsize 1}}
+\newunicodechar{②}{\textcircled{\scriptsize 2}}
+\newunicodechar{③}{\textcircled{\scriptsize 3}}
+\newunicodechar{④}{\textcircled{\scriptsize 4}}
+\newunicodechar{⑤}{\textcircled{\scriptsize 5}}
+\newunicodechar{⑥}{\textcircled{\scriptsize 6}}
+\newunicodechar{■}{\ensuremath{\blacksquare}}
+\newunicodechar{●}{\ensuremath{\bullet}}
+\newunicodechar{✔}{\ensuremath{\checkmark}}
 \graphicspath{{@@P@@}}
 \setCJKmainfont{Microsoft YaHei}
 \lstset{basicstyle=\ttfamily\small,breaklines=true,frame=single,keywordstyle=\color{blue!70!black},commentstyle=\color{green!50!black}}
@@ -288,18 +340,44 @@ def main():
         if r.returncode != 0:
             print("=== XELATEX FAILED (pass) ===")
             print((r.stdout + r.stderr)[-4000:])
-            return
+            return 1
     pdf = os.path.join(BUILD, "handbook.pdf")
     if os.path.exists(pdf):
+        os.makedirs(os.path.dirname(PDF_OUT), exist_ok=True)
         shutil.copy(pdf, PDF_OUT)
         print("PDF built ->", PDF_OUT, os.path.getsize(PDF_OUT)//1024, "KB")
+        # 缺字必须当场报出来: xelatex 只在日志里写一行 "Missing character",
+        # 退出码仍是 0 —— 不主动检查就会把"符号变空白"的 PDF 交付出去。
+        log = os.path.join(BUILD, "handbook.log")
+        if os.path.exists(log):
+            missing = re.findall(r"Missing character: There is no (.*?) in font",
+                                 open(log, encoding="utf-8", errors="ignore").read())
+            if missing:
+                import collections
+                cnt = collections.Counter(missing)
+                print("  [警告] 有 %d 处缺字形, 在 PDF 里会显示为空白: %s"
+                      % (sum(cnt.values()), dict(cnt.most_common())))
+                print("  修法: 在本文的 \\newunicodechar 表里给这些字符加映射")
+                # 退出码非零: 缺字形是"交付物坏了", 不该只是一个能被忽略的警告。
+                return 1
+            else:
+                print("  字形完整: 日志里没有 Missing character")
+            return 0
     else:
         print("PDF not produced")
         for f in os.listdir(BUILD):
             if f.endswith(".log"):
                 print("--- log tail ---")
                 print(open(os.path.join(BUILD, f), encoding="utf-8", errors="ignore").read()[-3000:])
+    return 1
 
 
 if __name__ == "__main__":
-    main()
+    ap = argparse.ArgumentParser(description="从网页 markdown 编译单册 PDF (xelatex)")
+    ap.add_argument("lang", nargs="?", default="zh", choices=["zh", "en"],
+                    help="要编译哪一本 (默认 zh)")
+    ap.add_argument("--out", default=os.path.join(ROOT, "docs"),
+                    help="输出目录 (默认 docs/; 想验证这条路径又不想覆盖入库 PDF 时改这里)")
+    _a = ap.parse_args()
+    configure(_a.lang, _a.out)
+    raise SystemExit(main())
