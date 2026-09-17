@@ -32,6 +32,12 @@ the project's `yccstego` extension"，但 `yccstego` 是**独立仓库与 PyPI �
 
 ### Added
 
+- **README 的目录（生成 + 守卫）**：README 已有 14 个二级小节、60 KB 以上却没有目录，
+  想找"目录结构"或"更正记录"只能一路滚；而**手写目录会立刻腐烂**（这几天已经因为
+  "指向不存在的东西"修过 `thesis/`、`yccstego` 与手册图注三处）。现在目录由
+  `scripts/readme_toc.py` 从二级标题生成（`make readme-toc`），`src/test_readme_toc.py`
+  把"标题改了目录没改""锚点找不到标题""二级标题漏收录""把代码里的 `# 注释` 当标题"
+  四类问题钉进 `pytest`。
 - `teaching/handbook_facts.py` 的 `REQUIRED` 增加
   `github.com/Yukinoshita-lin/yccstego`：DOCX、网页、入库 PDF 三份材料都必须能给出
   这个地址，谁把正文改回"项目扩展"都会在 CI 红。

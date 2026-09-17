@@ -20,7 +20,7 @@ endif
 	e2e gui notebooks dataset docker web-convert web-build exp-data exp-figs \
 	exp-models results results-check ood gain-importance handbook-check handbook-fix \
 	notebooks-run hooks attribution-check handbook-snippets coverage \
-	model-cards model-cards-check handbook-pdf
+	model-cards model-cards-check handbook-pdf readme-toc readme-toc-check
 
 help:
 	@echo "Targets:"
@@ -47,6 +47,7 @@ help:
 	@echo "  make attribution-check - verify no AI co-author trailer in history"
 	@echo "  make handbook-snippets - execute the python code blocks in the handbook"
 	@echo "  make handbook-pdf - re-export docs/*.pdf from the DOCX sources (needs Word)"
+	@echo "  make readme-toc   - regenerate the README table of contents (from h2 headings)"
 	@echo "  make coverage     - full suite with coverage report"
 	@echo "  make e2e          - full embed/decode/analyze demo"
 	@echo "  make notebooks    - regenerate per-chapter notebooks"
@@ -180,6 +181,13 @@ handbook-snippets:
 # 所以在 Linux/CI 上调它也安全。
 handbook-pdf:
 	$(PY) teaching/export_handbook_pdf_word.py
+
+# README 的目录是生成的 (scripts/readme_toc.py); pytest 里也有同样的校验。
+readme-toc:
+	$(PY) scripts/readme_toc.py --fix
+
+readme-toc-check:
+	$(PY) scripts/readme_toc.py --check
 
 # 带覆盖率的完整测试 (门槛见 pyproject / CI)
 coverage:

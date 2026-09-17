@@ -6,6 +6,27 @@
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543628.svg)](https://doi.org/10.5281/zenodo.22543628)
 
+<!-- TOC:BEGIN 由 scripts/readme_toc.py 生成, 勿手改 -->
+
+## 目录
+
+- [English Overview](#english-overview)
+- [互动教学网站](#互动教学网站)
+- [功能总览](#功能总览)
+- [学习手册](#学习手册)
+- [更正记录：曾经出现过的错误](#更正记录曾经出现过的错误)
+- [安装与运行](#安装与运行)
+- [GUI 使用流程](#gui-使用流程)
+- [目录结构](#目录结构)
+- [技术细节](#技术细节)
+- [有监督 ML 隐写分析（C++ 特征提取 + 校园照片训练）](#有监督-ml-隐写分析c-特征提取--校园照片训练)
+- [GPU 版 (v1.2)：PyTorch 批量向量化的统计特征分析](#gpu-版-v12pytorch-批量向量化的统计特征分析)
+- [持续集成 & 发版](#持续集成--发版)
+- [版本历史](#版本历史)
+- [许可](#许可)
+
+<!-- TOC:END -->
+
 ## English Overview
 
 **nsF5 Steganography** is an open-source teaching and research toolkit for image
