@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.8.2-blue)
+![version](https://img.shields.io/badge/version-1.8.3-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543628.svg)](https://doi.org/10.5281/zenodo.22543628)
@@ -974,7 +974,18 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.8.2 (当前) — 一个 Release 里出现了两个不同的 wheel**
+- **v1.8.3 (当前) — 红灯的 tag 不该往 PyPI 送包**
+  - v1.8.2 的 tag 上 `pytest` 是红的, 而 `发布到 PyPI` / `发布 GitHub Release`
+    照样成功 —— 失败的全量测试作业拦不住发布。原因: `build` 只 `needs: [test]`。
+    现在 `build` 需要**全部验证作业**通过（test / pytest / gui /
+    feature-consistency / notebooks / handbook / attribution）, 任一红则
+    build / release / pypi 都不跑（并行执行, 不增加墙钟时间）。
+  - 那次 pytest 红的是我自己写的"并行超时必须报错"用例: 1 秒上限在快 runner 上
+    来不及触发（2 张 256² 的小图 <1s 跑完）。现在压到 1 毫秒, "来不及"成为必然,
+    本机连跑三次全过。测试一旦依赖时序就一定会 flake —— 这是本项目第二次栽在
+    同一个坑上。
+
+- **v1.8.2 — 一个 Release 里出现了两个不同的 wheel**
   - 审计 v1.8.1 产物时发现 PyPI 的 wheel 与 Release 里的同名 wheel **哈希不同**：
     `ci.yml`（Linux）与 `release.yml`（Windows）各构建了一次，后者以同名文件
     覆盖了前者。两份的成员文件内容一致，只有 `METADATA`/`RECORD` 与时间戳不同，

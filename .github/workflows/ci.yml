@@ -184,7 +184,12 @@ jobs:
   build:
     name: 构建 wheel + sdist
     runs-on: ubuntu-latest
-    needs: test
+    # 2026-09-30 审计: 这里原来只等 `test`(Python 3.9/3.11 的算法自测), 于是
+    # **pytest 红了也照样发布** —— v1.8.2 的 tag 运行就是活例: `pytest (完整依赖)`
+    # 失败(我的超时用例 flake), 而 `发布到 PyPI` 与 `发布 GitHub Release` 都成功了。
+    # 现在把"全部验证作业"都作为发布的前置: 任何一个红, build / release / pypi 都不跑。
+    # 它们本来就是并行跑的, 所以这只增加约束、不增加墙钟时间。
+    needs: [test, pytest, gui, feature-consistency, notebooks, handbook, attribution]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

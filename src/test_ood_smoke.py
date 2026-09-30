@@ -132,8 +132,14 @@ def test_parallel_timeout_raises_instead_of_hanging(corpus, tmp_path):
     """并行卡住必须是**报错**, 不能是"永远在跑"。
 
     2026-09-17: 一次 fork 死锁让 CI 的 pytest 作业挂了 6 小时才被取消。
-    超时参数 (`--chunk-timeout`) 是给这类事故装的断路器: 这里把上限压到 1 秒,
-    进程池必然来不及返回, 必须抛错并以非零码退出。
+    超时参数 (`--chunk-timeout`) 是给这类事故装的断路器。
+
+    **上限必须压到"子进程来不及返回"的量级**: 2026-09-30 这条用例在 v1.8.2 的
+    tag 运行上红过一次 —— 当时写的是 1 秒, 而 2 张 256² 的小图在快 runner 上
+    (spawn 完、模型加载完、算完) 居然 <1s 就返回了, `.get(timeout=1)` 成功,
+    于是"断路器没接上"的断言反过来失败。现在压到 1 毫秒: 进程池光是 spawn
+    子进程 + 加载 LightGBM 就要几百毫秒, 不可能赢。这条教训和 09-17 那次同源:
+    **测试依赖时序就一定会 flake**, 必须让"来不及"成为必然。
     """
     import subprocess
     src = tmp_path / "corpus_t"
@@ -143,7 +149,7 @@ def test_parallel_timeout_raises_instead_of_hanging(corpus, tmp_path):
     cmd = [sys.executable, os.path.join(EXP, "ood_eval.py"),
            "--sources", "campus", "--campus-dir", str(src),
            "--models", f"143d={MODEL_143}", "--clips", "0", "--workers", "2",
-           "--chunk-timeout", "1", "--out-dir", str(tmp_path / "out_t")]
+           "--chunk-timeout", "0.001", "--out-dir", str(tmp_path / "out_t")]
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
                        errors="replace", timeout=300)
     assert r.returncode != 0, "超时没有报错, 说明断路器没接上"

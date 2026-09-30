@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.3] - 2026-09-30
+
+**两条都是"审计 1.8.2 的 tag 运行"时暴露出来的。**
+
+v1.8.2 的 tag 上, `pytest (完整依赖)` 是**红的**, 而 `发布到 PyPI` 与
+`发布 GitHub Release` 却都**成功**了 —— 一个失败的全量测试作业没能拦住发布。
+红的原因是 `src/test_ood_smoke.py` 里那条"并行超时必须报错"的用例在我自己写的
+1 秒上限上 flake 了（2 张 256² 的小图在快 runner 上 <1s 就跑完，断路器没被触发）。
+
+### Fixed
+
+- **超时用例不再依赖时序**: `--chunk-timeout` 从 `1`(秒) 压到 `0.001`(秒)。
+  进程池光是 spawn 子进程 + 加载 LightGBM 就要几百毫秒, 不可能赢过 1 毫秒,
+  所以"来不及返回"从"通常成立"变成"必然成立"。本机连跑三次全过。
+  （教训与 2026-09-17 那次同源: **测试一旦依赖时序就一定会 flake**。）
+- **发布不再绕过验证**: `build` 的 `needs` 从 `[test]` 改成
+  `[test, pytest, gui, feature-consistency, notebooks, handbook, attribution]` ——
+  任何一项红, `build` / `release` / `pypi` 都不会跑。这些作业本来就并行执行,
+  所以只是加约束, 不增加墙钟时间。这正是 v1.8.2 缺的那道闸:
+  红灯的 tag 不该往 PyPI 送包。
+
+### Notes
+
+- v1.8.2 已经发布（PyPI + Release + Zenodo）, 其代码与 v1.8.3 相同 —— 差别只在
+  测试的时序写法与 CI 的发布闸门; 但按本项目"tag 应对应一次全绿"的规矩,
+  v1.8.2 那次 tag 的 pytest 是红的, 所以在 1.8.3 里把这条记录在案, 而不是
+  悄悄重打 tag。
+
 ## [1.8.2] - 2026-09-30
 
 **一个 Release 里出现了两个不同的 wheel。**
