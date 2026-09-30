@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.8.1-blue)
+![version](https://img.shields.io/badge/version-1.8.2-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543628.svg)](https://doi.org/10.5281/zenodo.22543628)
@@ -974,7 +974,15 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.8.1 (当前) — 审计 1.8.0：发布链路的可验证性**
+- **v1.8.2 (当前) — 一个 Release 里出现了两个不同的 wheel**
+  - 审计 v1.8.1 产物时发现 PyPI 的 wheel 与 Release 里的同名 wheel **哈希不同**：
+    `ci.yml`（Linux）与 `release.yml`（Windows）各构建了一次，后者以同名文件
+    覆盖了前者。两份的成员文件内容一致，只有 `METADATA`/`RECORD` 与时间戳不同，
+    但"一个版本一份字节"的溯源因此断了。
+  - 现在 Windows 作业不再上传 wheel，Release 的 wheel/sdist 一律来自 `ci.yml`
+    （与 PyPI 同源同字节），它只提供 setup exe 与便携 zip。
+
+- **v1.8.1 — 审计 1.8.0：发布链路的可验证性**
   - 审计发现 v1.8.0 的 **tag CI 是红的**（PyPI 作业走 trusted publishing，而
     pypi.org 端从没配 pending publisher），修复只落在 tag 之后的提交上；不过
     PyPI 上的 wheel 与 Release 里的那个**字节相同**（sha256 `02d2177a…`），

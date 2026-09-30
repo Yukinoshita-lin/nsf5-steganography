@@ -48,6 +48,12 @@ jobs:
         run: python scripts/test_frozen.py
 
       - name: 构建 wheel
+        # 只为验证"打包元数据在 Windows/Python 3.12 上也编得出来", **不发布**:
+        # 同一个文件名 (nsf5stego-<ver>-py3-none-any.whl) 若再传一次 Release,
+        # 会把 ci.yml 在 Linux 上构建、并发给 PyPI 的那个覆盖掉 —— 于是
+        # "Release 里的 wheel" 与 "PyPI 上的 wheel" 字节不同 (2026-09-30 审计:
+        # v1.8.1 就是这样, 两份 wheel 内容一致但元数据/时间戳不同, 哈希对不上)。
+        # Release 的 wheel/sdist 一律由 ci.yml 的构建作业提供, 保持单一来源。
         run: python -m build --wheel
 
       - name: 安装 Inno Setup
@@ -137,4 +143,3 @@ jobs:
           files: |
             dist/nsf5stego-setup-*.exe
             dist/nsf5stego-portable-*.zip
-            dist/*.whl

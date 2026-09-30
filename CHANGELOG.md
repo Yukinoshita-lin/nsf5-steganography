@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.2] - 2026-09-30
+
+**一个 Release 里出现了两个不同的 wheel。**
+
+审计 v1.8.1 的产物时发现: PyPI 上的 `nsf5stego-1.8.1-py3-none-any.whl`
+(`sha256 5c84312c…`) 与 GitHub Release 资产里的同名文件
+(`sha256 b30220c5…`) **不是同一份字节**。原因不是代码不同, 而是**同一个 wheel
+被构建了两次**: `ci.yml` 在 Linux 上 `python -m build` → 上传 PyPI + 挂到
+Release; `release.yml` 又在 Windows 上 `python -m build --wheel` → 以同名文件
+追加到同一个 Release, 把前一份**覆盖**掉。两份的 30 个成员文件内容完全一致,
+差异只在 `METADATA`/`RECORD` 与 zip 时间戳 —— 但"哪个哈希对应哪个产物"这件事
+因此变得说不清, 而这个项目一直靠"一个版本一份字节"来做溯源
+(`nsf5stego-1.8.0` 那次两者就是逐字节相同的)。
+
+### Fixed
+
+- **`release.yml` 不再往 Release 上传 wheel**: Release 里的 wheel/sdist 一律由
+  `ci.yml` 的构建作业提供(与 PyPI 上的那两份同源同字节), Windows 作业只提供
+  `nsf5stego-setup-*.exe` 与 `nsf5stego-portable-*.zip`。`python -m build --wheel`
+  这一步保留(它验证打包元数据在 Windows/Python 3.12 上也编得出来), 只是结果
+  不再发布, 并有注释说明原因。
+
+### Verification
+
+- 修复前的对照证据: 两份 1.8.1 wheel 的成员集合相同(30 个文件), 载荷文件
+  逐字节相同, 只有 `METADATA`/`RECORD` 与 zip 时间戳不同 —— 据此确认了
+  "同名覆盖"而非"代码不同"。
+- 修复后的验证见 v1.8.2 的 tag 运行: Release 资产里只应出现 ci.yml 构建的
+  wheel/sdist, 且与 PyPI 上的 `sha256` 一致。
+
 ## [1.8.1] - 2026-09-30
 
 **审计 1.8.0：给发布链路补上"可验证"。**
