@@ -94,11 +94,12 @@ def test_analyze_clean_image_json():
 class _FakeStdin:
     """按给定字节伪造 sys.stdin (只暴露 _stdin_text 用到的 buffer / isatty)。"""
 
-    def __init__(self, data: bytes):
+    def __init__(self, data: bytes = b"", tty: bool = False):
         self.buffer = io.BytesIO(data)
+        self._tty = tty
 
     def isatty(self):
-        return False
+        return self._tty
 
 
 def _with_stdin(data: bytes, fn):
@@ -186,6 +187,91 @@ def test_analyze_batch_glob_pattern():
     print("[OK] analyze 批量通配符: 展开 + 无匹配报'无匹配文件'")
 
 
+# --------------------------------------------------------------------------- #
+#  进程内直调 cli.main: 子进程不计入 coverage (曾因此掉到 65% 门槛之下),
+#  行为断言以子进程用例为准, 这里负责覆盖率与不启动子进程的快速反馈。
+# --------------------------------------------------------------------------- #
+def test_inproc_embed_extract_roundtrip():
+    with tempfile.TemporaryDirectory() as d:
+        cover = _cover(os.path.join(d, "c.png"))
+        out = os.path.join(d, "s.png")
+        assert cli.main(["embed", cover, "-m", "inproc", "-p", "k", "-o", out]) == 0
+        assert os.path.exists(out), "默认/指定输出应落盘"
+        assert cli.main(["extract", out, "-p", "k"]) == 0
+    print("[OK] 进程内 embed -> extract 往返")
+
+
+def test_inproc_embed_stdin_and_error_paths():
+    with tempfile.TemporaryDirectory() as d:
+        cover = _cover(os.path.join(d, "c.png"))
+        # stdin 传文本
+        rc = _with_stdin(b"inproc stdin",
+                         lambda: cli.main(["embed", cover, "-o",
+                                           os.path.join(d, "s1.png")]))
+        assert rc == 0
+        # tty 且无 -m -> 2; 空文本 -> 2
+        cli.sys.stdin = _FakeStdin(b"", tty=True)
+        try:
+            assert cli.main(["embed", cover]) == 2
+        finally:
+            cli.sys.stdin = sys.__stdin__
+        rc = _with_stdin(b"", lambda: cli.main(["embed", cover]))
+        assert rc == 2
+        # 容量超限 -> 1; 图像缺失 -> 1
+        tiny = _cover(os.path.join(d, "tiny.png"), size=32)
+        assert cli.main(["embed", tiny, "-m", "x" * 400]) == 1
+        assert cli.main(["embed", os.path.join(d, "nope.png"), "-m", "x"]) == 1
+    print("[OK] 进程内 embed 错误路径 (tty/空文本/容量/缺图)")
+
+
+def test_inproc_extract_failures():
+    with tempfile.TemporaryDirectory() as d:
+        cover = _cover(os.path.join(d, "c.png"))
+        stego = os.path.join(d, "c_stego.png")
+        assert cli.main(["embed", cover, "-m", "hello", "-p", "k", "-o", stego]) == 0
+        assert cli.main(["extract", stego, "-p", "wrong"]) == 1
+        assert cli.main(["extract", os.path.join(d, "nope.png")]) == 1
+    print("[OK] 进程内 extract 失败路径 (口令错误/缺图)")
+
+
+def test_inproc_analyze_paths():
+    with tempfile.TemporaryDirectory() as d:
+        a = _cover(os.path.join(d, "a.png"))
+        b = _cover(os.path.join(d, "b.png"))
+        assert cli.main(["analyze", a]) == 0                       # 人读单图
+        assert cli.main(["analyze", a, "--json"]) == 0             # JSON 对象
+        assert cli.main(["analyze", a, b, "--json"]) == 0          # JSON 数组
+        r = cli.main(["analyze", a, os.path.join(d, "gone.png"), "--json"])
+        assert r == 1, "批量含坏图应非零退出"
+        r = cli.main(["analyze", os.path.join(d, "*.nomatch"), "--json"])
+        assert r == 1, "通配符无匹配应非零退出"
+    print("[OK] 进程内 analyze 全形态 (人读/JSON/批量/无匹配)")
+
+
+def test_inproc_gui_import_error():
+    # tkinter 缺失等导致 import gui 失败时, _cmd_gui 必须友好返回 1
+    old = sys.modules.get("gui")
+    sys.modules["gui"] = None          # 使 import gui 抛 ImportError
+    try:
+        assert cli.main(["gui"]) == 1
+    finally:
+        if old is None:
+            sys.modules.pop("gui", None)
+        else:
+            sys.modules["gui"] = old
+    print("[OK] 进程内 gui 导入失败分支")
+
+
+def test_inproc_version_and_no_args():
+    with pytest.raises(SystemExit) as ei:
+        cli.main(["--version"])
+    assert ei.value.code == 0
+    with pytest.raises(SystemExit) as ei:
+        cli.main([])
+    assert ei.value.code == 2
+    print("[OK] 进程内 --version / 无参数退出码")
+
+
 @pytest.mark.slow
 def test_embed_extract_roundtrip():
     with tempfile.TemporaryDirectory() as d:
@@ -249,6 +335,12 @@ if __name__ == "__main__":
     test_analyze_batch_glob_pattern()
     test_stdin_decodes_utf8_before_locale()
     test_stdin_undecodable_returns_none()
+    test_inproc_embed_extract_roundtrip()
+    test_inproc_embed_stdin_and_error_paths()
+    test_inproc_extract_failures()
+    test_inproc_analyze_paths()
+    test_inproc_gui_import_error()
+    test_inproc_version_and_no_args()
     test_embed_extract_roundtrip()
     test_stdin_message_roundtrip()
     test_wrong_password_fails_with_hint()

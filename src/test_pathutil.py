@@ -70,18 +70,25 @@ def test_app_version_frozen_reads_version_txt():
     print("[OK] app_version 冻结分支: 读 _MEIPASS/version.txt")
 
 
-def test_output_dir_frozen_uses_appdata():
-    # 冻结 + 装进 Program Files 时 cwd 不可写: 产物必须落 %APPDATA%
+def test_output_dir_frozen_uses_user_data_dir():
+    # 冻结 + 装进 Program Files 时 cwd 不可写: 产物必须落用户数据目录。
+    # Windows 走 %APPDATA%, Linux/macOS 走 XDG_DATA_HOME (~/.local/share)。
     import shutil
     fake = tempfile.mkdtemp(prefix="nsf5_appdata_")
     old_meipass = getattr(sys, "_MEIPASS", None)
     old_appdata = os.environ.get("APPDATA")
+    old_xdg = os.environ.get("XDG_DATA_HOME")
     sys._MEIPASS = fake                      # 冻结标记
     os.environ["APPDATA"] = fake
+    os.environ["XDG_DATA_HOME"] = os.path.join(fake, "xdg")
     try:
         got = PU.output_dir(os.path.join(fake, "Program Files", "nsf5stego"))
-        assert got == os.path.join(fake, "nsf5stego", "output"), \
-            f"冻结环境应写 %APPDATA%/nsf5stego/output, 实际 {got}"
+        if os.name == "nt":
+            want = os.path.join(fake, "nsf5stego", "output")
+        else:
+            want = os.path.join(fake, "xdg", "nsf5stego", "output")
+        assert got == want, \
+            f"冻结环境产物应写用户数据目录 {want}, 实际 {got}"
     finally:
         if old_meipass is None:
             del sys._MEIPASS
@@ -91,8 +98,12 @@ def test_output_dir_frozen_uses_appdata():
             os.environ.pop("APPDATA", None)
         else:
             os.environ["APPDATA"] = old_appdata
+        if old_xdg is None:
+            os.environ.pop("XDG_DATA_HOME", None)
+        else:
+            os.environ["XDG_DATA_HOME"] = old_xdg
         shutil.rmtree(fake, ignore_errors=True)
-    print("[OK] output_dir 冻结分支: %APPDATA%/nsf5stego/output")
+    print("[OK] output_dir 冻结分支: 用户数据目录/nsf5stego/output")
 
 
 if __name__ == "__main__":
@@ -100,5 +111,5 @@ if __name__ == "__main__":
     test_output_dir_installed_layout_uses_cwd()
     test_rel_from_proj_normal_path()
     test_app_version_frozen_reads_version_txt()
-    test_output_dir_frozen_uses_appdata()
+    test_output_dir_frozen_uses_user_data_dir()
     print("\n全部通过")
