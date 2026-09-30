@@ -26,6 +26,14 @@ PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CPP_DIR = os.path.join(PROJ, "cpp")
 sys.path.insert(0, os.path.join(PROJ, "src"))
 
+# cp1252 等窄编码控制台 (GitHub windows runner) 上打印中文会直接崩
+for _s in (sys.stdout, sys.stderr):
+    if hasattr(_s, "reconfigure"):
+        try:
+            _s.reconfigure(errors="replace")
+        except Exception:
+            pass
+
 TARGETS = ("fsfeatures", "nsf5embed")
 
 
