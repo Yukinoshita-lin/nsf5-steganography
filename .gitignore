@@ -72,6 +72,9 @@ _tpl/
 # 本地工具配置与交付契约产物 (审计 2026-09-14: 一直以未跟踪状态挂在仓库根)
 .claude/
 artifact-delivery-contract.json
+# ZCode IDE 的忽略规则文件 (2026-09-30 审计时它以未跟踪状态挂在仓库根):
+# 内容基本是 .gitignore 的拷贝, 属于本地工具配置, 不入库。
+.zcodeignore
 
 # GPU 版：大规模数据集 / 临时样本不提交 (可重新生成)
 gpu/data/*.npz

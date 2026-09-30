@@ -1,17 +1,17 @@
 # 打包计划:安装后像普通应用一样使用
 
 > 状态:**M1–M5 全部完成**(2026-09-30)。一键链路:
-> `python scripts/build_exe.py` → 双 exe onedir(317MB / 便携 zip 164MB);
+> `python scripts/build_exe.py` → 双 exe onedir(解包约 317MB / 便携 zip 119MB);
 > `python scripts/test_frozen.py`(`make pkg-test`)五项冻结冒烟全过;
 > `python scripts/build_installer.py`(`make installer`)→
-> `dist/nsf5stego-setup-1.8.0.exe`(125MB,简体中文界面),静默
+> `dist/nsf5stego-setup-1.8.0.exe`(90MB,简体中文界面),静默
 > 安装 → 开始菜单快捷方式 + 装好的 GUI/CLI 启动 → 加 PATH 任务 →
 > 静默卸载,全流程已实测,卸载后 PATH 逐字节还原。
 > **M4**:`.github/workflows/release.yml` 在 tag `v*` 推送时于
 > windows-latest (Python 3.12) 自动走 编译 C++ → 冻结打包 → 冻结冒烟 →
 > wheel → choco 装 Inno Setup → 安装器 → 产物追加到 GitHub Release;
-> 链路各步骤已在本机逐一实证(YAML 校验通过;首次真实 tag 运行待推 tag
-> 后在 Actions 页确认)。**M5**:README 中英文新增安装版入口
+> 链路各步骤已在本机逐一实证;2026-09-30 的 v1.8.0 真实 tag 运行已确认
+> (release.yml 成功,产物追加到 Release)。**M5**:README 中英文新增安装版入口
 > ("方式 0:Windows 安装版")。
 >
 > Inno Setup 6.7.3 装在 `D:\Users\32403\.zcode\tools\Inno Setup 6`
@@ -125,9 +125,16 @@
   `%LOCALAPPDATA%\Programs\nsf5stego`)、开始菜单 + 可选桌面快捷方式、
   可选"加入用户 PATH"(卸载时精确移除并广播 WM_SETTINGCHANGE)、版本号
   由 exe 版本资源注入;
-- **验收**:本机 ISCC 出 `nsf5stego-setup-1.8.0.exe`(125MB),静默安装 →
-  开始菜单快捷方式 → 装好的 GUI/CLI 启动 → 加 PATH 任务 → 静默卸载,
-  卸载后应用目录、开始菜单组清除,PATH 逐字节还原。
+- **验收**:本机 ISCC 出 `nsf5stego-setup-1.8.0.exe`(本机 125MB / **CI 产物
+  90MB**,见下),静默安装 → 开始菜单快捷方式 → 装好的 GUI/CLI 启动 → 加 PATH
+  任务 → 静默卸载,卸载后应用目录、开始菜单组清除,**用户 PATH 恢复原值**
+  (只删掉我们追加的那一项;若原值末尾带多余的 `;` 等冗余分隔符,重建时会被
+  规范化 —— 所以严格说不是"逐字节",见 `installer/nsf5stego.iss` 的
+  `RemoveFromUserPath`)。
+  > **尺寸以 CI 产物为准**(2026-09-30 v1.8.0 Release 实测):setup exe
+  > 90,032,664 B(**85.9 MiB**),便携 zip 118,900,069 B(**113.4 MiB**);
+  > 本机(Python 3.14 + 本地 PyInstaller)则分别是 125MB / 164MB。
+  > 差异来自构建环境与 PyInstaller 版本,不是回归 —— 引用体积请注明环境。
 
 ### M4 CI 自动出包 ✅
 - 新增 `.github/workflows/release.yml`:tag `v*` 推送 → windows-latest

@@ -7,8 +7,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# 2026-09-30 审计: 最小权限。原来这里是 workflow 级的 `contents: write`,
+# 等于给**每个作业**(pytest / xvfb GUI / notebook / 构建…)都发了写仓库的令牌;
+# 真正需要写的只有下面那个 `release` 作业(它要创建 GitHub Release)。
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
@@ -218,6 +221,29 @@ jobs:
           assert isinstance(r["probability"], float), r
           print("OK", ml_predict.MODEL_PATH, r["probability"])
           PY
+      - name: 干净 env 里验证发布入口 (nsf5stego CLI 往返)
+        # 2026-09-30 审计: 上面那步只验证"模型随包可用"。1.8.0 的 headline 是
+        # **正式 CLI**([project.scripts] nsf5stego = cli:main), 而 CI 里没有任何
+        # 一步真的调用过安装后的 console script —— 入口名写错/漏 py-modules 都
+        # 不会被发现。这里在同一个干净 venv 里跑一次真实的命令行往返。
+        run: |
+          cd /tmp
+          /tmp/wheel-venv/bin/nsf5stego --version
+          /tmp/wheel-venv/bin/python -c "
+          import numpy as np
+          from PIL import Image
+          img = np.random.default_rng(0).integers(0, 256, (256, 256), dtype=np.uint8)
+          Image.fromarray(img).save('/tmp/cover_cli.png')
+          "
+          /tmp/wheel-venv/bin/nsf5stego embed /tmp/cover_cli.png -m "wheel-cli-roundtrip" -o /tmp/stego_cli.png
+          /tmp/wheel-venv/bin/nsf5stego extract /tmp/stego_cli.png | tail -1 | grep -q "wheel-cli-roundtrip"
+          /tmp/wheel-venv/bin/nsf5stego analyze /tmp/cover_cli.png --json > /tmp/analyze_cli.json
+          /tmp/wheel-venv/bin/python -c "
+          import json
+          d = json.load(open('/tmp/analyze_cli.json'))
+          assert 'stego_probability' in d and 'image_sha256' in d, sorted(d)
+          print('CLI OK:', d['verdict'])
+          "
       - uses: actions/upload-artifact@v4
         with:
           name: dist
@@ -228,6 +254,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      contents: write          # 只有这个作业需要写 (创建 Release / 上传资产)
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -258,8 +286,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: pypi
-    permissions:
-      id-token: write          # 保留给将来切回 trusted publishing
+    # 2026-09-30 审计: 当前用 API token 认证, 不再需要 OIDC, 所以这里不给
+    # `id-token: write`(最小权限)。切回 trusted publishing 时把它加回来:
+    #   permissions:
+    #     id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:

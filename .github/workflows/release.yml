@@ -6,6 +6,12 @@ name: release
 on:
   push:
     tags: ["v*"]
+  # 2026-09-30 审计: 这条链路此前**只在 tag 上跑**, 于是它的前两次真实运行
+  # (v1.8.0) 都以失败告终 —— 打包问题在"已经发布"之后才暴露。加一个手动
+  # 触发: 打 tag 前先在这里 dry-run 一遍(构建 + 冻结冒烟 + 装 Inno 出安装器),
+  # 只有 tag 事件才会真的把产物发到 Release(见下面的 if 条件)。
+  # 用法: gh workflow run release.yml --ref main
+  workflow_dispatch:
 
 permissions:
   contents: write      # softprops/action-gh-release 需要写 Release
@@ -66,6 +72,8 @@ jobs:
         # ci.yml 的 release 作业同样在 v* tag 上创建 Release 并生成发布说明;
         # 这里只负责把 Windows 产物追加到同一个 Release (softprops 对已存在的
         # tag 会做更新), 不重复生成 notes, 避免两个工作流抢发布说明。
+        # 手动 dry-run (workflow_dispatch) 时**不发布**, 只验证链路。
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
