@@ -17,7 +17,7 @@ else
 endif
 
 .PHONY: help install test core steg fp pipeline pytest pyfeatures cpp cpp-clean \
-	e2e gui notebooks dataset docker web-convert web-build exp-data exp-figs \
+	e2e gui webapp pkg pkg-test installer notebooks dataset docker web-convert web-build exp-data exp-figs \
 	exp-models results results-check ood gain-importance handbook-check handbook-fix \
 	notebooks-run hooks attribution-check handbook-snippets coverage \
 	model-cards model-cards-check handbook-pdf readme-toc readme-toc-check
@@ -31,6 +31,10 @@ help:
 	@echo "  make cpp          - build the C++ accelerators into cpp/ (optional)"
 	@echo "  make cpp-clean    - remove the built accelerator binaries"
 	@echo "  make gui          - launch the desktop GUI"
+	@echo "  make webapp       - serve the interactive lab (webapp/) at http://127.0.0.1:8080"
+	@echo "  make pkg          - build frozen Windows exe (scripts/build_exe.py)"
+	@echo "  make pkg-test     - smoke-test the frozen exe (scripts/test_frozen.py)"
+	@echo "  make installer    - build nsf5stego-setup-<ver>.exe via Inno Setup"
 	@echo "  make exp-figs     - rebuild experiment figures from experiments/data/*.csv"
 	@echo "  make exp-data     - rebuild the BOSSbase/CNN experiment artifacts (slow)"
 	@echo "  make exp-models   - retrain the two deployed models (reproducible producer)"
@@ -102,6 +106,23 @@ e2e:
 
 gui:
 	$(PY) src/gui.py
+
+# 交互实验室 (webapp/) 是纯静态页面, 本地起 http 服务即可; 直接双击
+# index.html 时 file:// 下 fetch 本地 JSON 会被浏览器拦, 载荷扫描实验拿不到数据。
+webapp:
+	@echo "交互实验室: http://127.0.0.1:8080  (Ctrl+C 停止)"
+	$(PY) -m http.server 8080 --directory webapp
+
+# Windows 冻结打包 (打包计划见 docs/PACKAGING.md): pkg 出双 exe + 便携 zip,
+# pkg-test 对冻结产物做体积/往返/ML 一致/GUI 主题自检 (先有 pkg 才能测)。
+pkg:
+	$(PY) scripts/build_exe.py
+
+pkg-test:
+	$(PY) scripts/test_frozen.py
+
+installer: pkg
+	$(PY) scripts/build_installer.py
 
 notebooks:
 	$(PY) teaching/build_notebooks.py

@@ -19,9 +19,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from ns5_core import embed_string
+from pathutil import output_dir
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUTPUT_DIR = os.path.join(PROJECT_DIR, "output")
+# 源码运行 -> 仓库 output/; pip 安装后 module 落在 site-packages,
+# 不能把效率图写进安装目录 (系统 Python 会 PermissionError), 改写工作目录。
+OUTPUT_DIR = output_dir(PROJECT_DIR)
 
 
 def theoretical_code_family(p_max=8):

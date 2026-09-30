@@ -13,7 +13,18 @@ from __future__ import annotations
 import os
 import sys
 
-CPP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cpp")
+def _cpp_dir():
+    """冻结环境 (PyInstaller) 优先找 sys._MEIPASS/cpp —— spec 把 cpp 产物
+    打到 _internal/cpp; 源码/仓库布局仍是 <repo>/cpp。"""
+    mp = getattr(sys, "_MEIPASS", None)
+    if mp:
+        frozen_dir = os.path.join(mp, "cpp")
+        if os.path.isdir(frozen_dir):
+            return frozen_dir
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cpp")
+
+
+CPP_DIR = _cpp_dir()
 
 if sys.platform == "win32":
     SUFFIX = ".dll"

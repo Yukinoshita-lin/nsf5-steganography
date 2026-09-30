@@ -41,6 +41,15 @@ def main():
     assert "图尺寸" in app.statusbar.cget("text")
     assert callable(app._load_demo) and callable(app._copy_out)
 
+    # 演示图一键生成 (wheel 安装布局里没有 img/cover.png): 确定性 + 可载入
+    import tempfile
+    demo_p = os.path.join(tempfile.mkdtemp(), "cover.png")
+    g1 = gui.generate_demo_cover(demo_p)
+    assert g1.shape == (256, 256), "演示封面应为 256x256 灰度"
+    assert (IO.load_as_gray(demo_p) == g1).all(), "生成后应能原样载入"
+    assert (g1 == gui.generate_demo_cover(demo_p)).all(), \
+        "seed=42 的确定性配方: 重生成必须逐字节一致"
+
     from ns5_core import embed_string
     stego, rep, nb = embed_string(gray, "smoke test", method="nsF5", p=3)
     app._show_in(app.lbl_stego, stego)

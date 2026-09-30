@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.7.2-blue)
+![version](https://img.shields.io/badge/version-1.8.0-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543628.svg)](https://doi.org/10.5281/zenodo.22543628)
@@ -76,11 +76,18 @@ python -m pip install -e .
 python src/test_core.py              # algorithm self-tests
 python src/test_steg.py              # steganalysis self-tests
 python src/run_e2e.py                # full embed -> decode -> analyze demo
+nsf5stego embed cover.png -m "msg"   # CLI: embed / extract / analyze / gui
 python src/gui.py                    # GUI (requires tkinter)
 ```
 
 Or use the bundled `Makefile`: `make install`, `make test`, `make e2e`,
 `make notebooks`, `make dataset`, `make docker`.
+
+> **Windows installer**: no Python needed — download
+> `nsf5stego-setup-<version>.exe` from the
+> [Releases](https://github.com/Yukinoshita-lin/nsf5-steganography/releases/latest)
+> page (Start-menu shortcut, optional PATH entry, Chinese wizard).
+> See the Chinese section "方式 0：Windows 安装版".
 
 ### Learning Resources
 
@@ -130,6 +137,9 @@ GitHub Pages 首页已升级为**交互式双语教学网站**（不依赖手册
   湿纸、效率曲线、ROC 与双模型对比
 - 📚 原手册仍保留: [`/zh`](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html)
   与 [`/en`](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
+- 💻 本地体验: 仓库根目录 `make webapp`（即 `python -m http.server 8080 --directory webapp`）
+  后打开 <http://127.0.0.1:8080>。直接双击 `webapp/index.html` 时 `file://` 下
+  fetch 本地 JSON 会被浏览器拦, 载荷扫描实验拿不到数据 —— 所以要起 http 服务
 - 🧪 自动化回归: `webapp/tests/`（DOM 冒烟 + 交互 + 桌面/移动布局），
   由 `.github/workflows/webapp-tests.yml` 在每次改动 `webapp/**` 时执行
 
@@ -277,6 +287,19 @@ git push --force-with-lease origin main
 
 ## 安装与运行
 
+### 方式 0：Windows 安装版（推荐普通用户）
+
+到 [Releases](https://github.com/Yukinoshita-lin/nsf5-steganography/releases/latest)
+下载 `nsf5stego-setup-<版本>.exe` 双击安装（简体中文向导，每用户免管理员），
+装完后像普通桌面软件一样使用，**不需要 Python**：
+
+- 开始菜单（可选桌面快捷方式）→ **nsF5 隐写工具**，双击即开图形界面；
+- 向导里勾选"加入用户 PATH"后，`nsf5stego embed / extract / analyze` 命令行
+  直接可用（重开终端生效），卸载时自动从 PATH 移除；
+- 产物（含密图 / 效率图）写在 `%APPDATA%\nsf5stego\output`，不污染安装目录；
+- 免安装选择：同一 Release 的 `nsf5stego-portable-<版本>-win64.zip` 解压即用；
+- 首次运行若遇 SmartScreen 提示，点"仍要运行"（项目未做代码签名）。
+
 ### 方式 A：从源码运行（Windows / Linux / macOS 通用）
 
 ```bash
@@ -286,6 +309,7 @@ python3 -m venv .venv
 source .venv/bin/activate          # Linux / macOS
 # Windows: .venv\Scripts\activate
 python -m pip install -e .         # 或只装 numpy pillow
+nsf5stego --help                   # 命令行界面（embed / extract / analyze / gui）
 python src/gui.py                  # 图形界面（需要 tkinter）
 ```
 
@@ -309,7 +333,7 @@ pip install dist/nsf5stego-<版本>-py3-none-any.whl
 
 > 注意：wheel 仅含纯 Python 核心；C++ 加速库需自行 `make cpp` 编译，缺失时
 > 自动回退纯 Python。两个部署模型（`models/*.joblib`）**已打进 wheel**
-> （安装为 `nsf5_models/`，含模型卡），`ml_predict` 会按"仓库布局 → 安装布局"
+（安装为 `nsf5_models/`，含模型卡），`ml_predict` 会按"仓库布局 → 安装布局"
 > 的顺序查找，所以 `pip install` 之后 ML 判定直接可用：
 >
 > ```python
@@ -320,6 +344,33 @@ pip install dist/nsf5stego-<版本>-py3-none-any.whl
 > ```
 >
 > （2026-09-15 修正：此前 wheel 里没有模型文件，安装后 `available` 恒为 False。）
+
+### 命令行界面（1.8.0 起）
+
+安装后除 GUI 外还有一条与 GUI 参数一一对应的命令行（服务器 / 脚本 / 批量
+场景不再需要自己拼 `ns5_core` 调用）：
+
+```bash
+nsf5stego embed cover.png -m "秘密文本" -p 口令 -o stego.png
+cat msg.txt | nsf5stego embed cover.png            # 文本也可从 stdin 传入
+nsf5stego extract stego.png -p 口令                # 方法/p/口令 须与嵌入一致
+nsf5stego analyze stego.png --sensitivity 宽松 --json   # 盲分析, --json 供脚本解析
+nsf5stego analyze *.png                            # 批量: 逐图一行汇总
+nsf5stego gui                                      # 图形界面（与 python src/gui.py 相同）
+```
+
+- **退出码**：成功 `0`；运行失败（容量超限 / 口令不匹配 / 图像无法读取）`1`；
+  参数错误 `2` —— 脚本可直接判断成败。
+- **解码失败不输出乱码**：口令或 方法/p 不匹配时解出的会是无效文本，CLI 统一
+  以非零码退出并提示"请确认 方法/p/口令 与嵌入时一致"，而不是把替换字符打印出来。
+- **analyze 批量语义**：单图 `--json` 输出对象，多图输出对象数组（每项带
+  `image` 键）；批量里某张图读不出来会记为 `error` 条目继续跑完，整体以
+  非零码退出。通配符（如 `*.png`）由 CLI 自己展开 —— Windows 的 shell 不
+  展开，这条示例在三大平台都能直接用。单图行为与 1.8.0 初版完全兼容。
+- 默认输出 `<原名>_stego.png`；目标文件已存在时会在 stderr 明示覆盖。
+- 源码运行的等价形式：`python src/cli.py <子命令> ...`。
+- **GUI 产物目录**：源码运行写 `仓库/output/`；`pip install` 安装后 GUI/效率图
+  自动改写**当前工作目录**的 `output/`（不会写进 site-packages 或解释器目录）。
 
 ### 运行测试
 
@@ -924,7 +975,28 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.7.2 (当前) — 同类隐患的全仓排查**
+- **v1.8.0 (当前) — 命令行界面**
+  - 此前 `pip install` 之后唯一的入口是弹 tkinter 窗口（`nsf5stego = "gui:main"`），
+    服务器、脚本与批量场景只能自己 `import ns5_core` 拼代码。1.8.0 起入口改为
+    `src/cli.py`：`embed`（文本可 `-m` 或 stdin）/ `extract` / `analyze`（卡方 + RS
+    + ML，`--json` 机器可读）/ `gui` 四个子命令，参数与方法/p/口令和 GUI 一一对应；
+    退出码区分 成功(0)/运行失败(1)/参数错误(2)，解码失败与容量超限都以明确提示
+    收场而不是栈回溯或乱码。`nsf5stego gui` 与 `python src/gui.py` 行为不变，
+    且在 tkinter 缺失 / 无显示环境时给出可行动提示。
+  - 另有三处小体验: `embed` 的 stdin 文本按 UTF-8 优先解码（cp936 控制台管道
+    传中文不再乱码嵌入）; GUI 标题栏显示版本号; `make webapp` 一条命令本地起
+    交互实验室。
+  - **安装布局修复**: `pip install` 后 GUI 的产物目录原来是解释器根下的
+    `output/`（系统 Python 直接 PermissionError），现在自动改写当前工作目录;
+    `analyze` 支持多图批量（逐行汇总, `--json` 数组, 坏图容错）; GUI 演示图
+    缺失时按 seed=42 确定性配方一键生成。
+  - **GUI 蓝白"国企风"改版**: 深蓝横幅 + 白色卡片 + 主操作深蓝按钮,
+    统一浅蓝边框与微软雅黑字体; 演示面板同风格、教学语义配色不变;
+    顺手修复灵敏度提示叠字与窗口高度不足两处布局问题。
+  - 测试：`src/test_cli.py` 十五个用例走真实子进程 + 进程内 stdin 解码单测，
+    另新增 `src/test_pathutil.py`（输出目录两种布局），CLI 控制台输出同时受
+    GBK 静态护栏约束。
+- **v1.7.2 — 同类隐患的全仓排查**
   - 1.7.1 修掉 OOD 评估的 fork 死锁之后，把这类隐患全仓扫了一遍：进程池只有三处
     （`ood_eval` 已修、`make_dataset` 本次修、`video_engine_v2` 本来就是 spawn），
     DataLoader 默认 `num_workers=0`。`src/make_dataset.py` 改为显式 spawn +

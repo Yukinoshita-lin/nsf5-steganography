@@ -1,0 +1,70 @@
+# 打 tag 自动出 Windows 安装包 (打包计划 M4, 见 docs/PACKAGING.md)。
+# 首次触发: git tag v1.8.0 && git push origin v1.8.0
+# 产物 (GitHub Release): setup exe + 便携 zip + wheel。
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write      # softprops/action-gh-release 需要写 Release
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装依赖
+        run: python -m pip install -e ".[dev]" pyinstaller
+
+      - name: 编译 C++ 加速库
+        run: python scripts/build_cpp.py
+
+      - name: 冻结打包 (双 exe + 便携 zip)
+        run: python scripts/build_exe.py
+
+      - name: 冻结冒烟 (体积/往返/ML 一致/GUI 主题)
+        run: python scripts/test_frozen.py
+
+      - name: 构建 wheel
+        run: python -m build --wheel
+
+      - name: 安装 Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: 构建安装器
+        run: python scripts/build_installer.py
+
+      - name: 上传构建物 (随时可查, 含 GUI 探针截图)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          if-no-files-found: warn
+          path: |
+            dist/nsf5stego-setup-*.exe
+            dist/nsf5stego-portable-*.zip
+            dist/*.whl
+            build/pkg-test/gui_probe.png
+
+      - name: 发布 GitHub Release
+        # ci.yml 的 release 作业同样在 v* tag 上创建 Release 并生成发布说明;
+        # 这里只负责把 Windows 产物追加到同一个 Release (softprops 对已存在的
+        # tag 会做更新), 不重复生成 notes, 避免两个工作流抢发布说明。
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/nsf5stego-setup-*.exe
+            dist/nsf5stego-portable-*.zip
+            dist/*.whl

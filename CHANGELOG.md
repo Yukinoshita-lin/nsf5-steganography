@@ -3,6 +3,117 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.0] - 2026-09-29
+
+**补上项目一直缺的正式命令行入口：此前装完包只有 `nsf5stego` 弹窗一条路,
+服务器、脚本与批量场景只能自己 `import ns5_core` 拼代码。**
+
+### Added
+
+- **`src/cli.py`：nsf5stego 命令行界面**, 四个子命令与 GUI 能力一一对应,
+  参数语义（方法 / p / 口令）也一致, 课堂演示与脚本调用看到的是同一套行为：
+  - `embed`：文本用 `-m/--message` 给出, 省略则从 stdin 读入（`cat msg.txt |
+    nsf5stego embed cover.png`）; 默认输出 `<原名>_stego.png`, 目标已存在时在
+    stderr 明示覆盖;
+  - `extract`：解码成功打印文本; 口令/参数不匹配时解出的多半是替换字符或
+    截断报错, 统一以非零码退出并提示"请确认 方法/p/口令 与嵌入时一致"——
+    不把乱码当结果输出;
+  - `analyze`：卡方 + RS + ML 判定, `--json` 输出完整机器可读负载（含
+    `image_sha256` 与 ML 概率, `default=float` 兜底 numpy 标量）, 人读模式与
+    GUI 结果面板字段对齐;
+  - `gui`：即原先的入口行为; tkinter 缺失 / 无显示环境时给可行动提示
+    （`sudo apt install python3-tk` 或改用 CLI）, `python src/gui.py` 同步受益。
+- **可脚本化语义**：退出码 0 / 1 / 2 分别对应 成功 / 运行失败 / 参数错误;
+  读图失败（文件不存在、格式无法识别——PIL 的 `UnidentifiedImageError` 继承
+  `OSError`）转成一行提示而非栈回溯; 容量超限沿用 `ns5_core` 的容量校验文案
+  （"消息过长: 需要 N 个汉明块..."）。
+- **控制台安全**：输出只用 GBK 可编码字符（`test_console_encoding.py` 静态护栏
+  覆盖新文件）, 启动时再对 stdout/stderr 做 `errors="replace"` 兜底——extract
+  打印任意 UTF-8 解码结果时不会打崩 cp936 终端。
+- **入口调整**：`[project.scripts]` 从 `gui:main` 改为 `cli:main`, `cli` 加入
+  `py-modules`; 图形界面走 `nsf5stego gui` 或 `python src/gui.py`, 行为不变。
+- **stdin 编码健壮**：`embed` 从管道读文本时按 UTF-8 优先、系统 locale 兜底
+  （`_stdin_text`）—— Windows cp936 控制台下 `cat msg.txt | nsf5stego embed`
+  里的 UTF-8 中文此前会被 locale 读成乱码并原样嵌入; 两侧都解不出时报错退出,
+  宁可拒绝也不嵌乱码。
+- **GUI 标题栏带版本号**：`pathutil.app_version()`（安装元数据缺失时静默省略,
+  永不抛错）—— 用户截图报问题时自带版本; `cli --version` 复用同一实现。
+- **`make webapp`**：一条命令本地起交互实验室（`python -m http.server 8080
+  --directory webapp`）。直接双击 `index.html` 时 file:// 下 fetch 本地 JSON
+  会被浏览器拦（载荷扫描拿不到数据）, README 的"互动教学网站"一节已写明。
+- **安装布局的产物路径修复**：`pip install nsf5stego` 后 gui.py 位于
+  site-packages, 原来的 `dirname(dirname(__file__))/output` 变成解释器根 ——
+  GUI 嵌入结果、效率图、扫描曲线会写进安装目录（系统 Python 直接
+  PermissionError）。新增 `pathutil.output_dir()`: 仓库布局沿用 `仓库/output`,
+  安装布局自动改写**当前工作目录**的 `output/`; gui.py 四处与 efficiency.py
+  的 `OUTPUT_DIR` 全部切换过去。
+- **`analyze` 批量模式**：`nsf5stego analyze a.png b.png ...` 逐图一行汇总
+  （隐写概率 + 判定 + ML）; `--json` 单图（唯一条目且分析成功）保持对象、
+  其余一律数组（每项带 `image` 键, error 条目也是数组形态, 脚本端无需为
+  错误结果单写分支）; 批量中单张坏图记 `error` 条目继续跑完, 整体非零退出
+  —— 一张坏图不再拖垮整批。**通配符由 CLI 自己展开**（Windows 的 shell 不
+  展开 `*.png`, README 示例因此跨平台成立; 已存在的字面路径优先, 含 `[ ]`
+  的文件名不受影响）, 匹配不到报"无匹配文件"而非"无法读取图像"。
+- **GUI 演示图一键生成**：`img/cover.png` 随仓库分发, 但 wheel 安装布局里
+  没有 —— "载入演示图" 由死路警告改为询问后当场生成
+  (`gui.generate_demo_cover()`, 与 run_e2e.py 相同的 seed=42 确定性配方,
+  任何机器生成逐字节一致)。
+- **Windows 打包 M1+M2+M3** (计划见 `docs/PACKAGING.md`): 新增 `nsf5stego.spec`
+  (console + windowed 双 exe 共享一个 onedir) 与 `scripts/build_exe.py`
+  一键构建; `pathutil.app_version/output_dir` 与 `cpplib` 增加
+  PyInstaller 冻结分支 (版本号读 `version.txt`, 产物落
+  `%APPDATA%/nsf5stego/output`, C++ 库找 `_MEIPASS/cpp`); CLI 嵌入前确保
+  输出目录存在。实测 onedir 317MB / 便携 zip 164MB, 冻结 GUI 与 ML 推理
+  与源码一致。`scripts/test_frozen.py` 对冻结产物做五项冒烟 (体积/版本/
+  往返/ML 逐位一致/GUI 蓝白主题像素自检), 走 `make pkg-test`。
+  **安装器**: `installer/nsf5stego.iss` (简体中文界面, 每用户免管理员安装,
+  开始菜单/桌面快捷方式, 可选加入用户 PATH 且卸载时还原) 经 Inno Setup
+  出 `dist/nsf5stego-setup-<版本>.exe` (125MB); exe 携带版本资源
+  (Explorer 属性 + 杀软信誉), 安装→启动→卸载全流程实测, 卸载后 PATH
+  逐字节还原。**CI 自动出包**: 新增 `.github/workflows/release.yml`,
+  tag `v*` 推送时在 windows-latest (Python 3.12) 走 编译 C++ → 冻结打包 →
+  冻结冒烟 → wheel → Inno Setup 安装器, 产物追加到同一个 GitHub Release
+  (与 ci.yml 的 release 作业协同: 后者负责创建与发布说明);
+  README 中英文新增"安装版 (Windows)"入口。
+- **测试**：`src/test_cli.py` 十五个用例 —— 真实子进程（`--help` / 无参数 /
+  `--version` / 读图错误 / `analyze --json` 单图 + 批量三态（人读行 / JSON
+  数组 / 坏图容错）+ 通配符展开/无匹配四条快路径 + 嵌入解码往返 / stdin
+  往返 / 口令错误 / 容量超限四条 `slow` 真实链路）+ 进程内 stdin 解码单测;
+  新增 `src/test_pathutil.py`（output_dir 两种布局, 安装布局用例**补丁
+  os.getcwd 而非 chdir** —— Windows 上临时目录当过进程 cwd 后 rmtree 会撞
+  WinError 32, 本测试首跑即复现）; `test_gui.py` 补演示图生成的确定性断言;
+  子进程固定 `PYTHONIOENCODING=utf-8`, 断言不被宿主控制台编码影响。
+
+### Changed
+
+- **GUI 蓝白"国企风"改版**（美观而朴素）：
+  - 色板集中为模块级常量（`C_NAVY`/`C_BLUE`/`C_CARD`...）, ttk 主题与
+    非 ttk 控件（横幅/画布/文本框）共用一份, 结束此前各处零散写灰;
+  - 大面积白卡片 + 极浅蓝底 + 统一浅蓝边框; 深蓝只出现在"锚点"上：
+    顶部深蓝横幅（应用名 + 副标题 + 版本号）、主操作按钮
+    （载入 / 嵌入 / 解码 / 分析用 `Primary.TButton` 深蓝底白字）、
+    标签框标题与状态栏;
+  - 全局字体统一微软雅黑（此前 Tk 默认宋体与 Segoe UI 混排）, 文本框
+    （待嵌内容 / 日志 / 结果输出）统一白底浅蓝边框 + 蓝色选区;
+  - 矩阵编码演示与隐写分析扫描两个 Toplevel 同风格（白底 + Card.TFrame +
+    浅蓝画布）; **教学语义配色不动**（绿=1、黄=命中、红框=目标列）;
+  - 顺手修三处布局问题: 灵敏度提示由叠放在组合框上改为独立一行
+    （雅黑字体度量下原布局必然相撞）; 窗口默认高 720 → 780（横幅 +
+    高字体后左栏放不下）; 复选框禁用态在 clam 下露出非白底（补状态映射）;
+  - 验证: test_gui 冒烟通过; 以 DPI 感知进程实截主窗与演示面板截图
+    逐项目检（色板/横幅/按钮层级/无叠字）, 截图脚本存于会话不腐化仓库。
+
+### Removed
+
+- **旁白视频流水线整体下线** (应用户要求, 2026-09-30): 删除
+  `teaching/gen_videos.py`、`gen_videos_v2.py`、`video_engine_v2.py`、
+  `video_scenes_zh.py`、`video_decks_zh.py`、`video_optimization_report.html`
+  六个脚本与 `teaching/videos/_tmp_v2/` 语音缓存 (约 255MB);
+  `handbook_facts.py` 同步摘除视频讲稿扫描段 (事实口径仍由网页/DOCX/PDF
+  承载, `--check` 通过); `teaching/README.md` 中英两节改为下线说明。
+  已渲染的 11 章成片 (`teaching/videos/zh/`) 不入库, 本地保留可观看,
+  但仓库不再能重新生成。
+
 ## [1.7.2] - 2026-09-17
 
 **两条线：把"fork 死锁"做成一次全仓排查，以及一个由新冒烟测试当场抓到的静默 bug。**

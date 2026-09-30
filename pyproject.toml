@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nsf5stego"
-version = "1.7.2"
+version = "1.8.0"
 description = "nsF5 steganography tool: syndrome matrix coding (Hamming) + wet-paper coding + image-hash keying + blind steganalysis + GUI"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -73,7 +73,8 @@ Homepage = "https://github.com/Yukinoshita-lin/nsf5-steganography"
 Repository = "https://github.com/Yukinoshita-lin/nsf5-steganography"
 
 [project.scripts]
-nsf5stego = "gui:main"
+# CLI 是 1.8.0 起的主入口 (embed/extract/analyze/gui); 图形界面走 `nsf5stego gui`。
+nsf5stego = "cli:main"
 
 [tool.setuptools]
 # 两个部署模型随 wheel 一起分发 (nsf5_models -> 仓库里的 models/)。
@@ -83,7 +84,7 @@ nsf5stego = "gui:main"
 package-dir = { "" = "src", "nsf5_models" = "models" }
 packages = ["nsf5_models"]
 py-modules = [
-    "ns5_core", "steganalysis", "efficiency", "image_io", "gui",
+    "ns5_core", "steganalysis", "efficiency", "image_io", "gui", "cli",
     "cppembed", "cpplib", "fsfeatures", "ml_predict", "make_dataset",
     "train_model", "matrix_demo", "scan_panel", "featurize_v2",
     "py_features", "srm_filter", "run_e2e",
