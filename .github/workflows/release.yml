@@ -56,6 +56,64 @@ jobs:
       - name: 构建安装器
         run: python scripts/build_installer.py
 
+      - name: 安装器静默安装/卸载冒烟
+        # 2026-09-30 审计: 这条链路此前只验证"冻结目录里的 exe 能跑"
+        # (scripts/test_frozen.py), 而 docs/PACKAGING.md 里"静默安装 → 开始菜单
+        # → 加 PATH → 静默卸载 → PATH 还原"这套**安装器自身**的行为只在
+        # 本机手工做过一次, CI 从没验证过 —— 安装器的注册表/PATH 逻辑是
+        # 最容易在别人机器上出问题的地方。这里在 CI 里真的装一次、跑一次、
+        # 卸一次。
+        #   /TASKS= 空 -> 不创建快捷方式、**不动 PATH**(下面会断言 PATH 未变),
+        #   安装到临时目录 -> 不污染 runner 的用户目录。
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $setup = (Get-ChildItem dist/nsf5stego-setup-*.exe | Select-Object -First 1).FullName
+          if (-not $setup) { throw "没有找到 setup exe" }
+          Write-Host "setup: $setup"
+
+          $dir = Join-Path $env:RUNNER_TEMP "nsf5-install-smoke"
+          if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }
+          $envKey = "HKCU:\Environment"
+          $pathBefore = (Get-ItemProperty -Path $envKey -Name Path -ErrorAction SilentlyContinue).Path
+
+          # 静默安装(每用户, PrivilegesRequired=lowest, 不需要管理员)
+          $p = Start-Process -FilePath $setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES",
+               "/NORESTART", "/DIR=`"$dir`"", "/TASKS=" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "安装器退出码 $($p.ExitCode)" }
+
+          $cli = Join-Path $dir "nsf5stego.exe"
+          $gui = Join-Path $dir "nsf5stego-gui.exe"
+          if (-not (Test-Path $cli)) { throw "安装后没有 $cli" }
+          if (-not (Test-Path $gui)) { throw "安装后没有 $gui" }
+          $ver = (& $cli --version | Out-String).Trim()
+          Write-Host "installed CLI: $ver"
+          if ($ver -notmatch "^\s*nsf5stego\s+\d+\.\d+") { throw "装好的 CLI --version 输出异常: $ver" }
+
+          # 装好的 exe 能不能真的用(模型/DLL 都随安装目录就位) —— 往返一次
+          $work = Join-Path $env:RUNNER_TEMP "nsf5-install-work"
+          New-Item -ItemType Directory -Force -Path $work | Out-Null
+          & $cli embed img/cover.png -m "installer-smoke" -o "$work/stego.png" | Out-Null
+          $out = (& $cli extract "$work/stego.png" | Out-String)
+          if ($out -notmatch "installer-smoke") { throw "装好的 exe 往返失败: $out" }
+          Write-Host "[OK] 安装后的 CLI 往返一致"
+
+          # PATH 不该被动过(/TASKS= 没有选 addpath 任务)
+          $pathAfter = (Get-ItemProperty -Path $envKey -Name Path -ErrorAction SilentlyContinue).Path
+          if ($pathBefore -ne $pathAfter) {
+            throw "安装/卸载动了用户 PATH:`n  before=$pathBefore`n  after =$pathAfter"
+          }
+          Write-Host "[OK] 未选择 addpath 任务时, 用户 PATH 保持不变"
+
+          # 静默卸载, 应用目录应被清掉
+          $unins = Get-ChildItem -Path $dir -Filter "unins*.exe" | Select-Object -First 1
+          if (-not $unins) { throw "安装目录里没有卸载器" }
+          $p2 = Start-Process -FilePath $unins.FullName -ArgumentList "/VERYSILENT",
+                "/SUPPRESSMSGBOXES", "/NORESTART" -PassThru -Wait
+          if ($p2.ExitCode -ne 0) { throw "卸载器退出码 $($p2.ExitCode)" }
+          if (Test-Path $cli) { throw "卸载后 $cli 仍然存在" }
+          Write-Host "[OK] 静默卸载完成, 应用目录已清理"
+
       - name: 上传构建物 (随时可查, 含 GUI 探针截图)
         if: always()
         uses: actions/upload-artifact@v4
