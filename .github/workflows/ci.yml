@@ -240,24 +240,26 @@ jobs:
           generate_release_notes: true
 
   pypi:
-    name: 发布到 PyPI (trusted publishing)
+    name: 发布到 PyPI (API token)
     # 2026-09-14: PyPI 上的 nsf5stego 还停在 1.4.0 (依赖里连 lightgbm 都没有,
     # 装了也加载不了模型)。这里补上发布步骤。
     #
-    # 默认**不执行**: 需要先在 PyPI 上配置好 trusted publisher
-    #   PyPI → Your projects → nsf5stego → Publishing → Add a new pending publisher
-    #     Owner:            Yukinoshita-lin
-    #     Repository:       nsf5-steganography
-    #     Workflow name:    ci.yml
-    #     Environment:      pypi
-    # 配置完在仓库里设一个变量 `PUBLISH_TO_PYPI=true` (Settings → Variables) 即可启用。
-    # 这样在没配置之前, tag 上的 CI 不会因为这一步无谓地变红。
+    # 2026-09-30: PyPI 发布改为 API token 认证 (secrets.PYPI_API_TOKEN,
+    # 1.8.0 起生效; v1.8.0 本体已用同一 token 经 twine 上传)。此前计划走
+    # trusted publishing, 但 pypi.org 端的 pending publisher 一直没配置,
+    # v1.8.0 首次 tag 发布在该作业上失败。
+    # token 在仓库 Settings → Secrets → Actions 里维护; 若日后改回
+    # trusted publishing (更安全, 无长期凭据), 删掉 password 行并按
+    #   PyPI → nsf5stego → Publishing → Add a new pending publisher
+    #     Owner=Yukinoshita-lin, Repository=nsf5-steganography,
+    #     Workflow=ci.yml, Environment=pypi
+    # 配置即可, 本作业的 `environment: pypi` 已就位。
     if: startsWith(github.ref, 'refs/tags/v') && vars.PUBLISH_TO_PYPI == 'true'
     needs: build
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
-      id-token: write          # trusted publishing 用 OIDC, 不需要 API token
+      id-token: write          # 保留给将来切回 trusted publishing
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -266,3 +268,4 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist
+          password: ${{ secrets.PYPI_API_TOKEN }}
