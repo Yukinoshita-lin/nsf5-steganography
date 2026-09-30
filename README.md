@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.8.0-blue)
+![version](https://img.shields.io/badge/version-1.8.1-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543628.svg)](https://doi.org/10.5281/zenodo.22543628)
@@ -974,7 +974,24 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.8.0 (当前) — 命令行界面**
+- **v1.8.1 (当前) — 审计 1.8.0：发布链路的可验证性**
+  - 审计发现 v1.8.0 的 **tag CI 是红的**（PyPI 作业走 trusted publishing，而
+    pypi.org 端从没配 pending publisher），修复只落在 tag 之后的提交上；不过
+    PyPI 上的 wheel 与 Release 里的那个**字节相同**（sha256 `02d2177a…`），
+    产物确实来自 tag 那次构建。
+  - **打包链此前只在 tag 上跑**，所以它前两次真实运行（v1.8.0）才暴露问题。
+    现在 `release.yml` 支持 `workflow_dispatch` 预演，且手动运行**不会发布**；
+    新增**安装器静默安装/卸载冒烟**（装到临时目录、不选任务 → 断言用户 PATH
+    没被动过 → 跑装好的 CLI 往返 → 静默卸载 → 断言目录清空）。
+  - `ci.yml` 改最小权限（workflow 级 `contents: read`，只有 release 作业 `write`；
+    去掉已不需要的 `id-token: write`），并在 build 作业里**真的调用安装后的
+    `nsf5stego`**（`--version` / `embed`→`extract` / `analyze --json`）——
+    此前 CI 只验"模型随包可用"，没验过发布入口本身。
+  - `docs/PACKAGING.md` 的体积与验收按 CI 产物更正（85.9 / 113.4 MiB），
+    PATH 还原的措辞按安装器真实行为收紧；`make help` 加了完整性护栏
+    （这条漂移犯过两次）；`.zcodeignore` 收进 `.gitignore`。
+
+- **v1.8.0 — 命令行界面**
   - 此前 `pip install` 之后唯一的入口是弹 tkinter 窗口（`nsf5stego = "gui:main"`），
     服务器、脚本与批量场景只能自己 `import ns5_core` 拼代码。1.8.0 起入口改为
     `src/cli.py`：`embed`（文本可 `-m` 或 stdin）/ `extract` / `analyze`（卡方 + RS

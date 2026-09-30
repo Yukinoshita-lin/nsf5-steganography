@@ -3,6 +3,72 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.1] - 2026-09-30
+
+**审计 1.8.0：给发布链路补上"可验证"。**
+
+审计发现的四件事, 都不是新功能, 而是"声称"与"可验证"之间的差:
+
+1. **v1.8.0 的 tag CI 是红的**（`发布到 PyPI (trusted publishing)` 作业失败：
+   pypi.org 端的 pending publisher 从未配置, 而 workflow 走的是 OIDC）。修复
+   （改用 API token）落在 tag 之后的一个提交上, 所以**已发布的 tag 与绿色 CI 不
+   对应**。缓解事实: PyPI 上的
+   `nsf5stego-1.8.0-py3-none-any.whl` 与 GitHub Release 里的那个**字节相同**
+   （sha256 `02d2177a…`）, 所以发布产物确实来自 tag 那次构建, 不是另一份代码。
+2. **打包链只在 tag 上跑**, 于是它的前两次真实运行（v1.8.0 的 12:14 与 12:21）
+   才暴露问题 —— 打包坏了要等"已经发布"才知道。
+3. **安装器的行为只在文档里"已实测"**: `scripts/test_frozen.py` 验的是冻结目录
+   里的 exe, 而"静默安装 → 快捷方式 → 加 PATH → 静默卸载 → PATH 还原"这套
+   **安装器自身**的逻辑, CI 从没跑过。
+4. `ci.yml` 用 workflow 级的 `contents: write`, 等于给每个作业（pytest / GUI /
+   notebook…）都发了写仓库的令牌; pypi 作业还留着已不需要的 `id-token: write`。
+
+### Changed
+
+- **`ci.yml` 最小权限**: workflow 级改 `contents: read`, 只有 `release` 作业单独
+  拿 `contents: write`; `pypi` 作业去掉 `id-token: write`（当前用 API token),
+  并在注释里写明切回 trusted publishing 需要加回哪一行。
+- **`release.yml` 支持 tag 前 dry-run**: 加 `workflow_dispatch`
+  （`gh workflow run release.yml --ref main`), 并且**手动运行不会发布** ——
+  "发布 GitHub Release"那一步加了 `if: startsWith(github.ref, 'refs/tags/v')`。
+  实测: 手动 dry-run 里 `构建安装器: success` + `发布 GitHub Release: skipped`。
+- **`docs/PACKAGING.md` 与事实对齐**: 体积改成以 CI 产物为准(setup exe
+  90,032,664 B = **85.9 MiB**; 便携 zip 118,900,069 B = **113.4 MiB**;
+  本机 Python 3.14 构建则是 125MB / 164MB, 差异来自构建环境),
+  "首次真实 tag 运行待确认"改成已确认; "卸载后 PATH 逐字节还原"按
+  `installer/nsf5stego.iss` 的真实行为收紧（只删自己加的那一项, 原值里的冗余
+  分隔符会被规范化）; 风险表里"询问是否删除 `%APPDATA%/nsf5stego`"标注为
+  "现状保留 + 后续计划", 因为卸载器目前**没有**这个询问。
+
+### Added
+
+- **安装器的静默安装/卸载冒烟**（`release.yml`, windows-latest）: 装到临时目录、
+  `/TASKS=` 不选任何任务 → 断言**没有动用户 PATH** → 跑装好的
+  `nsf5stego.exe --version` 与一次 embed→extract 往返（验证模型/DLL 随安装目录
+  就位）→ 静默卸载 → 断言应用目录已清理。
+- **发布入口在 CI 里被真的调用**（`ci.yml` 的 build 作业）: 干净 venv 里先验
+  "模型随包可用", 再跑 `nsf5stego --version`、`embed`→`extract` 往返、
+  `analyze --json` 的必需键 —— 1.8.0 的 headline 是正式 CLI, 而此前 CI 从没
+  调用过安装后的 console script。
+- `src/test_makefile_help.py`: `make help` 的完整性护栏。这条漂移**犯过两次**
+  （09-17 漏 8 个 target 且列了一个不存在的 `handbook-check-`; 09-30 又漏了
+  `readme-toc-check`), 现在两个方向都测: 漏列 + 列了不存在的。
+- `.gitignore` 收 `.zcodeignore`（本地 IDE 的忽略规则文件, 审计时以未跟踪状态
+  挂在仓库根）。
+
+### Verification
+
+- `python -m pytest -q`: **95 项通过 / 1 项平台相关跳过**, 覆盖率 71%（门槛 65%）。
+- 两次 release dry-run: 第一次（不带安装器冒烟）成功且不发布; 第二次带安装器
+  冒烟。链路的"能不能在 tag 之前验证"这件事, 现在有 CI 记录可查。
+- 1.8.0 发布产物核验: PyPI wheel 与 GitHub Release wheel 字节一致
+  （sha256 `02d2177a30a5…`）; Release 含 setup exe / 便携 zip / wheel / sdist;
+  Zenodo 1.8.0 = `10.5281/zenodo.23062253`。
+- 本机按 CHANGELOG 逐条复现 1.8.0 的 CLI 语义: 退出码 0/1/2、默认输出名
+  `<原名>_stego.png`、`cat msg.txt | nsf5stego embed`（UTF-8 中文往返一致）、
+  `analyze` 批量 `--json` 为数组且坏图记 `error` 后整体非零退出、通配符由 CLI
+  自己展开。
+
 ## [1.8.0] - 2026-09-29
 
 **补上项目一直缺的正式命令行入口：此前装完包只有 `nsf5stego` 弹窗一条路,
