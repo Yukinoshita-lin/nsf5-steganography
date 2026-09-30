@@ -52,6 +52,7 @@ help:
 	@echo "  make handbook-snippets - execute the python code blocks in the handbook"
 	@echo "  make handbook-pdf - re-export docs/*.pdf from the DOCX sources (needs Word)"
 	@echo "  make readme-toc   - regenerate the README table of contents (from h2 headings)"
+	@echo "  make readme-toc-check - verify the README table of contents is in sync (CI: pytest)"
 	@echo "  make coverage     - full suite with coverage report"
 	@echo "  make e2e          - full embed/decode/analyze demo"
 	@echo "  make notebooks    - regenerate per-chapter notebooks"
