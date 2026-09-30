@@ -43,23 +43,8 @@ PDF = {
     "en": os.path.join(PROJ, "docs", "Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf"),
 }
 
-# 旁白视频的脚本文稿 (教学面的第五处; 视频本体是生成物, 不入库)
-VIDEO_FILES = {
-    "zh": [os.path.join(PROJ, "teaching", "video_scenes_zh.py"),
-           os.path.join(PROJ, "teaching", "video_decks_zh.py")],
-}
-VIDEO_FORBIDDEN = [
-    "AUC 更高",          # 53d 不再"更高" —— 修正后 143d 更准
-    "推到 0.81",         # v1 时期的 OOF 数字
-    "OOF ≈ 0.814",
-    "四者 AUC ≈ 0.70–0.72，几乎重叠",   # 该说法只在 11 维语料成立, 需写明范围
-    "263",               # 置换加速比算错了: 4096² 实测约 65x (见 bench_permute.csv)
-]
-VIDEO_REQUIRED = [
-    "未在当前版本复现",   # v1 时期的 SRM 预处理口径必须带这个限定
-    "0.898",             # 现口径
-    "bench_permute.csv", # 性能数字必须指向可复现的产物
-]
+# 旁白视频流水线已应用户要求移除 (2026-09-30), VIDEO_FILES/扫描段一并摘除;
+# 成片 teaching/videos/zh 保留但不再有对应的脚本文稿可扫描。
 
 # --------------------------------------------------------------------------
 #  0) 备用 PDF 路径 (xelatex) 的字形映射
@@ -750,23 +735,7 @@ def check(include_web: bool) -> int:
                 if s not in text:
                     print(f"  [缺现口径] {lang}/{label}: 缺 {s!r}")
                     bad += 1
-    # 视频脚本文稿 (只有中文旁白)
-    for p in VIDEO_FILES["zh"]:
-        if not os.path.exists(p):
-            continue
-        txt = io.open(p, encoding="utf-8").read()
-        # 只检查**旁白/字幕文本**: 以 # 开头的注释是给维护者看的 (那里会解释历史
-        # 数字为什么被改掉), 不该因为出现旧数字而判失败 —— 例如
-        # "此前写的 263 倍是把两种口径混算"。非注释部分仍然严格检查。
-        body = "\n".join(ln for ln in txt.splitlines() if not ln.lstrip().startswith("#"))
-        for s in VIDEO_FORBIDDEN:
-            if s in body:
-                print(f"  [陈旧结论] video/{os.path.basename(p)}: 仍含 {s!r}")
-                bad += 1
-        for s in VIDEO_REQUIRED:
-            if s not in body:
-                print(f"  [缺现口径] video/{os.path.basename(p)}: 缺 {s!r}")
-                bad += 1
+    # 视频脚本文稿扫描已随流水线移除 (2026-09-30) —— 成片不入库, 讲稿已删
     # 备用 PDF 路径 (xelatex) 的字形映射: 少一条映射 = PDF 里少一个符号
     if os.path.exists(PDF_BUILDER):
         src = io.open(PDF_BUILDER, encoding="utf-8").read()
