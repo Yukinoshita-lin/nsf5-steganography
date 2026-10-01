@@ -168,21 +168,30 @@ def test_gui_launch_and_theme():
             hwnd, 9, ctypes.byref(rc), ctypes.sizeof(rc))
         assert r == 0 and rc.r > rc.l, "DWM 取窗口边界失败"
         u32.SetForegroundWindow(hwnd)
-        time.sleep(0.8)
         os.makedirs(OUT_DIR, exist_ok=True)
         probe = os.path.join(OUT_DIR, "gui_probe.png")
-        shot = ImageGrab.grab((rc.l, rc.t, rc.r, rc.b))
-        shot.save(probe)
 
-        # 蓝白主题像素自检: 截图上部应有大片深蓝横幅 (C_NAVY 同源色)
+        # 蓝白主题像素自检: 截图上部应有大片深蓝横幅 (C_NAVY 同源色)。
+        # CI 上 Tk 首帧绘制可能滞后于窗口出现 —— 单次截图会偶发拿到未绘制
+        # 的白窗 (v1.8.4 tag 首跑实测), 因此轮询重试, 任一帧达标即过。
         import numpy as np
-        a = np.array(shot)
-        top = a[: max(1, int(a.shape[0] * 0.45))]
-        navy = ((abs(top[:, :, 0].astype(int) - NAVY[0]) < 25)
-                & (abs(top[:, :, 1].astype(int) - NAVY[1]) < 25)
-                & (abs(top[:, :, 2].astype(int) - NAVY[2]) < 25)).sum()
+        navy = 0
+        shot = None
+        for _attempt in range(10):
+            time.sleep(1.0)
+            u32.SetForegroundWindow(hwnd)
+            shot = ImageGrab.grab((rc.l, rc.t, rc.r, rc.b))
+            a = np.array(shot)
+            top = a[: max(1, int(a.shape[0] * 0.45))]
+            navy = int(((abs(top[:, :, 0].astype(int) - NAVY[0]) < 25)
+                        & (abs(top[:, :, 1].astype(int) - NAVY[1]) < 25)
+                        & (abs(top[:, :, 2].astype(int) - NAVY[2]) < 25)).sum())
+            if navy > 5000:
+                break
+        shot.save(probe)
         assert navy > 5000, \
-            f"截图上部深蓝横幅像素过少 ({navy}), 主题可能没生效; 探针图 {probe}"
+            (f"10 次截图中深蓝横幅像素最多 {navy}, 主题可能没生效或窗口未完成"
+             f"首帧绘制; 探针图 {probe}")
         print(f"[OK] 冻结 GUI 启动 + 蓝白主题自检 (探针图 {os.path.relpath(probe, PROJ)})")
     finally:
         p.terminate()
