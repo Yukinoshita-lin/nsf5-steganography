@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.8.3-blue)
+![version](https://img.shields.io/badge/version-1.8.4-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543628.svg)](https://doi.org/10.5281/zenodo.22543628)
@@ -387,13 +387,13 @@ make coverage              # 同上 + 覆盖率报告（门槛 65%，当前约 6
 
 ## GUI 使用流程
 
-1. 点击 **载入原始图 / 含密图** 选择 8bit 图像。
-2. 选择 **算法**（`nsF5` 或 `matrix`）、**参数 p**（块比特数，越大效率越高）、可选**口令**。
-3. 在文本框中输入待嵌入的 **ASCII 字符串**。
-4. 点击 **1 嵌入并保存** → 生成 `output/stego_*.png`，右侧预览含密图。
-5. 点击 **2 解码提取** → 从含密图还原字符串（须与嵌入使用相同 算法/p/口令）。
-6. 点击 **3 分析** → 显示 SHA256、卡方统计、RS 缺口、估计嵌入率与隐写概率。
-7. 点击 **生成码族与效率图** → 弹出理论 vs 实测效率对比图。
+1. 点击 **载入原始图 / 含密图** 选择 8bit 图像（或点 **演示图** 一键生成测试封面）。
+2. 在文本框输入待嵌入的 **文本**（UTF-8，支持中英文）。
+3. 在 **参数** 区选择 **算法**（`nsF5` 或 `matrix`）、**参数 p**（块比特数，越大效率越高）、可选 **口令**。
+4. 点击 **嵌入并保存**（Ctrl+E）→ 生成 `output/stego_*.png`，右侧预览含密图。
+5. 点击 **解码提取**（Ctrl+D）→ 从含密图还原字符串（须与嵌入使用相同 算法/p/口令）。
+6. 点击 **分析**（Ctrl+A）→ 「分析结果」页签显示 SHA256、卡方统计、RS 缺口、估计嵌入率、隐写概率与 ML 判定；过程细节在「运行日志」页签。
+7. 辅助工具：**生成效率图**（理论 vs 实测效率对比）、**编码演示**（伴随式校验动画）、**载荷扫描**（检测能力随载荷变化曲线）。
 
 > 解码与嵌入参数（方法/p/口令）必须一致；口令或图像内容不匹配将无法正确解码。
 
@@ -974,7 +974,14 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.8.3 (当前) — 红灯的 tag 不该往 PyPI 送包**
+- **v1.8.4 (当前) — GUI 操作台升级与品牌图标**
+  - 操作台按工作流重排(输入/参数/执行三段 + 通栏分隔线), 分析结果与运行日志
+    收进右栏页签, 进度条仅忙时显示; 主流程三键加粗并带快捷键 tooltip;
+    跨平台字型(Win=YaHei UI / macOS=PingFang SC / Linux=Noto CJK);
+    空态改为行动引导文案, 待嵌入标签更正为 UTF-8。
+  - 品牌图标(照片卡+比特流+放大镜)接入 exe/安装器/窗口标题栏; 色板卡
+    (palette.png)沉淀为设计 token; 关于对话框附联系邮箱。
+- **v1.8.3 — 红灯的 tag 不该往 PyPI 送包**
   - v1.8.2 的 tag 上 `pytest` 是红的, 而 `发布到 PyPI` / `发布 GitHub Release`
     照样成功 —— 失败的全量测试作业拦不住发布。原因: `build` 只 `needs: [test]`。
     现在 `build` 需要**全部验证作业**通过（test / pytest / gui /

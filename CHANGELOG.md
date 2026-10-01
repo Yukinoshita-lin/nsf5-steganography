@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.4] - 2026-10-01
+
+**GUI 操作台升级与品牌图标: 不换框架、不加依赖, 只动信息架构与视觉层级。**
+
+### Changed
+
+- **操作台按工作流重排**: 输入(载入/演示图 + 待嵌入文本) → 参数(算法/p/口令/灵敏度
+  2x2 紧凑排布) → 执行(嵌入/解码/分析主按钮 + 效率图/编码演示/载荷扫描辅助行),
+  小节标题 10.5pt 加粗配通栏分隔线, 视线不再来回跳;
+- **结果与日志分页**: 「分析结果」「运行日志」收进右栏 Notebook 页签——结果是主角,
+  技术日志退居次要; 复制按钮随迁并右缘对齐;
+- **进度条仅在忙时显示**, 不再常驻占行;
+- **按钮层级与 tooltip**: 主流程三键深蓝加粗(padding 10,6), 辅助工具白底; 自写
+  30 行 Tooltip(纯 tk, 无依赖)标注快捷键;
+- **跨平台字型**: Win=Microsoft YaHei UI / macOS=PingFang SC / Linux=Noto Sans
+  CJK SC, 9/10/13pt 字阶(Tk 对缺失字型自动回退);
+- **空状态行动引导**: "(未载入 - 点「演示图」或 Ctrl+O)" 两行居中占位, 空态底色
+  近白融入卡片(载入后恢复画布色);
+- **待嵌入标签更正** ASCII → UTF-8(算法本就支持中文)。
+
+### Added
+
+- **品牌图标**: 照片卡 + 溢出比特流 + 放大镜检出三元素, 蓝白体系; 多尺寸 PNG/
+  多帧 ico/SVG 源与色板卡(palette.png, 对比度按 WCAG 实算)沉淀为设计 token;
+  exe/安装器/窗口标题栏全部接入;
+- **关于对话框**附联系邮箱 eu-lin@foxmail.com。
+
 ## [1.8.3] - 2026-09-30
 
 **两条都是"审计 1.8.2 的 tag 运行"时暴露出来的。**

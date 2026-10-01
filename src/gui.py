@@ -45,9 +45,59 @@ C_BLUE = "#2e75b6"        # 亮蓝: 状态 / 进度条 / 强调
 C_BLUE_LIGHT = "#e8f1fa"  # 浅蓝: 状态栏 / 标签页底
 C_BORDER = "#b9cfe6"      # 统一浅蓝边框
 C_CANVAS = "#eef3f9"      # 图像预览画布底
-FONT_UI = ("Microsoft YaHei UI", 10)
-FONT_UI_BOLD = ("Microsoft YaHei UI", 10, "bold")
-FONT_BANNER = ("Microsoft YaHei UI", 13, "bold")
+def _ui_family():
+    """跨平台 UI 字型: 各平台取原生黑体, Tk 对缺失字型自动回退默认。"""
+    if sys.platform == "darwin":
+        return "PingFang SC"
+    if os.name == "nt":
+        return "Microsoft YaHei UI"
+    return "Noto Sans CJK SC"
+
+
+FONT_FAMILY = _ui_family()
+FONT_UI = (FONT_FAMILY, 10)
+FONT_UI_BOLD = (FONT_FAMILY, 10, "bold")
+FONT_SMALL = (FONT_FAMILY, 9)
+FONT_BANNER = (FONT_FAMILY, 13, "bold")
+
+
+class Tooltip:
+    """轻量气泡提示 (纯 tk, 无第三方依赖): 悬停 600ms 后显示。"""
+
+    def __init__(self, widget, text, delay=600):
+        self.widget, self.text, self.delay = widget, text, delay
+        self._after_id = None
+        self._tip = None
+        widget.bind("<Enter>", self._schedule, add="+")
+        widget.bind("<Leave>", self._hide, add="+")
+        widget.bind("<ButtonPress>", self._hide, add="+")
+
+    def _schedule(self, _):
+        self._cancel()
+        self._after_id = self.widget.after(self.delay, self._show)
+
+    def _cancel(self):
+        if self._after_id is not None:
+            self.widget.after_cancel(self._after_id)
+            self._after_id = None
+
+    def _hide(self, _=None):
+        self._cancel()
+        if self._tip is not None:
+            self._tip.destroy()
+            self._tip = None
+
+    def _show(self):
+        if self._tip is not None:
+            return
+        x = self.widget.winfo_rootx() + 10
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
+        self._tip = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        tk.Label(tw, text=self.text, justify="left", bg=C_BLUE_LIGHT,
+                 fg=C_FG, font=FONT_SMALL, relief="solid", borderwidth=1,
+                 padx=8, pady=4).pack()
 
 
 def _rgb(img: np.ndarray):
@@ -119,11 +169,15 @@ class ImageViewer(ttk.Frame):
 
     def _draw_placeholder(self):
         self.canvas.delete("all")
+        self.canvas.configure(bg="#f8fafc")   # 空态近乎融入白卡, 消除大色块
         cw = max(1, self.canvas.winfo_width()); ch = max(1, self.canvas.winfo_height())
         if cw < 10 or ch < 10:
             return
-        self.canvas.create_text(cw / 2, ch / 2, text=self._placeholder,
-                                fill="#93a9c1", font=("Arial", 11))
+        self.canvas.create_text(cw / 2, ch / 2 - 10, text=self._placeholder,
+                                fill="#5f6f80", font=(FONT_FAMILY, 10))
+        self.canvas.create_text(cw / 2, ch / 2 + 14,
+                                text="载入后可滚轮缩放 / 拖拽平移",
+                                fill="#a9b8c8", font=(FONT_FAMILY, 9))
 
     def _reset(self):
         self._zoom = 1.0
@@ -134,6 +188,7 @@ class ImageViewer(ttk.Frame):
         self.canvas.delete("all")
         if self._img is None:
             self._draw_placeholder(); return
+        self.canvas.configure(bg=C_CANVAS)   # 载入后恢复画布底色
         cw = max(1, self.canvas.winfo_width()); ch = max(1, self.canvas.winfo_height())
         if cw < 10 or ch < 10:
             return
@@ -147,7 +202,7 @@ class ImageViewer(ttk.Frame):
         self._photo = ph
         self.canvas.create_image(cw / 2 + self._ox, ch / 2 + self._oy, image=ph, anchor="center")
         self.canvas.create_text(8, 8, anchor="nw", fill=C_MUTED,
-                                font=("Arial", 8),
+                                font=(FONT_FAMILY, 9),
                                 text=f"{nw}×{nh}  ({self._zoom:.1f}× · 滚轮缩放/拖拽平移)")
 
     def _on_wheel(self, e):
@@ -204,7 +259,7 @@ class App:
     # ------------------------------------------------------- 窗口基础
     def _center(self, root):
         root.update_idletasks()
-        w, h = 1120, 780   # 顶部横幅 + 雅黑字体后, 720 装不下左栏全部行
+        w, h = 1120, 740   # 日志移入右栏页签后, 740 已足够容纳全部行
         x = (root.winfo_screenwidth() - w) // 2
         y = (root.winfo_screenheight() - h) // 2
         root.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
@@ -237,7 +292,8 @@ class App:
             "nsF5 隐写工具\n\n"
             "伴随式矩阵编码 + 湿纸编码 + 盲隐写分析\n"
             "算法核心: ns5_core.py  |  分析: steganalysis.py  |  ML: ml_predict.py\n\n"
-            "快捷键: Ctrl+O 载入 · Ctrl+E 嵌入 · Ctrl+D 解码 · Ctrl+A 分析 · Ctrl+S 保存含密图")
+            "快捷键: Ctrl+O 载入 · Ctrl+E 嵌入 · Ctrl+D 解码 · Ctrl+A 分析 · Ctrl+S 保存含密图\n\n"
+            "联系与反馈: eu-lin@foxmail.com")
 
     def _save_stego(self):
         if self.stego_img is None:
@@ -278,6 +334,15 @@ class App:
                  bg=C_NAVY, fg="#9fc0e2", font=FONT_UI
                  ).pack(side="right", padx=14)
 
+        # 窗口图标 (iconphoto 跨平台; 资产缺失时静默跳过)
+        _icon_path = os.path.join(PROJECT_DIR, "img", "app-icon.png")
+        if os.path.exists(_icon_path):
+            try:
+                self._win_icon = tk.PhotoImage(file=_icon_path)
+                self.root.iconphoto(True, self._win_icon)
+            except Exception:
+                pass
+
         mf = ttk.Frame(self.root, padding=6)
         mf.pack(fill="both", expand=True)
         mf.columnconfigure(0, weight=1, uniform="a")
@@ -286,95 +351,142 @@ class App:
 
         self.left = self._build_left(mf)
         self.right = self._build_right(mf)
-        prog = ttk.Frame(mf)
-        prog.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
-        self.progress = ttk.Progressbar(prog, mode="indeterminate")
+
+        # 进度条仅在忙时显示, 不占常驻空间
+        self._prog_frame = ttk.Frame(mf)
+        self._prog_frame.grid(row=1, column=0, columnspan=2, sticky="ew",
+                              pady=(4, 0))
+        self.progress = ttk.Progressbar(self._prog_frame, mode="indeterminate")
         self.progress.pack(fill="x")
+        self._prog_frame.grid_remove()
+
         sbf = ttk.Frame(mf)
         sbf.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(2, 0))
-        self.statusbar = ttk.Label(sbf, text="", anchor="w", style="Status.TLabel")
+        self.statusbar = ttk.Label(sbf, text="", anchor="w",
+                                   style="Status.TLabel")
         self.statusbar.pack(fill="x")
         self._refresh_statusbar()
         self._log("就绪。请载入图片进行操作。")
 
+        # 新手引导第一步: 打开即载入演示封面, 首屏就有图可看
+        try:
+            demo = os.path.join(PROJECT_DIR, "img", "cover.png")
+            if not os.path.exists(demo):
+                demo = os.path.join(OUTPUT_DIR, "demo_cover.png")
+                generate_demo_cover(demo)
+            self._load_path(demo)
+            self._guide("第一次用? 已为你载入一张演示图 —— "
+                        "直接点下方蓝色「嵌入并保存」试试 (Ctrl+E)")
+        except Exception:
+            pass   # 自动载入失败不打断启动, 用户可手动载入
+
     def _build_left(self, parent):
-        f = ttk.LabelFrame(parent, text="参数与操作", padding=8)
+        f = ttk.LabelFrame(parent, text="操作台", padding=10)
         f.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
-        f.columnconfigure(1, weight=1)
+        f.columnconfigure(0, weight=1)
 
-        # 方法
-        ttk.Label(f, text="算法:").grid(row=0, column=0, sticky="w", pady=2)
+        # 新手引导条: 始终指明"下一步点哪里" (随操作状态推进)
+        self.guide = ttk.Label(f, text="", style="Guide.TLabel",
+                               wraplength=470, justify="left")
+        self.guide.grid(row=0, column=0, sticky="ew")
+
+        def sec(row, text):
+            box = ttk.Frame(f, style="Card.TFrame")
+            box.grid(row=row, column=0, sticky="ew", pady=(12, 5))
+            ttk.Label(box, text=text, style="Section.TLabel").pack(
+                side="left", pady=(0, 3))
+            ttk.Separator(box, orient="horizontal").pack(fill="x")
+
+        # ---- 输入: 按工作流排在最前 ----
+        sec(1, "输入")
+        bf = ttk.Frame(f, style="Card.TFrame")
+        bf.grid(row=2, column=0, sticky="ew")
+        bf.columnconfigure(0, weight=1)
+        b_load = ttk.Button(bf, text="载入原始图 / 含密图", command=self._load)
+        b_load.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        b_demo = ttk.Button(bf, text="演示图", command=self._load_demo)
+        b_demo.grid(row=0, column=1)
+        Tooltip(b_load, "打开图片文件 (Ctrl+O)\n支持 PNG / BMP / JPEG / TIFF")
+        Tooltip(b_demo, "一键载入内置演示封面\n(256x256, 与教学手册同一张图)")
+
+        ttk.Label(f, text="待嵌入的文本 (UTF-8):").grid(
+            row=3, column=0, sticky="w", pady=(8, 2))
+        self.var_msg = _style_text(tk.Text(f, height=5, width=40))
+        self.var_msg.grid(row=4, column=0, sticky="nsew")
+        self.var_msg.insert("1.0", "Hello, nsF5 steganography!")
+        ttk.Label(f, text="解码时需使用相同的 方法 / p / 口令",
+                  style="Muted.TLabel").grid(row=5, column=0, sticky="w")
+        f.rowconfigure(4, weight=1)   # 余量给文本框, 长文本自然扩展
+
+        # ---- 参数 ----
+        sec(6, "参数")
+        pf = ttk.Frame(f, style="Card.TFrame")
+        pf.grid(row=7, column=0, sticky="ew")
+        pf.columnconfigure(1, weight=1, uniform="h")
+        pf.columnconfigure(3, weight=1, uniform="h")
         self.var_method = tk.StringVar(value="nsF5")
-        _cbm = ttk.Combobox(f, textvariable=self.var_method, state="readonly", width=18,
+        _cbm = ttk.Combobox(pf, textvariable=self.var_method, state="readonly",
                             values=["nsF5 (减幅+湿纸)", "matrix (LSB矩阵编码)"])
-        _cbm.grid(row=0, column=1, sticky="ew", pady=2)
-        _cbm.bind("<<ComboboxSelected>>", lambda *_: self._refresh_statusbar())
-
-        # p
-        ttk.Label(f, text="参数 p (每块比特):").grid(row=1, column=0, sticky="w", pady=2)
         self.var_p = tk.StringVar(value="3")
-        pbox = ttk.Combobox(f, textvariable=self.var_p, state="readonly", width=18,
+        pbox = ttk.Combobox(pf, textvariable=self.var_p, state="readonly",
                             values=[str(i) for i in range(1, 9)])
-        pbox.grid(row=1, column=1, sticky="ew", pady=2)
+        self.var_pwd = tk.StringVar(value="")
+        _pwd = ttk.Entry(pf, textvariable=self.var_pwd, show="*")
+        self.var_sens = tk.StringVar(value="均衡")
+        sbox = ttk.Combobox(pf, textvariable=self.var_sens, state="readonly",
+                            values=["严格 (低误报)", "均衡", "宽松 (高检出)"])
+        ttk.Label(pf, text="算法:").grid(row=0, column=0, sticky="w")
+        _cbm.grid(row=0, column=1, sticky="ew", padx=(2, 10), pady=2)
+        ttk.Label(pf, text="参数 p:").grid(row=0, column=2, sticky="w")
+        pbox.grid(row=0, column=3, sticky="ew", padx=(2, 0), pady=2)
+        ttk.Label(pf, text="口令:").grid(row=1, column=0, sticky="w", pady=(6, 0))
+        _pwd.grid(row=1, column=1, sticky="ew", padx=(2, 10), pady=(6, 0))
+        l_sens = ttk.Label(pf, text="灵敏度:")
+        l_sens.grid(row=1, column=2, sticky="w", pady=(6, 0))
+        sbox.grid(row=1, column=3, sticky="ew", padx=(2, 0), pady=(6, 0))
+        Tooltip(l_sens, "严格: 少误报干净图\n均衡: 默认\n宽松: 更易检出弱嵌入")
+        Tooltip(_pwd, "可选。留空则不加口令\n解码时必须输入完全相同的口令")
+        _cbm.bind("<<ComboboxSelected>>", lambda *_: self._refresh_statusbar())
         pbox.bind("<<ComboboxSelected>>", lambda *_: self._refresh_statusbar())
 
-        # 口令
-        ttk.Label(f, text="口令(可选):").grid(row=2, column=0, sticky="w", pady=2)
-        self.var_pwd = tk.StringVar(value="")
-        ttk.Entry(f, textvariable=self.var_pwd, show="*").grid(row=2, column=1, sticky="ew", pady=2)
+        # ---- 执行 ----
+        sec(8, "执行")
+        af = ttk.Frame(f, style="Card.TFrame")
+        af.grid(row=9, column=0, sticky="ew")
+        af.columnconfigure(0, weight=1, uniform="x")
+        af.columnconfigure(1, weight=1, uniform="x")
+        af.columnconfigure(2, weight=1, uniform="x")
+        b_embed = ttk.Button(af, text="嵌入并保存", style="Primary.TButton",
+                             command=self._embed)
+        b_dec = ttk.Button(af, text="解码提取", style="Primary.TButton",
+                           command=self._decode)
+        b_ana = ttk.Button(af, text="分析", style="Primary.TButton",
+                           command=self._analyze)
+        b_embed.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        b_dec.grid(row=0, column=1, sticky="ew", padx=6)
+        b_ana.grid(row=0, column=2, sticky="ew", padx=(6, 0))
+        Tooltip(b_embed, "把文本写入图片并保存 (Ctrl+E)")
+        Tooltip(b_dec, "从含密图还原文本 (Ctrl+D)")
+        Tooltip(b_ana, "卡方 + RS + ML 盲隐写分析 (Ctrl+A)")
+        af2 = ttk.Frame(f, style="Card.TFrame")
+        af2.grid(row=10, column=0, sticky="ew", pady=(10, 0))
+        af2.columnconfigure(0, weight=1, uniform="y")
+        af2.columnconfigure(1, weight=1, uniform="y")
+        af2.columnconfigure(2, weight=1, uniform="y")
+        ttk.Button(af2, text="生成效率图", command=self._plot).grid(
+            row=0, column=0, sticky="ew", padx=(0, 6))
+        ttk.Button(af2, text="编码演示", command=self._demo_matrix).grid(
+            row=0, column=1, sticky="ew", padx=6)
+        ttk.Button(af2, text="载荷扫描", command=self._scan_panel).grid(
+            row=0, column=2, sticky="ew", padx=(6, 0))
 
-        # 分析灵敏度
-        ttk.Label(f, text="判定灵敏度:").grid(row=3, column=0, sticky="w", pady=2)
-        self.var_sens = tk.StringVar(value="均衡")
-        sbox = ttk.Combobox(f, textvariable=self.var_sens, state="readonly", width=18,
-                            values=["严格 (低误报)", "均衡", "宽松 (高检出)"])
-        sbox.grid(row=3, column=1, sticky="ew", pady=2)
-        ttk.Label(f, text="严格 → 少误报干净图;  宽松 → 更易检出弱嵌入",
-                  style="Muted.TLabel").grid(row=4, column=0, columnspan=2, sticky="w")
-
-        # 载入
-        bf = ttk.Frame(f, style="Card.TFrame"); bf.grid(row=5, column=0, columnspan=2, sticky="ew", pady=4)
-        ttk.Button(bf, text="载入原始图 / 含密图", style="Primary.TButton",
-                   command=self._load).pack(side="left", fill="x", expand=True, padx=2)
-        ttk.Button(bf, text="演示图", command=self._load_demo).pack(side="left", padx=2)
-
-        # 待嵌入字符串
-        ttk.Label(f, text="待嵌入字符串(ASCII):").grid(row=6, column=0, sticky="nw", pady=2)
-        self.var_msg = _style_text(tk.Text(f, height=6, width=40))
-        self.var_msg.grid(row=6, column=1, sticky="nsew", pady=2)
-        self.var_msg.insert("1.0", "Hello, nsF5 steganography!")
-
-        # 动作
-        af = ttk.Frame(f, style="Card.TFrame"); af.grid(row=7, column=0, columnspan=2, sticky="ew", pady=6)
-        ttk.Button(af, text="1 嵌入并保存", style="Primary.TButton",
-                   command=self._embed).pack(side="left", fill="x", expand=True, padx=2)
-        ttk.Button(af, text="2 解码提取", style="Primary.TButton",
-                   command=self._decode).pack(side="left", fill="x", expand=True, padx=2)
-        ttk.Button(af, text="3 分析", style="Primary.TButton",
-                   command=self._analyze).pack(side="left", fill="x", expand=True, padx=2)
-
-        # 绘图
-        gf = ttk.Frame(f, style="Card.TFrame"); gf.grid(row=8, column=0, columnspan=2, sticky="ew", pady=4)
-        ttk.Button(gf, text="生成码族与效率图", command=self._plot).pack(fill="x")
-        gf2 = ttk.Frame(f, style="Card.TFrame"); gf2.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(0, 2))
-        ttk.Button(gf2, text="矩阵编码演示", command=self._demo_matrix
-                   ).pack(side="left", fill="x", expand=True, padx=(0, 2))
-        ttk.Button(gf2, text="隐写分析扫描", command=self._scan_panel
-                   ).pack(side="left", fill="x", expand=True)
-
-        # 状态
+        # ---- 状态 ----
         self.status = ttk.Label(f, text="状态: 就绪", foreground=C_BLUE)
-        self.status.grid(row=10, column=0, columnspan=2, sticky="w", pady=(6, 0))
-
-        # 日志
-        ttk.Label(f, text="日志:").grid(row=11, column=0, sticky="nw", pady=(6, 0))
-        self.log = _style_text(tk.Text(f, height=7, state="disabled", wrap="word"))
-        self.log.grid(row=12, column=0, columnspan=2, sticky="nsew", pady=2)
-        f.rowconfigure(12, weight=1)   # 余量给日志, 避免高字体下被窗底裁切
+        self.status.grid(row=11, column=0, sticky="w", pady=(12, 0))
         return f
 
     def _build_right(self, parent):
-        f = ttk.LabelFrame(parent, text="图像预览 / 分析结果", padding=8)
+        f = ttk.LabelFrame(parent, text="预览与结果", padding=8)
         f.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
         f.columnconfigure(0, weight=1, uniform="b")
         f.columnconfigure(1, weight=1, uniform="b")
@@ -383,24 +495,44 @@ class App:
         ttk.Label(f, text="原始 / 封面").grid(row=0, column=0)
         self.lbl_stego_hdr = ttk.Label(f, text="含密图")
         self.lbl_stego_hdr.grid(row=0, column=1)
-        self.lbl_cover = ImageViewer(f, placeholder="(未载入)")
+        self.lbl_cover = ImageViewer(
+            f, placeholder="(未载入 - 点「演示图」或 Ctrl+O)")
         self.lbl_cover.grid(row=1, column=0, sticky="nsew")
-        self.lbl_stego = ImageViewer(f, placeholder="(未生成)")
+        self.lbl_stego = ImageViewer(f, placeholder="(未生成 - 嵌入后显示)")
         self.lbl_stego.grid(row=1, column=1, sticky="nsew")
 
         # 差异图切换
-        ctrl = ttk.Frame(f, style="Card.TFrame"); ctrl.grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 0))
+        ctrl = ttk.Frame(f, style="Card.TFrame")
+        ctrl.grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 0))
         self.var_diff = tk.BooleanVar(value=False)
-        self.cb_diff = ttk.Checkbutton(ctrl, text="查看差异(×255)", variable=self.var_diff,
-                                       command=self._toggle_diff, state="disabled")
+        self.cb_diff = ttk.Checkbutton(ctrl, text="查看差异(×255)",
+                                       variable=self.var_diff,
+                                       command=self._toggle_diff,
+                                       state="disabled")
         self.cb_diff.pack(side="left")
-        ttk.Label(ctrl, text="  仅在有含密图时可用", style="Muted.TLabel").pack(side="left", padx=6)
+        ttk.Label(ctrl, text="  仅在有含密图时可用",
+                  style="Muted.TLabel").pack(side="left", padx=6)
 
-        ttk.Label(f, text="分析结果与解码输出:").grid(row=3, column=0, columnspan=2, sticky="w", pady=(6, 2))
-        ttk.Button(f, text="复制结果", command=self._copy_out).grid(row=3, column=1, sticky="e", pady=(6, 2))
-        self.out = _style_text(tk.Text(f, height=9, state="disabled", wrap="word"))
-        self.out.grid(row=4, column=0, columnspan=2, sticky="nsew")
-        f.rowconfigure(4, weight=1)   # 余量给结果输出, 与左栏日志对称
+        # 文本结果与日志收进页签: 结果是主角, 日志退居次要
+        nb = ttk.Notebook(f)
+        nb.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(8, 0))
+        tab_out = ttk.Frame(nb, style="Card.TFrame")
+        tab_log = ttk.Frame(nb, style="Card.TFrame")
+        nb.add(tab_out, text=" 分析结果 ")
+        nb.add(tab_log, text=" 运行日志 ")
+        tab_out.columnconfigure(0, weight=1)
+        tab_out.rowconfigure(1, weight=1)
+        ttk.Button(tab_out, text="复制结果", command=self._copy_out).grid(
+            row=0, column=0, sticky="e", padx=8, pady=(2, 2))
+        self.out = _style_text(tk.Text(tab_out, height=8, state="disabled",
+                                       wrap="word"))
+        self.out.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 4))
+        tab_log.columnconfigure(0, weight=1)
+        tab_log.rowconfigure(0, weight=1)
+        self.log = _style_text(tk.Text(tab_log, height=8, state="disabled",
+                                       wrap="word"))
+        self.log.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
+        f.rowconfigure(3, weight=1)
         return f
 
     def _toggle_diff(self):
@@ -447,6 +579,10 @@ class App:
     def _wait(self, t):
         self.status.configure(text="状态: " + t)
 
+    def _guide(self, text):
+        """新手引导条: 始终告诉用户"下一步点哪里"。"""
+        self.guide.configure(text=text)
+
     def _show_in(self, widget: ttk.Label, image: np.ndarray):
         if hasattr(widget, "set_image"):        # ImageViewer
             widget.set_image(image); return
@@ -463,6 +599,7 @@ class App:
     def _busy(self, fn, on_done, *args, **kwargs):
         """后台线程执行, 结果通过队列回主线程执行 on_done (线程安全)。"""
         self._wait("处理中…")
+        self._prog_frame.grid()
         self.progress.start(12)
         def worker():
             try:
@@ -472,8 +609,12 @@ class App:
                 traceback.print_exc()
                 self._queue.put((self._on_busy_error, (e,)))
             finally:
-                self._queue.put((self.progress.stop, ()))
+                self._queue.put((self._on_busy_end, ()))
         threading.Thread(target=worker, daemon=True).start()
+
+    def _on_busy_end(self):
+        self.progress.stop()
+        self._prog_frame.grid_remove()
 
     def _on_busy_error(self, e):
         self._set_out(f"出错: {e}")
@@ -520,6 +661,7 @@ class App:
         self.cb_diff.configure(state="disabled")
         self._log(f"载入: {path}  尺寸 {gray.shape[1]}x{gray.shape[0]}  "
                   f"SHA256={get_image_hash(gray)[:12]}…")
+        self._guide("已载入图片。下一步: 确认文本 → 点「嵌入并保存」(Ctrl+E)")
         self._refresh_statusbar()
 
     def _params(self):
@@ -562,6 +704,10 @@ class App:
                 "提示: 解码时需使用相同的 方法/p/口令。")
             self._log("嵌入完成, 含密图已保存 " + out)
             self._wait("嵌入完成")
+            self._guide(
+                "嵌入完成! 只改动了 {} 个像素 ({:.1f}%), 肉眼无法分辨。"
+                "勾选「查看差异」能放大看到改动位置; 下一步: 点「解码提取」"
+                "验证还原".format(changed, changed / self.cover_img.size * 100))
         self._busy(work, done)
 
     def _decode(self):
@@ -579,6 +725,9 @@ class App:
             text = (text or "").strip()
             if text:
                 self._set_out(f"解码成功 (方法={method}, p={p}):\n\n{text}")
+                self._guide("解码成功, “藏进去 -> 完整取出来”闭环达成! "
+                            "进阶: 换个口令重新嵌入(解码会失败), 或点「编码演示」"
+                            "看算法内部")
             else:
                 self._set_out(f"未提取到内容 (方法={method}, p={p})。\n请确认: 待解读的图片/方法/p/口令 与嵌入时一致。")
             self._log("解码完成")
@@ -964,13 +1113,17 @@ def _configure_theme(root: tk.Tk):
                         lightcolor=border, darkcolor=border, borderwidth=1,
                         relief="solid")
         style.configure("TLabelframe.Label", background=card, foreground=navy,
-                        font=(font_ui[0], 10, "bold"))
+                        font=(font_ui[0], 11, "bold"))
         style.configure("TLabel", background=card, foreground=fg)
         style.configure("Muted.TLabel", background=card, foreground=muted)
+        style.configure("Section.TLabel", background=card, foreground=navy,
+                        font=(font_ui[0], 10.5, "bold"))
+        style.configure("Guide.TLabel", background=blue_light, foreground=navy,
+                        font=(font_ui[0], 10), padding=(10, 7))
         style.configure("Status.TLabel", background=blue_light, foreground=navy,
                         padding=(8, 4))
         # 按钮: 默认白底蓝字, 主要动作用深蓝底白字
-        style.configure("TButton", padding=(8, 4), background=card,
+        style.configure("TButton", padding=(8, 5), background=card,
                         foreground=navy, bordercolor=border,
                         lightcolor="#ffffff", darkcolor="#dfe9f4")
         style.map("TButton",
@@ -978,7 +1131,7 @@ def _configure_theme(root: tk.Tk):
                   foreground=[("disabled", "#9db6d0")])
         style.configure("Primary.TButton", background=navy, foreground="#ffffff",
                         bordercolor=navy, lightcolor=navy, darkcolor=navy,
-                        padding=(8, 4))
+                        padding=(10, 6), font=(font_ui[0], 10, "bold"))
         style.map("Primary.TButton",
                   background=[("pressed", navy_dark), ("active", navy_hover)],
                   foreground=[("disabled", "#9db6d0")])

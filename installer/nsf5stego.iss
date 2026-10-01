@@ -28,6 +28,7 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayName={#MyAppName} {#MyAppVersion}
+SetupIconFile=../img/nsf5stego.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ChangesEnvironment=yes
 

@@ -64,7 +64,7 @@ exe_cli = EXE(
     exclude_binaries=True,
     name="nsf5stego",
     console=True,
-    icon=None,
+    icon="img/nsf5stego.ico",
     version="build/version_info.txt",
 )
 
@@ -86,7 +86,7 @@ exe_gui = EXE(
     exclude_binaries=True,
     name="nsf5stego-gui",
     console=False,
-    icon=None,
+    icon="img/nsf5stego.ico",
     version="build/version_info.txt",
 )
 
