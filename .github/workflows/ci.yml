@@ -17,6 +17,9 @@ jobs:
   test:
     name: 测试 (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    # 实测 13-19 秒 (纯算法自测 + pip 装 numpy/pillow)。15 分钟是装依赖慢时的余量;
+    # 见文件末尾 "每个作业都要有 timeout" 的说明。
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -99,6 +102,8 @@ jobs:
     # 单图判定走 CPU 特征, 等于给 143d 模型喂分布外输入。
     # torch 只在这个 job 装 (CPU wheel), 免得拖慢主测试。
     runs-on: ubuntu-latest
+    # 实测 46 秒 (大头是拉 torch CPU wheel)。20 分钟覆盖 PyTorch 源慢/重试的余量。
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -174,6 +179,8 @@ jobs:
     # 现在提交钩子会当场去掉 (.githooks/commit-msg), 这个 job 负责兜底:
     # 一旦历史里再出现这类尾注就红, 而不是等别人看到。
     runs-on: ubuntu-latest
+    # 实测 8 秒 (git log --format=%B 全量扫一遍)。10 分钟是取全history 变慢的余量。
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -264,6 +271,9 @@ jobs:
     name: 发布 GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    # 实测 8 秒 (下载 artifact + 建 Release)。15 分钟覆盖上传大资产 (便携 zip/安装器
+    # 100MB 级) 或 GitHub API 重试的情形; 发布作业同样不该无限等。
+    timeout-minutes: 15
     needs: build
     permissions:
       contents: write          # 只有这个作业需要写 (创建 Release / 上传资产)
@@ -296,6 +306,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') && vars.PUBLISH_TO_PYPI == 'true'
     needs: build
     runs-on: ubuntu-latest
+    # 实测 17 秒。10 分钟覆盖 PyPI 慢/重试; 发布失败要尽快变红而不是挂着。
+    timeout-minutes: 10
     environment: pypi
     # 2026-09-30 审计: 当前用 API token 认证, 不再需要 OIDC, 所以这里不给
     # `id-token: write`(最小权限)。切回 trusted publishing 时把它加回来:

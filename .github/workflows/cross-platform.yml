@@ -17,6 +17,10 @@ on:
 
 jobs:
   test:
+    # 实测 29-74 秒 (三个 OS 各自 pip 装依赖 + 算法自测 + 编 C++ 加速库)。
+    # 20 分钟是 macOS/Windows 上编译慢或者 runner 排队的余量 —— 与其余作业同一纪律:
+    # 任何"永远在跑"都必须变成十几分钟内的失败, 而不是 6 小时后被 GitHub 默认上限取消。
+    timeout-minutes: 20
     env:
       PYTHONUTF8: "1"
       PYTHONIOENCODING: "utf-8"

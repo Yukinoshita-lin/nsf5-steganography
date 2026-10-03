@@ -16,6 +16,9 @@ jobs:
   test:
     name: Playwright (interactive + layout)
     runs-on: ubuntu-latest
+    # 实测 28 秒 (npm ci + Playwright 套件)。20 分钟是 npx playwright install
+    # 下浏览器那步慢/重试时的余量。
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
