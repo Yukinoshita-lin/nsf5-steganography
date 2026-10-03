@@ -71,6 +71,10 @@ jobs:
   gui:
     name: GUI 冒烟测试 (xvfb)
     runs-on: ubuntu-latest
+    # 2026-10-03: 这个作业没有 timeout, 被 test_gui 里的模态弹窗卡了 40 分钟以上
+    # 仍是 in_progress (GitHub 默认上限 6 小时), 连带后面 needs: gui 的 deploy
+    # 一直排队。冒烟测试本该 30 秒内结束: 给足装依赖的余量, 但绝不允许多小时挂起。
+    timeout-minutes: 15
     env:
       # pytest 里的 test_gui_smoke 在无显示时跳过 (否则任何无头机器跑 pytest
       # 都会红)。这个 job 的职责就是让"跳过"必须真的跑一次, 所以把跳过转成失败。

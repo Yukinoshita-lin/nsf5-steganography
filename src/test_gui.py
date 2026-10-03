@@ -12,6 +12,38 @@ import image_io as IO
 import gui
 from gui import App
 
+# v1.9.0 tag 首跑实测: CI 的 GUI 作业 (无头 Linux + xvfb) 在这里挂死 40 分钟
+# 以上 —— 作业本身没有 timeout, 一直是 in_progress, 连带 deploy 作业一起卡住。
+# 原因不是死循环, 而是**模态弹窗**: CI 的 GUI 作业只装 numpy/pillow/matplotlib,
+# 所以 yccstego 不可用, 而 gui._on_domain_change() 在"切到 JPEG 域但依赖缺失"
+# 时会 messagebox.showwarning(...) —— 那是一等一的阻塞调用, 无头环境里没人能点
+# 它 (Windows 上同样分支却会立刻返回, 所以本地一直没暴露)。
+# 冒烟测试不允许被任何模态弹窗卡住: 这里把 messagebox 换成记录器, 弹窗该走的
+# 分支照走 (反而把弹窗路径纳入覆盖), 但绝不进入对话框事件循环。
+_DIALOGS = []
+
+
+def _stub_messagebox():
+    import tkinter.messagebox as mb
+    _real = {n: getattr(mb, n) for n in
+             ("showinfo", "showwarning", "showerror", "askyesno", "askokcancel")}
+
+    def _recorder(kind):
+        def _call(title="", message="", **_kw):
+            _DIALOGS.append((kind, str(title), str(message)))
+            return True if kind in ("askyesno", "askokcancel") else "ok"
+        return _call
+
+    for name in _real:
+        setattr(mb, name, _recorder(name))
+    return _real
+
+
+def _restore_messagebox(real):
+    import tkinter.messagebox as mb
+    for name, fn in real.items():
+        setattr(mb, name, fn)
+
 
 def main():
     root = tk.Tk()
@@ -67,7 +99,12 @@ def main():
     import jpegstego
     import experiment as EXP
     assert app._domain() == "pixel"
-    app.var_domain.set(gui._DOMAIN_JPEG); app._on_domain_change()
+    # 依赖缺失时 _on_domain_change 会弹模态警告 —— 换成记录器, 否则无头 CI 挂死
+    _real_mb = _stub_messagebox()
+    try:
+        app.var_domain.set(gui._DOMAIN_JPEG); app._on_domain_change()
+    finally:
+        _restore_messagebox(_real_mb)
     if jpegstego.available():
         assert app._domain() == "jpeg"
         assert str(app.qbox.cget("state")) != "disabled"
@@ -84,9 +121,13 @@ def main():
         assert ok is True and unit == "个 DCT 系数"
         print("[OK] JPEG 域: 嵌入→解码往返 + 自检闭环 + 档案 schema")
     else:
-        # 依赖缺失时切 JPEG 域应被拦下并回退像素域 (弹窗在无头环境照常返回)
+        # CI 的 GUI 作业只装 numpy/pillow/matplotlib, 走的就是这条路:
+        # 依赖缺失必须被拦下、回退像素域, 而且弹窗路径要真的走到 (记录器兜住)
         assert app._domain() == "pixel"
-        print("[SKIP] yccstego 未安装: JPEG 域回退逻辑已验证")
+        assert any(k == "showwarning" and "JPEG 域不可用" in t
+                   for k, t, _ in _DIALOGS), \
+            f"依赖缺失切 JPEG 域应弹警告并回退 (实际弹窗: {_DIALOGS})"
+        print("[SKIP] yccstego 未安装: JPEG 域回退 + 依赖缺失弹窗已验证")
     app.var_domain.set(gui._DOMAIN_PIXEL); app._on_domain_change()
     assert app._domain() == "pixel"
 
