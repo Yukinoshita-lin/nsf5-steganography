@@ -120,6 +120,13 @@ INLINE = {
     "zh": [
         # v1.8.4 手册迭代 (2026-10-01): 编码已是 UTF-8, ASCII 相关表述过时;
         # 安装指引从 1.4.0 wheel 更新到 PyPI/安装版; 版本锚点补迭代说明。
+        # 2026-10-03 (v1.9.0): 版本锚点从 1.8.4 再推到 1.9.0 —— 网页版已直接同步,
+        # 本地 DOCX 源稿 (gitignore, docs/src/) 下次 --fix 时按下面的规则一并跟上。
+        # 规则只对"确实存在的串"生效, 所以 1.4.0 与 1.8.4 两代源稿都能推到同一版本。
+        ("手册已随项目迭代至 v1.8.4", "手册已随项目迭代至 v1.9.0"),
+        ("nsf5stego-setup-1.8.4.exe", "nsf5stego-setup-1.9.0.exe"),
+        ("nsf5stego-portable-1.8.4-win64.zip", "nsf5stego-portable-1.9.0-win64.zip"),
+        ("附录 H · 命令行工具与安装版（v1.8.4）", "附录 H · 命令行工具与安装版（v1.9.0）"),
         ("再写 ASCII 正文比特", "再写 UTF-8 字节"),
         ("支持中文/UTF-8 消息：把 encode_string() 的 ASCII 编码改为 UTF-8"
          "（注意 长度头现在是字节数而非字符数）",
@@ -129,9 +136,10 @@ INLINE = {
          "载荷支持 UTF-8 文本（中文可直接嵌入）；更实际的限制是仅支持文本、"
          "不支持文件"),
         ("nsf5stego-1.4.0-py3-none-any.whl",
-         "nsf5stego-1.8.4-py3-none-any.whl（或直接 pip install nsf5stego）"),
+         "nsf5stego-1.9.0-py3-none-any.whl（或直接 pip install nsf5stego）"),
+        ("nsf5stego-1.8.4-py3-none-any.whl", "nsf5stego-1.9.0-py3-none-any.whl"),
         ("2026 年 9 月 6 日 · 项目 v1.4.0 版（双版本 ML 模型）",
-         "2026 年 9 月 6 日 · 项目 v1.4.0 版 · 手册已随项目迭代至 v1.8.4"),
+         "2026 年 9 月 6 日 · 项目 v1.4.0 版 · 手册已随项目迭代至 v1.9.0"),
         ("也不代替论文，", ""),
         ("论文图", "项目图"),
         # 置换加速比: 把"4096² 的耗时"(15.6 s -> 0.24 s ≈ 65x) 与"小 N 的最高加速比"
@@ -167,6 +175,8 @@ INLINE = {
     "en": [
         # v1.8.4 handbook iteration (2026-10-01): UTF-8 is built in; the
         # ASCII-only claims and the 1.4.0 wheel instructions are stale.
+        # v1.9.0 (2026-10-03): the version anchor moves to 1.9.0; the English
+        # DOCX never carried Appendix H, so only the wheel/version lines apply.
         ("Messages are ASCII-only by default; Chinese/UTF-8 requires an extension",
          "Messages support UTF-8 by default (Chinese works out of the box)"),
         ("change encode_string() from ASCII to UTF-8 (remember the length header "
@@ -176,7 +186,8 @@ INLINE = {
         ("Default embedding supports ASCII only",
          "Default embedding supports UTF-8 (Chinese works out of the box)"),
         ("nsf5stego-1.4.0-py3-none-any.whl",
-         "nsf5stego-1.8.4-py3-none-any.whl (or pip install nsf5stego)"),
+         "nsf5stego-1.9.0-py3-none-any.whl (or pip install nsf5stego)"),
+        ("nsf5stego-1.8.4-py3-none-any.whl", "nsf5stego-1.9.0-py3-none-any.whl"),
         ("It does not replace a textbook or the project thesis.",
          "It does not replace a textbook."),
         ("thesis figure", "project figure"),

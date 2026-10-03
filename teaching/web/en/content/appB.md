@@ -34,4 +34,4 @@ Run from the project root F:\Steganography.
 | GPU single-image detection | python gpu\predict_gpu.py img\cover.png |
 | BOSSbase multi-source (GPU) | python gpu\make_imageset.py data\BOSSbase_1.01 --out bossbase, then python gpu\train_ml_gpu.py |
 | Build packages | python -m build |
-| Install | pip install nsf5stego (1.8.4 on PyPI) or grab the Windows installer/portable zip |
+| Install | pip install nsf5stego (1.9.0 on PyPI) or grab the Windows installer/portable zip |
