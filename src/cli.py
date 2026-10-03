@@ -364,7 +364,17 @@ def _cmd_analyze_jpeg(args) -> int:
             entries.append({"image": path, "error": "无法读取图像"})
             failed += 1
             continue
-        r = jpegstego.analyze_jpeg(data, sensitivity=sens)
+        try:
+            r = jpegstego.analyze_jpeg(data, sensitivity=sens)
+        except jpegstego.JpegDomainUnavailable:
+            raise
+        except Exception as e:
+            # 非 JPEG 位流 (把 PNG 当 --jpeg 传进来是第一常见误用) 会在解析层
+            # 直接抛 KeyError/ValueError; 教学工具不该甩 traceback
+            entries.append({"image": path,
+                            "error": f"不是有效的 JPEG 位流 ({type(e).__name__}: {e})"})
+            failed += 1
+            continue
         if not r.get("ok"):
             r["image"], r["error"] = path, "无可用 AC 系数 (图像过小或全同像素)"
             entries.append(r)
