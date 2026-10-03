@@ -1177,6 +1177,255 @@ function renderQuiz() {
   if (resetBtn) resetBtn.onclick = () => renderQuiz();
 }
 
+/* ---------- JPEG 8x8 quantized-DCT lab (v1.9.0, 教科书 nsF5 的战场) ---------- */
+// 与主线实现同源: yccstego/dct.py 的正交 DCT-II 矩阵、Annex K 亮度量化表与
+// libjpeg 质量缩放公式; 嵌入语义与 yccstego/nsf5.py 的 _embed_block 一致
+// (载体 = 非零 AC 系数的 LSB; 减幅 +3→+2 保符号; |c|==1 是湿点;
+// 湿纸在干点上求解: 权重1 → 权重2 → 幅值升 2 兜底)。
+const DCT_LUM_QT = [
+  [16, 11, 10, 16, 24, 40, 51, 61],
+  [12, 12, 14, 19, 26, 58, 60, 55],
+  [14, 13, 16, 24, 40, 57, 69, 56],
+  [14, 17, 22, 29, 51, 87, 80, 62],
+  [18, 22, 37, 56, 68, 109, 103, 77],
+  [24, 35, 55, 64, 81, 104, 113, 92],
+  [49, 64, 78, 87, 103, 121, 120, 101],
+  [72, 92, 95, 98, 112, 100, 103, 99],
+];
+const DCT_A = (() => {                 // 正交 DCT-II 基矩阵: F = A·X·Aᵀ
+  const n = 8, A = [];
+  for (let i = 0; i < n; i++) {
+    const row = [];
+    for (let j = 0; j < n; j++) {
+      let v = Math.cos((2 * j + 1) * i * Math.PI / (2 * n));
+      if (i === 0) v /= Math.SQRT2;
+      row.push(v * Math.sqrt(2 / n));
+    }
+    A.push(row);
+  }
+  return A;
+})();
+
+const DCT_ST = { pix: null, coeffs: null, changes: [], seed: 1 };
+
+function dctScaleQ(quality) {
+  const q = Math.max(1, Math.min(100, quality | 0));
+  const s = q < 50 ? Math.floor(5000 / Math.max(1, q)) : Math.floor(200 - 2 * q);
+  return DCT_LUM_QT.map((row) =>
+    row.map((v) => Math.max(1, Math.min(255, Math.floor((v * s + 50) / 100)))));
+}
+
+function dctRandomBlock(seed) {
+  const rnd = mulberry32(seed >>> 0);
+  const pix = [];
+  for (let r = 0; r < 8; r++) {
+    const row = [];
+    for (let c = 0; c < 8; c++) {
+      const base = 92 + 58 * Math.sin((r + c) / 3.1) + 30 * (r / 8) + 18 * (c / 8);
+      row.push(Math.max(0, Math.min(255, Math.round(base + (rnd() - 0.5) * 26))));
+    }
+    pix.push(row);
+  }
+  return pix;
+}
+
+function dctQuantize(pix, quality) {
+  const T = dctScaleQ(quality);
+  const X = pix.map((row) => row.map((v) => v - 128));    // level shift
+  const tmp = DCT_A.map((ar) =>
+    X[0].map((_, k) => ar.reduce((s, av, l) => s + av * X[l][k], 0)));   // A·X
+  const F = tmp.map((row) =>
+    DCT_A.map((ac) => row.reduce((s, v, k) => s + v * ac[k], 0)));       // ·Aᵀ
+  return F.map((row, i) => row.map((v, j) => Math.round(v / T[i][j])));
+}
+
+function dctCarriers() {
+  const car = [];
+  for (let i = 0; i < 64; i++) {
+    if (i === 0) continue;                    // DC 不参与 (i%64==0)
+    const r = (i / 8) | 0, c = i % 8, v = DCT_ST.coeffs[r][c];
+    if (v !== 0) car.push({ i, r, c, v });
+  }
+  return car;
+}
+
+function dctWetCount(car) {
+  return car.filter((cc) => Math.abs(cc.v) === 1).length;
+}
+
+function dctRequant() {
+  DCT_ST.pix = dctRandomBlock(DCT_ST.seed);
+  DCT_ST.coeffs = dctQuantize(DCT_ST.pix, parseInt(els("dct-quality").value, 10) || 85);
+  DCT_ST.changes = [];
+  const car = dctCarriers();
+  els("dct-info").textContent = t("dct.idle")
+    .replace("{n}", String(car.length)).replace("{w}", String(dctWetCount(car)));
+  els("dct-detail").textContent = "";
+  dctRender();
+}
+
+function dctRandom() {
+  DCT_ST.seed = Date.now() & 0xffffffff;
+  dctRequant();
+}
+
+function dctSyndrome(car, take) {
+  const H = hammingMatrix(3);
+  const s = [0, 0, 0];
+  for (let j = 0; j < take; j++) {
+    const bit = car[j].v & 1;
+    if (!bit) continue;
+    for (let r = 0; r < 3; r++) s[r] ^= H[j][r];
+  }
+  return s;
+}
+
+function dctEmbed() {
+  if (!DCT_ST.coeffs) return;
+  const raw = (els("dct-m").value || "").replace(/[^01]/g, "");
+  const mStr = (raw || "000").padEnd(3, "0").slice(0, 3);
+  els("dct-m").value = mStr;
+  const mv = parseInt(mStr, 2);
+  const car = dctCarriers();
+  if (car.length < 7) {
+    els("dct-info").textContent = t("dct.carrierShort").replace("{k}", String(car.length));
+    els("dct-detail").textContent = "";
+    return;
+  }
+  const car7 = car.slice(0, 7);             // 行主序前 7 个非零 AC (与 _embed_block 同构)
+  const H = hammingMatrix(3);
+  const s = dctSyndrome(car7, 7);
+  const sv = intLE(s);
+  const d = sv ^ mv;
+  DCT_ST.changes = [];
+  if (d === 0) {
+    els("dct-info").textContent = t("dct.noChange")
+      .replace("{s}", toBin(sv, 3)).replace("{m}", mStr);
+    els("dct-detail").textContent = "";
+    dctRender();
+    return;
+  }
+  const tc = d - 1;                          // H 的第 d 列 (列向量即其二进制)
+  let flipJs = null, boost = false;
+  if (Math.abs(car7[tc].v) > 1) {
+    flipJs = [tc];
+  } else {
+    const dry = [];
+    for (let j = 0; j < 7; j++) if (Math.abs(car7[j].v) > 1) dry.push(j);
+    for (const j of dry) {                   // 权重 1
+      if (H[j].every((v, r) => v === ((d >> r) & 1))) { flipJs = [j]; break; }
+    }
+    if (!flipJs) {                           // 权重 2 (演示用确定性遍历; 主线用随机序)
+      outer:
+      for (let a = 0; a < dry.length; a++) {
+        for (let b = a + 1; b < dry.length; b++) {
+          const hit = H[dry[a]].every((v, r) => (v ^ H[dry[b]][r]) === ((d >> r) & 1));
+          if (hit) { flipJs = [dry[a], dry[b]]; break outer; }
+        }
+      }
+    }
+    if (!flipJs) { flipJs = [tc]; boost = true; }   // 兜底: 幅值升到 2
+  }
+  let detail = [];
+  for (const j of flipJs) {
+    const cc = car7[j];
+    const from = cc.v;
+    const to = boost ? 2 * Math.sign(from) : from - Math.sign(from);
+    DCT_ST.coeffs[cc.r][cc.c] = to;
+    DCT_ST.changes.push({ r: cc.r, c: cc.c, from, to, k: j + 1 });
+    detail.push(t("dct.change").replace("{k}", String(j + 1))
+      .replace("{rc}", (cc.r + 1) + "," + (cc.c + 1))
+      .replace("{from}", String(from)).replace("{to}", String(to)));
+  }
+  const s2 = intLE(dctSyndrome(dctCarriers().slice(0, 7), 7));
+  els("dct-info").textContent = t("dct.hit")
+    .replace("{s}", toBin(sv, 3)).replace("{m}", mStr).replace("{d}", toBin(d, 3))
+    .replace("{n}", String(flipJs.length))
+    + "  " + t("dct.verified").replace("{s2}", toBin(s2, 3))
+        .replace("{w}", String(dctWetCount(car7)))
+        .replace("{m}", String(DCT_ST.changes.length));
+  els("dct-detail").textContent = detail.join(" · ");
+  dctRender();
+}
+
+function dctRender() {
+  const pixCv = els("dct-pixels"), cv = els("dct-canvas");
+  if (!pixCv || !cv || !pixCv.getContext) return;
+  // 像素块 (上): 每格 20px
+  const pctx = pixCv.getContext("2d");
+  if (DCT_ST.pix && pctx) {
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const g = DCT_ST.pix[r][c];
+        pctx.fillStyle = "rgb(" + g + "," + g + "," + g + ")";
+        pctx.fillRect(c * 20, r * 20, 20, 20);
+      }
+    }
+  }
+  // 量化系数网格 (下): 每格 47px + 12px 边距
+  const ctx = cv.getContext && cv.getContext("2d");
+  if (!ctx || !DCT_ST.coeffs) return;
+  const cell = 47, pad = 12;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const car = dctCarriers();
+  const carIdx = new Map();
+  car.slice(0, 7).forEach((cc, j) => carIdx.set(cc.i, j + 1));
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const v = DCT_ST.coeffs[r][c];
+      const x = pad + c * cell, y = pad + r * cell;
+      const changed = DCT_ST.changes.find((ch) => ch.r === r && ch.c === c);
+      const wet = Math.abs(v) === 1;
+      ctx.fillStyle = v === 0 ? "#cfd8e3" : (wet ? "#e8f1fa" : "#ffffff");
+      ctx.fillRect(x, y, cell - 2, cell - 2);
+      ctx.lineWidth = changed ? 3 : (wet ? 2 : 1);
+      ctx.strokeStyle = changed ? "#c62828" : (wet ? "#2e75b6" : "#90a4ae");
+      ctx.strokeRect(x + 1, y + 1, cell - 4, cell - 4);
+      ctx.fillStyle = v === 0 ? "#8a9bb0" : "#1f2a37";
+      ctx.font = "bold 15px monospace";
+      ctx.textAlign = "center";
+      const label = (r === 0 && c === 0) ? "DC" : String(v);
+      if (changed) {
+        ctx.fillText(label, x + (cell - 2) / 2, y + (cell - 2) / 2 + 1);
+        ctx.font = "10px monospace";
+        ctx.fillStyle = "#c62828";
+        ctx.fillText(changed.from + "→" + changed.to, x + (cell - 2) / 2, y + cell - 9);
+      } else {
+        ctx.fillText(label, x + (cell - 2) / 2, y + (cell - 2) / 2 + 5);
+      }
+      const k = carIdx.get(r * 8 + c);
+      if (k !== undefined) {
+        ctx.font = "9px monospace";
+        ctx.fillStyle = "#5f6f80";
+        ctx.textAlign = "left";
+        ctx.fillText(String(k), x + 4, y + 11);
+        ctx.textAlign = "center";
+      }
+    }
+  }
+}
+
+function dctClick(ev) {
+  const cv = els("dct-canvas");
+  if (!cv || !DCT_ST.coeffs) return;
+  const rect = cv.getBoundingClientRect();
+  const cell = 47, pad = 12;
+  const sx = cv.width / Math.max(1, rect.width);
+  const sy = cv.height / Math.max(1, rect.height);
+  const c = Math.floor(((ev.clientX - rect.left) * sx - pad) / cell);
+  const r = Math.floor(((ev.clientY - rect.top) * sy - pad) / cell);
+  if (r < 0 || r > 7 || c < 0 || c > 7) return;
+  const v = DCT_ST.coeffs[r][c];
+  const car = dctCarriers();
+  const k = car.findIndex((cc) => cc.r === r && cc.c === c);
+  els("dct-detail").textContent = t("dct.inspect")
+    .replace("{r}", String(r + 1)).replace("{c}", String(c + 1))
+    .replace("{v}", String(v))
+    .replace("{role}", v === 0 ? t("dct.roleZero")
+      : (Math.abs(v) === 1 ? t("dct.roleWet") : t("dct.roleDry")))
+    .replace("{k}", k >= 0 ? String(k + 1) : "-");
+}
+
 /* ---------- wire events ---------- */
 function init() {
   state.cover = makeDemoImage();
@@ -1192,7 +1441,7 @@ function init() {
   document.querySelectorAll("#main-nav a").forEach((a) => {
     a.addEventListener("click", () => els("main-nav").classList.remove("open"));
   });
-  const sections = ["lsb", "hamming", "wetpaper", "nsf5", "pipeline", "ml", "roadmap", "resources", "faq", "quiz"];
+  const sections = ["lsb", "hamming", "wetpaper", "nsf5", "dctlab", "pipeline", "ml", "roadmap", "resources", "faq", "quiz"];
   const spy = () => {
     let active = sections[0];
     for (const id of sections) {
@@ -1231,8 +1480,14 @@ function init() {
   els("nf-reset").addEventListener("click", nfReset);
   els("nf-method").addEventListener("change", nfReset);
   els("nf-p").addEventListener("change", nfReset);
+  els("dct-random").addEventListener("click", dctRandom);
+  els("dct-embed").addEventListener("click", dctEmbed);
+  els("dct-quality").addEventListener("change", dctRequant);
+  els("dct-m").addEventListener("change", dctEmbed);
+  els("dct-canvas").addEventListener("click", dctClick);
   applyLang();
   nfReset();
+  dctRequant();
   spy();
   loadScanData();
   document.querySelectorAll("main img").forEach((img) => {

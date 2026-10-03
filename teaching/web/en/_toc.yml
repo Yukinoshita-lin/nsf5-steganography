@@ -2,6 +2,7 @@ format: jb-book
 root: content/intro
 chapters:
   - file: content/ch01
+  - file: content/ch01b
   - file: content/ch02
   - file: content/ch03
   - file: content/ch04

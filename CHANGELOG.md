@@ -3,6 +3,47 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.0] - 2026-10-03
+
+**yccstego 接入教学主线 + 可复现性与自证系统: 教科书里的 nsF5 (JPEG DCT 域) 从此是主线功能, 每次实验可存档重跑, 正确性一键当场可见。**
+
+### Added
+
+- **JPEG 压缩域接入 (姊妹项目 yccstego)**: 新增 `src/jpegstego.py` 桥接层
+  (统一入口 / 统一报告口径 / 依赖缺失时降级提示, 与 ml_predict 同模式);
+  `pyproject.toml` 按 `python_version >= '3.10'` 声明 `yccstego` 依赖,
+  Python 3.9 只影响 JPEG 域, 像素域功能不受影响;
+- **CLI `--jpeg`**: `embed --jpeg [--quality 1..100]` 在量化 DCT 系数上嵌入
+  并输出标准 .jpg; `extract --jpeg` 从位流字节解码 (认证头失配时指明
+  "p/口令不一致或文件被改动"); `analyze --jpeg` 用 |c|=1 系数指纹做
+  DCT 域盲分析 (ML 判定在 JPEG 域如实标注不可用);
+- **实验档案与一键重跑**: 新增 `src/experiment.py` (schema
+  `nsf5stego.experiment/1`) —— 每次嵌入生成参数/哈希/改动统计档案,
+  消息明文与口令不落盘; `nsf5stego embed --json` 直接输出,
+  `nsf5stego repro <档案> -m 原文` 重跑并逐项校验: 档案记录建档时的
+  yccstego 版本, 同版本下两域均承诺**逐字节复现** (yccstego 0.2.0 起湿纸
+  求解种子由输入派生, 与像素域同一公式), 跨版本退回**往返一致**并降级
+  改动数为参考值 (0.1.4 旧档兼容);
+- **GUI**: 参数区新增"嵌入域"切换 (JPEG 域固定 nsF5 语义, 算法选框随之禁用,
+  质量框随之启用); 含密 JPEG 按**原始字节**保存 (菜单与嵌入产物都不过 PIL
+  重编码, 否则系数即毁); 「往返自检」按钮做 嵌入→提取→比对 内存闭环;
+  「导出实验记录」把最近一次嵌入落盘为 JSON 档案;
+- **手册**: 新增第 1½ 章 "JPEG 是什么, DCT 系数是什么" (zh/en), 代码片段
+  走桥接层真跑; webapp 新增 8×8 DCT 量化系数实验室 (+3→+2 减幅高亮);
+- **README**: 新增"同类工具与本项目定位"(Aletheia / CONSEAL / DDE Lab tools
+  等, 写明本项目定位是 interactive learning / visualization / reproducible
+  experiments, 不替代研究工具链) 与"正确性验证体系"成文。
+
+### Changed
+
+- 测试 96 → 115+ (新增 `test_jpeg.py` / `test_experiment.py` /
+  `test_cli_jpeg.py`, GUI 冒烟覆盖域切换/JPEG 往返/档案 schema);
+- CI: pytest 作业与手册作业补装 yccstego (JPEG 测试必须在 CI 真跑,
+  不允许"本地装了所以一直绿");
+- PyInstaller spec: 补 `jpegstego` / `experiment` / `yccstego.*` hiddenimports
+  (函数内惰性导入静态分析看不见); 冻结冒烟新增第 6 项 —— 冻结环境
+  `--jpeg` 往返 + 档案 repro 通过 (防打包丢依赖的静默降级, 同第 4 条教训)。
+
 ## [1.8.4] - 2026-10-01
 
 **GUI 操作台升级与品牌图标: 不换框架、不加依赖, 只动信息架构与视觉层级。**

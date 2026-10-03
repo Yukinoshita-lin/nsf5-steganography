@@ -1,8 +1,18 @@
 """
 nsF5 隐写工具 —— tkinter GUI
-功能: 嵌入(ASCII 字符串) / 解码 / 盲隐写分析 / 码族与效率绘图。
+功能: 嵌入(UTF-8 文本) / 解码 / 盲隐写分析 / 码族与效率绘图 / 教学演示。
+
+嵌入域 (2026-10-03, v1.9.0): 默认像素域 (ns5_core, 改灰度像素 LSB);
+可切 "JPEG 域" —— 经 jpegstego.py 桥接 yccstego, 在量化 DCT 系数上嵌入
+(教科书里 nsF5 的原始战场), 输出标准 .jpg。JPEG 域需要 yccstego
+(pip install yccstego), 缺失时切换会被拦下并给出安装提示。
+
+实验档案: 每次嵌入都生成结构化记录 (experiment.py, 不含消息明文),
+「导出实验记录」落盘为 JSON, `nsf5stego repro <file>` 一键重跑校验。
+「往返自检」把 嵌入→提取→比对 的闭环做成用户可见的按钮。
 """
 from __future__ import annotations
+import datetime
 import os
 import threading
 import queue
@@ -20,6 +30,8 @@ sys.path.insert(0, os.path.join(PROJECT_DIR, "src"))
 from ns5_core import embed_string, extract_string, get_image_hash
 import steganalysis as SA
 import image_io as IO
+import jpegstego
+import experiment as EXP
 from efficiency import plot_code_family_and_efficiency
 from pathutil import app_version, output_dir
 from ml_predict import get_predictor
@@ -59,6 +71,10 @@ FONT_UI = (FONT_FAMILY, 10)
 FONT_UI_BOLD = (FONT_FAMILY, 10, "bold")
 FONT_SMALL = (FONT_FAMILY, 9)
 FONT_BANNER = (FONT_FAMILY, 13, "bold")
+
+# 嵌入域选项 (v1.9.0): 参数区 "嵌入域" 下拉框的两个取值。
+_DOMAIN_PIXEL = "像素域 (改像素 LSB)"
+_DOMAIN_JPEG = "JPEG 域 (改 DCT 系数)"
 
 
 class Tooltip:
@@ -237,6 +253,12 @@ class App:
         self.stego_path = None
         self.cover_img = None
         self.stego_img = None
+        # JPEG 域的载荷住在位流里: 必须持有原始字节, 解码/保存都不能经过
+        # PIL 重编码 (一重编系数就没了)。像素域仍走数组。
+        self.cover_bytes = None
+        self.stego_bytes = None
+        self.stego_fmt = None
+        self.last_record = None   # 最近一次嵌入的实验档案 (导出用)
         # 线程安全的"主线程回调"队列: 后台线程只入队, 主线程 _poll 依次执行
         self._queue = queue.Queue()
         self._build_ui()
@@ -298,6 +320,22 @@ class App:
     def _save_stego(self):
         if self.stego_img is None:
             messagebox.showwarning("提示", "请先嵌入生成含密图"); return
+        if self.stego_fmt == "jpg" and self.stego_bytes is not None:
+            # JPEG 域: 载荷在位流里, 必须原样写字节; 经 PIL 重编码系数就没了
+            path = filedialog.asksaveasfilename(
+                defaultextension=".jpg",
+                filetypes=[("JPEG 图像", "*.jpg")],
+                initialfile=os.path.basename(self.stego_path or "stego.jpg"))
+            if not path:
+                return
+            try:
+                with open(path, "wb") as f:
+                    f.write(self.stego_bytes)
+                self._log("含密图已保存 (JPEG 位流原样): " + path)
+                self._wait("已保存")
+            except Exception as e:
+                messagebox.showerror("保存失败", str(e))
+            return
         path = filedialog.asksaveasfilename(
             defaultextension=".png",
             filetypes=[("PNG 图像", "*.png"), ("BMP 图像", "*.bmp")],
@@ -427,6 +465,7 @@ class App:
         self.var_method = tk.StringVar(value="nsF5")
         _cbm = ttk.Combobox(pf, textvariable=self.var_method, state="readonly",
                             values=["nsF5 (减幅+湿纸)", "matrix (LSB矩阵编码)"])
+        self._method_box = _cbm
         self.var_p = tk.StringVar(value="3")
         pbox = ttk.Combobox(pf, textvariable=self.var_p, state="readonly",
                             values=[str(i) for i in range(1, 9)])
@@ -446,6 +485,25 @@ class App:
         sbox.grid(row=1, column=3, sticky="ew", padx=(2, 0), pady=(6, 0))
         Tooltip(l_sens, "严格: 少误报干净图\n均衡: 默认\n宽松: 更易检出弱嵌入")
         Tooltip(_pwd, "可选。留空则不加口令\n解码时必须输入完全相同的口令")
+        # 嵌入域 (v1.9.0): 像素域 = ns5_core 改像素 LSB; JPEG 域 = yccstego
+        # 改量化 DCT 系数 (固定 nsF5 语义, "算法"选框即失效)。
+        self.var_domain = tk.StringVar(value=_DOMAIN_PIXEL)
+        dbox = ttk.Combobox(pf, textvariable=self.var_domain, state="readonly",
+                            values=[_DOMAIN_PIXEL, _DOMAIN_JPEG])
+        self.var_quality = tk.StringVar(value="85")
+        self.qbox = ttk.Spinbox(pf, from_=1, to=100, textvariable=self.var_quality,
+                                width=5)
+        ttk.Label(pf, text="嵌入域:").grid(row=2, column=0, sticky="w", pady=(6, 0))
+        dbox.grid(row=2, column=1, sticky="ew", padx=(2, 10), pady=(6, 0))
+        self.lbl_quality = ttk.Label(pf, text="质量:")
+        self.lbl_quality.grid(row=2, column=2, sticky="w", pady=(6, 0))
+        self.qbox.grid(row=2, column=3, sticky="w", pady=(6, 0))
+        self.qbox.configure(state="disabled")   # 默认像素域, 质量无意义
+        Tooltip(dbox, "像素域: 改像素 LSB (PNG/BMP)\n"
+                      "JPEG 域: 改量化 DCT 系数, 输出 .jpg\n"
+                      "(教科书里 nsF5 的原始战场; 需 yccstego)")
+        Tooltip(self.qbox, "仅 JPEG 域: JPEG 质量 1..100\n越高容量越大, 默认 85")
+        dbox.bind("<<ComboboxSelected>>", lambda *_: self._on_domain_change())
         _cbm.bind("<<ComboboxSelected>>", lambda *_: self._refresh_statusbar())
         pbox.bind("<<ComboboxSelected>>", lambda *_: self._refresh_statusbar())
 
@@ -479,6 +537,21 @@ class App:
             row=0, column=1, sticky="ew", padx=6)
         ttk.Button(af2, text="载荷扫描", command=self._scan_panel).grid(
             row=0, column=2, sticky="ew", padx=(6, 0))
+
+        # 第三行: 自证与可复现 (v1.9.0) —— 算法正确性用户一键可见,
+        # 每次实验可导出档案 (nsf5stego repro 一键重跑)。
+        af3 = ttk.Frame(f, style="Card.TFrame")
+        af3.grid(row=10, column=0, sticky="ew", pady=(10, 0))
+        af3.columnconfigure(0, weight=1, uniform="y")
+        af3.columnconfigure(1, weight=1, uniform="y")
+        b_check = ttk.Button(af3, text="往返自检", command=self._selfcheck)
+        b_check.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        b_export = ttk.Button(af3, text="导出实验记录", command=self._export_record)
+        b_export.grid(row=0, column=1, sticky="ew", padx=(6, 0))
+        Tooltip(b_check, "对当前图+当前参数做一次 嵌入→提取→比对 的内存闭环,\n"
+                         "验证算法实现正确 (验证码为固定测试文本, 不改动你的图)")
+        Tooltip(b_export, "把最近一次嵌入的 参数/哈希/改动统计 存为 JSON 档案\n"
+                          "(不含消息明文; 命令行 nsf5stego repro <档案> 一键重跑)")
 
         # ---- 状态 ----
         self.status = ttk.Label(f, text="状态: 就绪", foreground=C_BLUE)
@@ -574,7 +647,9 @@ class App:
         m = self.var_method.get()
         size = (f"{self.cover_img.shape[1]}×{self.cover_img.shape[0]}"
                 if self.cover_img is not None else "-")
-        self.statusbar.configure(text=f"方法: {m}  ·  p={self.var_p.get()}  ·  图尺寸: {size}")
+        domain = "JPEG域" if self._domain() == "jpeg" else "像素域"
+        self.statusbar.configure(
+            text=f"域: {domain}  ·  方法: {m}  ·  p={self.var_p.get()}  ·  图尺寸: {size}")
 
     def _wait(self, t):
         self.status.configure(text="状态: " + t)
@@ -647,13 +722,19 @@ class App:
     def _load_path(self, path: str):
         try:
             gray = IO.load_as_gray(path)
+            with open(path, "rb") as f:
+                raw = f.read()
         except Exception as e:
             messagebox.showerror("载入失败", str(e)); return
         self.cover_path = path
         self.cover_img = gray
+        self.cover_bytes = raw
         self.stego_path = None
         self.stego_img = None
         self.stego = None
+        self.stego_bytes = None
+        self.stego_fmt = None
+        self.last_record = None   # 换了封面, 旧档案随作废
         self._show_in(self.lbl_cover, gray)
         self.lbl_stego.show_placeholder("(未生成)")
         self.lbl_stego_hdr.configure(text="含密图")
@@ -661,7 +742,27 @@ class App:
         self.cb_diff.configure(state="disabled")
         self._log(f"载入: {path}  尺寸 {gray.shape[1]}x{gray.shape[0]}  "
                   f"SHA256={get_image_hash(gray)[:12]}…")
-        self._guide("已载入图片。下一步: 确认文本 → 点「嵌入并保存」(Ctrl+E)")
+        self._guide("已载入图片。下一步: 确认文本 → 选「嵌入域」→ 点「嵌入并保存」(Ctrl+E)")
+        self._refresh_statusbar()
+
+    def _domain(self) -> str:
+        """当前嵌入域: "pixel" | "jpeg"。"""
+        return "jpeg" if self.var_domain.get() == _DOMAIN_JPEG else "pixel"
+
+    def _on_domain_change(self):
+        """JPEG 域固定 nsF5 语义: 算法选框失效; 质量仅 JPEG 域有意义。"""
+        if self._domain() == "jpeg" and not jpegstego.available():
+            messagebox.showwarning(
+                "JPEG 域不可用",
+                "缺少依赖 yccstego:\n\n" + jpegstego.unavailable_reason())
+            self.var_domain.set(_DOMAIN_PIXEL)
+        if self._domain() == "jpeg":
+            self.var_method.set("nsF5 (减幅+湿纸)")
+            self._method_box.configure(state="disabled")
+            self.qbox.configure(state="normal")
+        else:
+            self._method_box.configure(state="readonly")
+            self.qbox.configure(state="disabled")
         self._refresh_statusbar()
 
     def _params(self):
@@ -678,20 +779,63 @@ class App:
         if not msg:
             messagebox.showwarning("提示", "请输入待嵌入字符串"); return
         method, p, pwd = self._params()
-        out = IO.default_out_path(self.cover_path, "stego", OUTPUT_DIR)
+        base = os.path.splitext(os.path.basename(self.cover_path))[0]
+        if self._domain() == "jpeg":
+            out = os.path.join(OUTPUT_DIR, base + "_stego.jpg")
+        else:
+            out = IO.default_out_path(self.cover_path, "stego", OUTPUT_DIR)
         os.makedirs(os.path.dirname(out), exist_ok=True)
 
+        if self._domain() == "jpeg":
+            def work():
+                return self._do_embed_jpeg(self.cover_path, msg, p, pwd,
+                                           int(self.var_quality.get() or 85), out)
+
+            def done(res):
+                jpg, rep, nbits, record = res
+                self.stego_bytes = jpg
+                self.stego_fmt = "jpg"
+                self.stego_path = out
+                self.stego_img = jpegstego.decode_preview(jpg)
+                self.stego = None
+                self.last_record = record
+                self._show_in(self.lbl_stego, self.stego_img)
+                self.lbl_stego_hdr.configure(text="含密图")
+                # 压缩重编码会把整图像素都扰动, 像素差视图在此是误导, 禁用
+                self.var_diff.set(False)
+                self.cb_diff.configure(state="disabled")
+                total = rep["head_pool"] + rep["body_pool"]
+                self._set_out(
+                    f"嵌入成功 (JPEG 压缩域, yccstego)\n保存: {out}\n"
+                    f"载体: 量化 Y 块非零 AC 系数 (DCT)  p={p}  质量={self.var_quality.get()}\n"
+                    f"嵌入比特: {nbits}  改动系数: {rep['carriers_changed']}"
+                    f" / 载体 {total}\n"
+                    f"容量: {rep['capacity_bits']} bit"
+                    + (f"  [已截断到 {rep['embedded_chars']} 字符]" if rep["truncated"] else "")
+                    + "\n"
+                    f"色度哈希 (篡改感知锚点): {rep['cover_hash'][:16]}…\n\n"
+                    "提示: 解码请保持 JPEG 域 (含 --jpeg 语义) 与相同 p/口令。")
+                self._log(f"嵌入完成 (JPEG 域, 改动 {rep['carriers_changed']} 系数), 已保存 " + out)
+                self._wait("嵌入完成")
+                self._guide(
+                    "嵌入完成! 只改动了 {} 个 DCT 系数, 肉眼无法分辨。"
+                    "下一步: 点「解码提取」验证还原, 或「导出实验记录」存档 (repro 可一键重跑)"
+                    .format(rep["carriers_changed"]))
+            self._busy(work, done)
+            return
+
         def work():
-            stego, report, nbits = embed_string(self.cover_img, msg, method=method, p=p, password=pwd)
-            changed = int((stego != self.cover_img).sum())
-            IO.save_image(stego, out)
-            return stego, out, report, nbits, changed
+            return self._do_embed_pixel(self.cover_img, msg, method, p, pwd,
+                                        out, self.cover_path)
 
         def done(res):
-            stego, out, report, nbits, changed = res
+            stego, out, report, nbits, changed, record = res
             self.stego_img = stego
             self.stego = stego
             self.stego_path = out
+            self.stego_bytes = None
+            self.stego_fmt = "png"
+            self.last_record = record
             self._show_in(self.lbl_stego, stego)
             self.lbl_stego_hdr.configure(text="含密图")
             self.var_diff.set(False)
@@ -706,14 +850,82 @@ class App:
             self._wait("嵌入完成")
             self._guide(
                 "嵌入完成! 只改动了 {} 个像素 ({:.1f}%), 肉眼无法分辨。"
-                "勾选「查看差异」能放大看到改动位置; 下一步: 点「解码提取」"
-                "验证还原".format(changed, changed / self.cover_img.size * 100))
+                "勾选「查看差异」能放大看到改动位置; 点「解码提取」验证, "
+                "或「导出实验记录」存档 (repro 可一键重跑)"
+                .format(changed, changed / self.cover_img.size * 100))
         self._busy(work, done)
 
+    # ---- 嵌入/解码/分析的可测计算核心: 不碰 UI, 后台线程与测试共用 ----
+    def _do_embed_pixel(self, img, msg, method, p, pwd, out, cover_path):
+        stego, report, nbits = embed_string(img, msg, method=method, p=p,
+                                            password=pwd)
+        changed = int((stego != img).sum())
+        IO.save_image(stego, out)
+        record = EXP.new_record("pixel", method, p, bool(pwd))
+        EXP.fill_embed(record, payload_bits=nbits, payload_chars=len(msg),
+                       message=msg, cover_sha256=EXP.sha256_array(img),
+                       cover_size=img.shape, cover_path=cover_path,
+                       stego_sha256=EXP.sha256_array(stego), stego_path=out,
+                       stego_format="png", changed_cells=changed,
+                       cell_unit="pixels", changed_total=img.size)
+        return stego, out, report, nbits, changed, record
+
+    def _do_embed_jpeg(self, cover_path, msg, p, pwd, quality, out):
+        with open(cover_path, "rb") as f:
+            cover_bytes = f.read()
+        jpg, rep = jpegstego.embed_jpeg(cover_bytes, msg, p=p, password=pwd,
+                                        quality=quality)
+        # 截断时真正写入的是 UTF-8 安全前缀, 档案 payload 必须按它记
+        embedded = msg[:rep["embedded_chars"]] if rep["truncated"] else msg
+        nbits = 16 + 8 * len(embedded.encode("utf-8"))
+        os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+        with open(out, "wb") as f:
+            f.write(jpg)
+        size = jpegstego.decode_preview(jpg).shape[:2]
+        record = EXP.new_record("jpeg", "nsF5", p, bool(pwd), quality=quality,
+                                ycc_version=jpegstego.ycc_version())
+        EXP.fill_embed(record, payload_bits=nbits,
+                       payload_chars=rep["embedded_chars"], message=embedded,
+                       cover_sha256=EXP.sha256_bytes(cover_bytes),
+                       cover_size=size, cover_path=cover_path,
+                       stego_sha256=EXP.sha256_bytes(jpg), stego_path=out,
+                       stego_format="jpg", changed_cells=rep["carriers_changed"],
+                       cell_unit="coefficients",
+                       changed_total=rep["head_pool"] + rep["body_pool"],
+                       capacity_bits=rep["capacity_bits"],
+                       truncated=rep["truncated"])
+        return jpg, rep, nbits, record
+
     def _decode(self):
-        if self.stego is None and self.cover_img is None:
+        if self.stego is None and self.cover_img is None and self.stego_bytes is None:
             messagebox.showwarning("提示", "请先载入图片"); return
         method, p, pwd = self._params()
+        if self._domain() == "jpeg":
+            # 解码对象是位流字节: 优先用刚嵌入生成的含密 JPEG, 否则载入的文件
+            data = self.stego_bytes if self.stego_bytes is not None else self.cover_bytes
+            if data is None:
+                messagebox.showwarning("提示", "JPEG 域解码需要原始文件字节, 请重新载入")
+                return
+
+            def work():
+                return self._do_decode_jpeg(data, p, pwd)
+
+            def done(res):
+                msg, tampered, head_match = res
+                if msg:
+                    self._set_out(f"解码成功 (JPEG 压缩域, p={p}):\n\n{msg}")
+                    self._guide("解码成功, “藏进去 -> 完整取出来”闭环达成! "
+                                "进阶: 换个口令重新嵌入(解码会失败), 或点「编码演示」"
+                                "看算法内部")
+                else:
+                    why = ("认证头读取失败 —— p / 口令与嵌入时不一致, "
+                           "或文件被改动 / 非本工具生成" if head_match is False
+                           else "p / 口令 / 待解读文件与嵌入时不一致")
+                    self._set_out(f"未提取到内容 (JPEG 压缩域, p={p})。\n原因: {why}。")
+                self._log("解码完成")
+                self._wait("解码完成")
+            self._busy(work, done)
+            return
         # 解码/分析的对象是"当前待解读图": 优先用刚嵌入生成的含密图 (stego),
         # 否则用载入的图。G1: 之前恒用 cover_img, 导致"嵌入→解码"必然失败。
         image = self.stego if self.stego is not None else self.cover_img
@@ -734,15 +946,60 @@ class App:
             self._wait("解码完成")
         self._busy(work, done)
 
+    def _do_decode_jpeg(self, jpg_bytes, p, pwd):
+        msg, _, tampered, head_match = jpegstego.extract_jpeg(
+            jpg_bytes, p=p, password=pwd)
+        return msg, tampered, head_match
+
     def _analyze(self):
-        if self.stego is None and self.cover_img is None:
+        if self.stego is None and self.cover_img is None and self.stego_bytes is None:
             messagebox.showwarning("提示", "请先载入图片"); return
+        sens = self.var_sens.get()
+        if self._domain() == "jpeg":
+            data = self.stego_bytes if self.stego_bytes is not None else self.cover_bytes
+            if data is None:
+                messagebox.showwarning("提示", "JPEG 域分析需要原始文件字节, 请重新载入")
+                return
+
+            def work():
+                return jpegstego.analyze_jpeg(data, sensitivity=sens), \
+                    EXP.sha256_bytes(data)
+
+            def done(res):
+                r, h = res
+                if not r.get("ok"):
+                    self._set_out(f"分析失败: {r.get('error', '无可用 AC 系数')}")
+                    self._wait("失败")
+                    return
+                self._set_out(
+                    f"图像 SHA256: {h[:16]}… (文件字节)\n"
+                    f"判定灵敏度: {sens}  (JPEG 压缩域, yccstego)\n"
+                    f"AC 载体系数: {r['n_ac']}  |c|=1 占比: {r['unit_frac']*100:.1f}%"
+                    f"  (基线 {r['unit_baseline']*100:.0f}%)\n"
+                    f"LSB 奇占比: {r['parity_odd']*100:.1f}%"
+                    f"  DCT 卡方 p: {r['dct_chi2_pvalue']:.4f}\n"
+                    f"\n隐写概率: {r['stego_probability_dct']*100:.1f}%\n"
+                    f"判读: {r['verdict']}\n"
+                    + (f"像素域参照: {r['pix_probability']*100:.1f}%  ({r['pix_verdict']})\n"
+                       if "pix_probability" in r else "")
+                    + "\nML 判定: 不可用 (部署模型吃像素域特征, 与 DCT 域指纹不同轴)")
+                if self.last_record is not None:
+                    EXP.merge_detector(
+                        self.last_record,
+                        {"stego_probability": r["stego_probability_dct"],
+                         "verdict": r["verdict"], "n_ac": r["n_ac"],
+                         "dct_unit_frac": r["unit_frac"]},
+                        sensitivity=sens)
+                self._wait("分析完成")
+            self._busy(work, done)
+            return
         # 优先分析"当前待检图" = stego (若已嵌入), 否则载入的图。
         image = self.stego if self.stego is not None else self.cover_img
-        sens = self.var_sens.get()
+
         def work():
             return (SA.analyze(image, sensitivity=sens), get_image_hash(image),
                     get_predictor(sensitivity=sens).predict(image))
+
         def done(res):
             r, h, ml = res
             ml_line = (f"ML 分类含密概率: {ml['probability']*100:.1f}%  (阈值 {ml['threshold']:.3f}, {ml['verdict']})\n"
@@ -760,8 +1017,91 @@ class App:
                 f"\n隐写概率: {r['stego_probability']*100:.1f}%\n"
                 f"判读: {r['verdict']}\n"
                 f"{ml_line}\n")
+            if self.last_record is not None:
+                EXP.merge_detector(self.last_record, r, sensitivity=sens, ml=ml)
             self._wait("分析完成")
         self._busy(work, done)
+
+    # ------------------------------------------------------- 自证与档案
+    def _selfcheck(self):
+        """往返自检: 当前图 + 当前参数, 嵌入→提取→比对 的内存闭环。
+
+        回答的是用户最该问的问题: "这工具真的可靠吗?" —— 不只是作者声称,
+        而是当场演示。固定测试文本, 不写盘, 不碰用户正在编辑的内容。"""
+        if self.cover_img is None:
+            messagebox.showwarning("提示", "请先载入一张图"); return
+        method, p, pwd = self._params()
+        domain = self._domain()
+        if domain == "jpeg" and not jpegstego.available():
+            messagebox.showwarning("JPEG 域不可用", jpegstego.unavailable_reason())
+            return
+        test_msg = "nsf5stego 往返自检 self-check 42"
+
+        def work():
+            return self._do_selfcheck(domain, method, p, pwd, test_msg)
+
+        def done(res):
+            ok, changed, unit, nbits, ms = res
+            if ok:
+                self._set_out(
+                    f"往返自检通过 [OK]\n"
+                    f"域: {'JPEG 压缩域 (DCT 系数)' if domain == 'jpeg' else '像素域'}"
+                    f"  参数 p={p}  口令: {'有' if pwd else '无'}\n"
+                    f"嵌入 {nbits} 比特 → 提取 → 与原文逐字节一致\n"
+                    f"改动 {changed} {unit}  耗时 {ms:.0f} ms\n\n"
+                    "这条链路与真实嵌入走的是同一份代码 (ns5_core / yccstego);"
+                    " 仓库另有 96+ 个 pytest 用例与 CI 全程把关。")
+                self._log("往返自检通过")
+                self._wait("自检通过")
+            else:
+                self._set_out("往返自检失败: 提取结果与原文不一致!\n"
+                              "这是算法实现的严重问题, 请导出实验记录并反馈。")
+                self._wait("自检失败")
+        self._busy(work, done)
+
+    def _do_selfcheck(self, domain, method, p, pwd, test_msg):
+        """自检的计算核心 (无 UI, 可直接测试)。返回 (ok, changed, 单位, nbits, ms)。"""
+        import time
+        t0 = time.perf_counter()
+        if domain == "jpeg":
+            with open(self.cover_path, "rb") as f:
+                cover = f.read()
+            jpg, rep = jpegstego.embed_jpeg(cover, test_msg, p=p, password=pwd)
+            msg, _, _, _ = jpegstego.extract_jpeg(jpg, p=p, password=pwd)
+            ok = msg == test_msg
+            changed, unit = rep["carriers_changed"], "个 DCT 系数"
+            nbits = 16 + 8 * len(test_msg.encode("utf-8"))
+        else:
+            stego, _, nbits = embed_string(self.cover_img, test_msg,
+                                           method=method, p=p, password=pwd)
+            back = extract_string(stego, method=method, p=p, password=pwd)
+            ok = back == test_msg
+            changed, unit = int((stego != self.cover_img).sum()), "个像素"
+        ms = (time.perf_counter() - t0) * 1000
+        return ok, changed, unit, nbits, ms
+
+    def _export_record(self):
+        """把最近一次嵌入的实验档案导出为 JSON (nsf5stego repro 可一键重跑)。"""
+        if self.last_record is None:
+            messagebox.showwarning(
+                "提示", "还没有可导出的实验记录 —— 请先完成一次嵌入")
+            return
+        default = "experiment_%s.json" % datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = filedialog.asksaveasfilename(
+            defaultextension=".json", filetypes=[("实验档案 JSON", "*.json")],
+            initialfile=default, initialdir=OUTPUT_DIR)
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(EXP.dumps(self.last_record))
+        except Exception as e:
+            messagebox.showerror("导出失败", str(e))
+            return
+        self._log("实验档案已导出: " + path)
+        self._wait("档案已导出")
+        self._guide("档案已导出! 把它连同封面图交给别人, "
+                    "命令行 `nsf5stego repro <档案> -m 原文` 即可验证复现。")
 
     def _plot(self):
         def work():

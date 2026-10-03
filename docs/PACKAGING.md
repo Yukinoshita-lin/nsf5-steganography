@@ -2,7 +2,8 @@
 
 > 状态:**M1–M5 全部完成**(2026-09-30)。一键链路:
 > `python scripts/build_exe.py` → 双 exe onedir(解包约 317MB / 便携 zip 119MB);
-> `python scripts/test_frozen.py`(`make pkg-test`)五项冻结冒烟全过;
+> `python scripts/test_frozen.py`(`make pkg-test`)六项冻结冒烟全过
+> (v1.9.0 起新增第 6 项: 冻结环境 JPEG 域往返 + 实验档案 repro, 防 yccstego 丢包静默降级);
 > `python scripts/build_installer.py`(`make installer`)→
 > `dist/nsf5stego-setup-1.8.0.exe`(90MB,简体中文界面),静默
 > 安装 → 开始菜单快捷方式 + 装好的 GUI/CLI 启动 → 加 PATH 任务 →

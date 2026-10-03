@@ -15,6 +15,10 @@
 | Matrix embedding | src/ns5_core.py | MatrixEmbedding._embed |
 | Wet paper solver | src/ns5_core.py | solve_wet_paper / gauss_solve_GF2 |
 | Pixel-domain nsF5 | src/ns5_core.py | nsF5Pixel._embed |
+| JPEG-domain bridge | src/jpegstego.py | embed_jpeg / extract_jpeg |
+| Compressed-domain nsF5 (decrement + wet paper) | yccstego/yccstego/nsf5.py | _embed_block |
+| DCT and quantization tables | yccstego/yccstego/dct.py | _dct_matrix / scale_qtable |
+| Experiment records & re-run | src/experiment.py | new_record / verify |
 | High-level embed/extract | src/ns5_core.py | embed_string / extract_string |
 | Chi-square statistics | src/steganalysis.py | chi2_stats / chi2_sf |
 | RS statistics | src/steganalysis.py | rs_metrics |

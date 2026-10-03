@@ -110,6 +110,28 @@ if (!(nfData.changed < lsbData.changed)) {
   errors.push(`nsF5 (${nfData.changed}) should change fewer pixels than naive LSB (${lsbData.changed})`);
 }
 
+// 7c) JPEG DCT lab: random block → embed demo must render a verdict line
+//     (language-independent: both zh/en end in ✓ for either no-change or
+//     modified-syndrome outcomes), and clicking the grid must inspect a cell
+await page.click("#dct-random");
+await page.waitForTimeout(80);
+const dctIdle = await page.textContent("#dct-info");
+if (!dctIdle || !/\d/.test(dctIdle)) errors.push("DCT idle info missing: " + dctIdle);
+await page.fill("#dct-m", "101");
+await page.click("#dct-embed");
+await page.waitForTimeout(80);
+const dctInfo = await page.textContent("#dct-info");
+if (!dctInfo || !dctInfo.includes("✓")) {
+  errors.push("DCT embed demo did not produce a verified verdict: " + dctInfo);
+}
+await page.selectOption("#dct-quality", "95");
+await page.waitForTimeout(80);
+const dctHigh = await page.textContent("#dct-info");
+if (!dctHigh || !/\d/.test(dctHigh)) errors.push("DCT requant info missing after quality change");
+await page.click("#dct-canvas", { position: { x: 120, y: 120 } });
+const dctDetail = await page.textContent("#dct-detail");
+if (!dctDetail || !dctDetail.length) errors.push("DCT cell inspect produced no detail line");
+
 // 8) mobile menu
 await page.setViewportSize({ width: 390, height: 844 });
 await page.reload({ waitUntil: "networkidle" });

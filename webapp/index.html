@@ -17,6 +17,7 @@
       <a href="#hamming" data-i18n="nav.hamming">矩阵编码</a>
       <a href="#wetpaper" data-i18n="nav.wetpaper">湿纸</a>
       <a href="#nsf5" data-i18n="nav.nsf5">nsF5 对比</a>
+      <a href="#dctlab" data-i18n="nav.dctlab">DCT 系数</a>
       <a href="#pipeline" data-i18n="nav.pipeline">原理</a>
       <a href="#ml" data-i18n="nav.ml">ML 检测</a>
       <a href="#roadmap" data-i18n="nav.roadmap">路线图</a>
@@ -62,21 +63,22 @@
           <a href="#hamming" data-i18n="contents.p1.i2">② 汉明伴随式编码</a>
           <a href="#wetpaper" data-i18n="contents.p1.i3">③ 湿纸编码求解</a>
           <a href="#nsf5" data-i18n="contents.p1.i4">④ nsF5 全流程对比</a>
+          <a href="#dctlab" data-i18n="contents.p1.i5">⑤ JPEG 压缩域 DCT</a>
         </div>
         <div class="contents-part">
           <p class="contents-part-head" data-i18n="contents.p2.head">原理分析</p>
-          <a href="#pipeline" data-i18n="contents.p2.i1">④ 嵌入/解码数据流</a>
-          <a href="#ml" data-i18n="contents.p2.i2">⑤ 机器学习检测</a>
+          <a href="#pipeline" data-i18n="contents.p2.i1">⑥ 嵌入/解码数据流</a>
+          <a href="#ml" data-i18n="contents.p2.i2">⑦ 机器学习检测</a>
         </div>
         <div class="contents-part">
           <p class="contents-part-head" data-i18n="contents.p3.head">学习路径</p>
-          <a href="#roadmap" data-i18n="contents.p3.i1">⑥ 6–12 个月路线</a>
-          <a href="#resources" data-i18n="contents.p3.i2">⑦ 手册 · Notebook · 源码</a>
+          <a href="#roadmap" data-i18n="contents.p3.i1">⑧ 6–12 个月路线</a>
+          <a href="#resources" data-i18n="contents.p3.i2">⑨ 手册 · Notebook · 源码</a>
         </div>
         <div class="contents-part">
           <p class="contents-part-head" data-i18n="contents.p4.head">常见问题</p>
-          <a href="#faq" data-i18n="contents.p4.i1">⑨ FAQ 快速答疑</a>
-          <a href="#quiz" data-i18n="contents.p4.i2">⑩ 知识自测</a>
+          <a href="#faq" data-i18n="contents.p4.i1">⑩ FAQ 快速答疑</a>
+          <a href="#quiz" data-i18n="contents.p4.i2">⑪ 知识自测</a>
         </div>
       </div>
     </nav>
@@ -309,8 +311,50 @@
       </div>
     </section>
 
+    <!-- ============ JPEG DCT DOMAIN (v1.9.0) ============ -->
+    <section id="dctlab" class="section alt">
+      <div class="section-head">
+        <span class="part-tag" data-i18n="part1">第一部分 · 动手实验</span>
+        <p class="eyebrow" data-i18n="dct.eyebrow">实验 5 · JPEG 压缩域</p>
+        <h2 data-i18n="dct.title">JPEG 压缩域：在 8×8 量化 DCT 系数上做 nsF5</h2>
+        <p data-i18n="dct.sub">前面的实验都发生在像素上，而教科书里的 nsF5 发生在 JPEG 的量化 DCT 系数上。这里把一个 8×8 块的量化系数摊开给你看：载体是谁、湿点是谁、"+3→+2" 长什么样。</p>
+      </div>
+      <div class="lab-grid">
+        <figure class="canvas-card">
+          <canvas id="dct-pixels" width="160" height="160" aria-label="The 8x8 pixel block before JPEG transform"></canvas>
+          <figcaption id="dct-caption" class="stat-line" aria-live="polite" data-i18n="dct.captionIdle">上：8×8 像素块 · 下：量化 DCT 系数。灰格 = 量化后归 0 的高频 · 蓝框 = |c|=1 湿点 · 红框 = 被修改的系数</figcaption>
+          <canvas id="dct-canvas" width="400" height="400" aria-label="Quantized DCT coefficient grid. Click a cell to inspect it." tabindex="0"></canvas>
+        </figure>
+        <div class="lab-controls">
+          <div class="field-row">
+            <label for="dct-quality" data-i18n="dct.quality">JPEG 质量</label>
+            <select id="dct-quality">
+              <option value="60">60 (步长大 → 载体少)</option>
+              <option value="85" selected>85 (默认)</option>
+              <option value="95">95 (步长小 → 载体多)</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label for="dct-m" data-i18n="dct.m">目标伴随式 m（3 bit）</label>
+            <input id="dct-m" type="text" value="101" maxlength="3">
+          </div>
+          <div class="btn-row">
+            <button id="dct-random" class="btn primary" data-i18n="dct.random">随机块</button>
+            <button id="dct-embed" class="btn ghost" data-i18n="dct.embed">嵌入演示（减幅 + 湿纸）</button>
+          </div>
+          <p id="dct-info" class="mono" role="status" aria-live="polite"></p>
+          <p id="dct-detail" class="decode-note mono sm" aria-live="polite"></p>
+          <ul class="learn-list">
+            <li data-i18n="dct.li1">JPEG 先把图切成 8×8 块做 DCT，再除以量化表取整：大多数高频系数归 0，活下来的非零 AC 系数才是载体——质量越高，量化步长越小，载体越多。</li>
+            <li data-i18n="dct.li2">F5 的修改是“幅值减 1、保符号”：+3→+2、−5→−4。|c|=1 的系数再减就归零（收缩），被划为湿点，由湿纸方程在干点上求解避开。</li>
+            <li data-i18n="dct.li3">这条算法已在项目主线里（姊妹项目 yccstego，经 jpegstego.py 桥接）：命令行 `nsf5stego embed --jpeg` 在真正的 JPEG 上做这件事，GUI 参数区切到“JPEG 域”即可。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
     <!-- ============ PIPELINE ============ -->
-    <section id="pipeline" class="section alt">
+    <section id="pipeline" class="section">
       <div class="section-head">
         <span class="part-tag" data-i18n="part2">第二部分 · 原理分析</span>
         <p class="eyebrow" data-i18n="pipe.eyebrow">一张图看懂</p>
@@ -418,6 +462,12 @@
           <h3 data-i18n="res.repo">GitHub 仓库</h3>
           <p data-i18n="res.repod">Notebooks、Docker、数据集与全部源码。</p>
         </a>
+      </div>
+      <div class="card-row">
+        <article class="card">
+          <h3 data-i18n="res.tools">同类工具与本项目的定位</h3>
+          <p data-i18n="res.toolsd">这个领域并不缺研究工具——Aletheia（Python 隐写分析工具箱）、CONSEAL（C++ 特征库）、DDE Lab 工具集等。本项目不替代它们：定位是交互教学、可视化与可复现实验（每步可导出档案、一键重跑）。完整对比见仓库 README 的「同类工具与本项目定位」。</p>
+        </article>
       </div>
     </section>
 

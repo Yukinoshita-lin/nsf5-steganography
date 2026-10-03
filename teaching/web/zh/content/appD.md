@@ -17,6 +17,10 @@
 | 矩阵嵌入 | src/ns5_core.py | MatrixEmbedding._embed |
 | 湿纸求解 | src/ns5_core.py | solve_wet_paper / gauss_solve_GF2 |
 | 像素域 nsF5 | src/ns5_core.py | nsF5Pixel._embed |
+| JPEG 压缩域桥接 | src/jpegstego.py | embed_jpeg / extract_jpeg |
+| 压缩域 nsF5（减幅+湿纸） | yccstego/yccstego/nsf5.py | _embed_block |
+| DCT 与量化表 | yccstego/yccstego/dct.py | _dct_matrix / scale_qtable |
+| 实验档案与重跑 | src/experiment.py | new_record / verify |
 | 高层嵌入/解码 | src/ns5_core.py | embed_string / extract_string |
 | 卡方统计 | src/steganalysis.py | chi2_stats / chi2_sf |
 | RS 统计 | src/steganalysis.py | rs_metrics |

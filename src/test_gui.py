@@ -63,6 +63,47 @@ def main():
     app.var_diff.set(False); app._toggle_diff(); root.update()
     assert "含密图" in app.lbl_stego_hdr.cget("text")
 
+    # 嵌入域选择 (v1.9.0): 默认像素域; 切 JPEG 域时质量框才可用
+    import jpegstego
+    import experiment as EXP
+    assert app._domain() == "pixel"
+    app.var_domain.set(gui._DOMAIN_JPEG); app._on_domain_change()
+    if jpegstego.available():
+        assert app._domain() == "jpeg"
+        assert str(app.qbox.cget("state")) != "disabled"
+        assert app.var_method.get().startswith("nsF5"), "JPEG 域固定 nsF5 语义"
+        out_jpg = os.path.join(tempfile.mkdtemp(), "smoke_stego.jpg")
+        jpg, jrep, jnbits, jrec = app._do_embed_jpeg(
+            test_path, "smoke jpeg", 3, "", 85, out_jpg)
+        assert jrec["algorithm"]["domain"] == "jpeg"
+        assert jrec["result"]["cell_unit"] == "coefficients"
+        assert "smoke jpeg" not in EXP.dumps(jrec), "档案不含消息明文"
+        msg, tampered, _ = app._do_decode_jpeg(jpg, 3, "")
+        assert msg == "smoke jpeg" and tampered is False
+        ok, jch, unit, _, _ = app._do_selfcheck("jpeg", "nsF5", 3, "", "自检42")
+        assert ok is True and unit == "个 DCT 系数"
+        print("[OK] JPEG 域: 嵌入→解码往返 + 自检闭环 + 档案 schema")
+    else:
+        # 依赖缺失时切 JPEG 域应被拦下并回退像素域 (弹窗在无头环境照常返回)
+        assert app._domain() == "pixel"
+        print("[SKIP] yccstego 未安装: JPEG 域回退逻辑已验证")
+    app.var_domain.set(gui._DOMAIN_PIXEL); app._on_domain_change()
+    assert app._domain() == "pixel"
+
+    # 往返自检 (像素域) + 实验档案生成
+    ok, pch, punit, pnbits, _ = app._do_selfcheck("pixel", "nsF5", 3, "", "自检42")
+    assert ok is True and punit == "个像素"
+    stego2, out2, rep2, nb2, ch2, rec2 = app._do_embed_pixel(
+        gray, "smoke test", "nsF5", 3, "", os.path.join(tempfile.mkdtemp(), "s.png"),
+        test_path)
+    assert rec2["schema"] == EXP.SCHEMA
+    assert rec2["determinism"] == EXP.DET_BYTE
+    assert rec2["payload"]["bits"] == nb2
+    assert "smoke test" not in EXP.dumps(rec2)
+    app.last_record = rec2
+    assert callable(app._selfcheck) and callable(app._export_record)
+    print("[OK] 像素域: 往返自检闭环 + 实验档案 schema")
+
     # 矩阵编码演示 + 自动动画
     top = app._demo_matrix()
     root.update()

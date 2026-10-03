@@ -39,6 +39,7 @@ The route follows a natural order: carrier basics -> steganography -> steganalys
 | **Week** | **Topic** | **Chapter** | **Hands-on outcome** |
 | --- | --- | --- | --- |
 | 1 | Digital images and binary | Ch. 1 | Inspect pixels and bit planes yourself |
+| 1 (supplement) | JPEG and DCT coefficients | Ch. 1½ | Explain how the quantization table governs capacity |
 | 2 | Python / NumPy / Pillow | Ch. 2 | Run the GUI or run_e2e.py; read/write image arrays |
 | 3-4 | LSB hiding and blind steganalysis | Ch. 3 | Hide a message, then detect it with chi-square/RS |
 | 5 | Matrix embedding and F5 | Ch. 4 | Use Hamming codes to change less and hide more |

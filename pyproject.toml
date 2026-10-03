@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nsf5stego"
-version = "1.8.4"
+version = "1.9.0"
 description = "nsF5 steganography tool: syndrome matrix coding (Hamming) + wet-paper coding + image-hash keying + blind steganalysis + GUI"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -32,11 +32,20 @@ dependencies = [
     # 仅在训练 XGB 变体 (src/train_model.py --models XGB / gpu/train_ml_gpu.py)
     # 时用到, 且是函数内延迟导入。
     "xgboost",
+    # JPEG 压缩域 nsF5 (姊妹项目, 独立仓库/独立发版): jpegstego.py 桥接,
+    # GUI/CLI 的"JPEG 域"模式走它。它 requires-python>=3.10 而本包支持 3.9,
+    # 所以用环境标记按需安装; 缺失时 jpegstego.available()=False, 像素域
+    # 功能完全不受影响 (与 ml_predict 缺 lightgbm 的降级模式一致)。
+    # 0.2.0 起嵌入逐字节确定 (repro 字节级校验的前提); PyPI 最新仍为 0.1.4,
+    # 下限暂收 >=0.1.4 保证 CI/安装可解析 —— 档案按 yccstego 版本自动选
+    # 字节级/往返校验。yccstego 0.2.0 上 PyPI 后把下限升到 >=0.2.0 再发 1.9.0。
+    "yccstego>=0.1.4; python_version >= '3.10'",
 ]
 
 [project.optional-dependencies]
 gpu = ["torch"]
-dev = ["pytest", "pytest-cov", "build"]
+dev = ["pytest", "pytest-cov", "build",
+       "yccstego>=0.1.4; python_version >= '3.10'"]
 notebooks = ["jupyter", "ipykernel"]
 # experiments/ 下的实验脚本额外需要 seaborn (两张热图) 与 lightgbm (LGB 基线)
 experiments = ["seaborn", "lightgbm", "torch", "pandas", "scikit-learn"]
@@ -88,7 +97,7 @@ py-modules = [
     "cppembed", "cpplib", "fsfeatures", "ml_predict", "make_dataset",
     "train_model", "matrix_demo", "scan_panel", "featurize_v2",
     "py_features", "srm_filter", "run_e2e",
-    "pathutil",
+    "pathutil", "jpegstego", "experiment",
 ]
 
 [tool.setuptools.package-data]

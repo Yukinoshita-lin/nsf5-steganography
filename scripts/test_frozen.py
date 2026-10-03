@@ -12,7 +12,10 @@
      —— 防止打包丢依赖导致 ML 静默降级 (曾实测踩过);
   5. GUI exe 启动后窗口标题带版本号, 截图含蓝白主题的深蓝横幅
      (像素级自检, 复用 GUI 冒烟的 DWM 截屏做法), 探针图留在
-     build/pkg-test/gui_probe.png 供人工复核。
+     build/pkg-test/gui_probe.png 供人工复核;
+  6. JPEG 压缩域 (v1.9.0): --jpeg 嵌入 → --jpeg 提取往返 + 实验档案
+     repro 重跑通过 —— yccstego 是 jpegstego 的函数内惰性导入, 静态分析
+     看不见, 打包丢了它就会在这里红 (同第 4 条的教训)。
 
 退出码 0/1; 控制台输出只用 GBK 可编码字符 (同 test_console_encoding 约定)。
 """
@@ -124,6 +127,36 @@ def test_roundtrip_and_analyze():
         shutil.rmtree(d, ignore_errors=True)
 
 
+def test_jpeg_roundtrip_and_repro():
+    """冻结环境的 JPEG 压缩域冒烟: --jpeg 往返 + 实验档案 repro。"""
+    d = tempfile.mkdtemp(prefix="nsf5_frozen_jpeg_")
+    try:
+        cover = _test_image(os.path.join(d, "cover.png"))
+        msg = "frozen jpeg 42"
+        rec = os.path.join(d, "exp.json")
+        r = _run([EXE_CLI, "embed", cover, "--jpeg", "-m", msg, "--json"])
+        assert r.returncode == 0, f"冻结 --jpeg embed 失败: {(r.stderr or r.stdout)[:200]}"
+        payload = json.loads(r.stdout)
+        assert payload["algorithm"]["domain"] == "jpeg", "档案域应为 jpeg"
+        assert msg not in r.stdout, "档案不得携带消息明文"
+        stego = payload["stego"]["path"]
+        assert os.path.exists(stego), "冻结 --jpeg embed 未产出 .jpg"
+        with open(rec, "w", encoding="utf-8") as f:
+            f.write(r.stdout)
+
+        r = _run([EXE_CLI, "extract", stego, "--jpeg"])
+        assert r.returncode == 0 and msg in (r.stdout or ""), \
+            f"冻结 --jpeg extract 往返失败: {(r.stdout or r.stderr)[:200]}"
+        print("[OK] 冻结 JPEG 域 embed -> extract 往返一致")
+
+        r = _run([EXE_CLI, "repro", rec, "-m", msg])
+        assert r.returncode == 0, f"冻结 repro 失败: {(r.stderr or r.stdout)[:300]}"
+        assert "重跑通过" in (r.stdout or ""), "冻结 repro 未打印通过结论"
+        print("[OK] 冻结实验档案 repro 通过 (往返契约)")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
 def _find_window(u32, pid: int, title: str):
     """先按标题找窗口; 找不到再按进程 ID 兜底 (CI 上比标题匹配更稳)。"""
     hwnd = u32.FindWindowW(None, title)
@@ -208,7 +241,8 @@ def main() -> int:
             return 1
     failures = 0
     for fn in (test_size_budget, test_version,
-               test_roundtrip_and_analyze, test_gui_launch_and_theme):
+               test_roundtrip_and_analyze, test_jpeg_roundtrip_and_repro,
+               test_gui_launch_and_theme):
         try:
             fn()
         except AssertionError as e:

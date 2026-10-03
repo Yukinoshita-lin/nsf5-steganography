@@ -166,6 +166,36 @@ const wetHit = (() => {
 })();
 check("nsf5 wet pixels untouched + dry-only decrements + round-trip", wetHit === "ok");
 
+// JPEG 8x8 quantized-DCT lab (v1.9.0): quality ↑ must yield more carriers, the
+// idle/embed info lines must render, and the DCT math must match the
+// yccstego conventions (level shift -> A·X·Aᵀ -> round(F/T)).
+const dctHit = (() => {
+  if (!sandbox.dctRandomBlock || !sandbox.dctQuantize || !sandbox.dctScaleQ) {
+    return "hooks missing";
+  }
+  // 核心教学不变量: 质量越高 → 量化步长越小 → 非零 AC 载体越多
+  const countNZ = (q) => {
+    const coeffs = sandbox.dctQuantize(sandbox.dctRandomBlock(42), q);
+    let n = 0;
+    for (let i = 1; i < 64; i++) if (coeffs[(i / 8) | 0][i % 8] !== 0) n++;
+    return n;
+  };
+  const low = countNZ(60), high = countNZ(95);
+  if (!(high > low)) return "carriers did not grow with quality (" + low + " vs " + high + ")";
+  // 量化表缩放必须落在 [1,255] (libjpeg 语义)
+  const tbl = sandbox.dctScaleQ(60).flat();
+  if (tbl.some((v) => v < 1 || v > 255)) return "quant table out of range";
+  // 渲染与演示链路 (canvas 在 linkedom 下是 no-op, 只验证逻辑与 DOM 文本)
+  const info = window.document.getElementById("dct-info");
+  const detail = window.document.getElementById("dct-detail");
+  if (!info || !info.textContent) return "idle info empty";
+  sandbox.dctEmbed();
+  if (!info.textContent) return "embed info empty";
+  if (detail.textContent === null) return "detail node missing";
+  return "ok";
+})();
+check("dct lab: carriers grow with quality + info renders + embed demo runs", dctHit === "ok");
+
 console.log("\nSMOKE " + (errors.length ? "FAILED (" + errors.length + ")" : "OK"));
 errors.slice(0, 20).forEach((e) => console.log(" -", e));
 process.exit(errors.length ? 1 : 0);

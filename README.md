@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.8.4-blue)
+![version](https://img.shields.io/badge/version-1.9.0-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543628.svg)](https://doi.org/10.5281/zenodo.22543628)
@@ -14,6 +14,7 @@
 - [互动教学网站](#互动教学网站)
 - [功能总览](#功能总览)
 - [学习手册](#学习手册)
+- [同类工具与本项目定位](#同类工具与本项目定位)
 - [更正记录：曾经出现过的错误](#更正记录曾经出现过的错误)
 - [安装与运行](#安装与运行)
 - [GUI 使用流程](#gui-使用流程)
@@ -21,6 +22,7 @@
 - [技术细节](#技术细节)
 - [有监督 ML 隐写分析（C++ 特征提取 + 校园照片训练）](#有监督-ml-隐写分析c-特征提取--校园照片训练)
 - [GPU 版 (v1.2)：PyTorch 批量向量化的统计特征分析](#gpu-版-v12pytorch-批量向量化的统计特征分析)
+- [正确性验证体系（v1.9.0 起成文）](#正确性验证体系v190-起成文)
 - [持续集成 & 发版](#持续集成--发版)
 - [版本历史](#版本历史)
 - [许可](#许可)
@@ -47,11 +49,21 @@ note in the Chinese section.)
 
 ### Highlights
 
-- **Embedding / decoding** - ASCII messages hidden in 8-bit grayscale or color
+- **Embedding / decoding** - UTF-8 messages hidden in 8-bit grayscale or color
   images with password keying and self-synchronizing SHA-256 content hashing;
 - **nsF5 core** - binary Hamming codes `[n=2^p-1, k, 3]` with syndrome matrix
   embedding, F5-style magnitude decrease, and wet paper coding (no shrinkage,
   no retries);
+- **JPEG-domain nsF5 (v1.9.0)** - the textbook battlefield: embedding on
+  quantized DCT coefficients via the sister package
+  [`yccstego`](https://github.com/Yukinoshita-lin/yccstego) (declared as a
+  dependency on Python >= 3.10); `--jpeg` across the CLI, a domain switch in
+  the GUI, and a DCT-fingerprint analyzer;
+- **Reproducibility (v1.9.0)** - one JSON experiment record per embed
+  (parameters and hashes only, never the plaintext), re-run and verified with
+  `nsf5stego repro`: byte-deterministic in both domains on a matching
+  yccstego version (>=0.2.0), falling back to round-trip verification across
+  versions;
 - **Blind steganalysis** - Westfeld chi-square and Fridrich RS analysis with a
   content-aware verdict and three sensitivity modes;
 - **ML steganalysis** - 11-D statistical features (v1) and 143-D v2 features
@@ -149,31 +161,54 @@ GitHub Pages 首页已升级为**交互式双语教学网站**（不依赖手册
 
 | 模块 | 说明 |
 |------|------|
-| **嵌入 / 解码** | 将 ASCII 字符串嵌入图像 LSB，解码还原；支持口令键控 |
+| **嵌入 / 解码** | 将 UTF-8 文本嵌入图像 LSB，解码还原；支持口令键控 |
 | **伴随式矩阵编码** | nsF5 + F5 / LSB 矩阵编码，二元汉明码 `[n=2^p-1, k, 3]`，块内至多改 1 系数 |
 | **湿纸编码** | nsF5 核心：预标记"减幅归零=湿"位置，在干位解 GF(2) 线性方程，无收缩 |
+| **JPEG 压缩域 (v1.9.0)** | 经 `src/jpegstego.py` 桥接姊妹项目 [yccstego](https://github.com/Yukinoshita-lin/yccstego)：在量化 DCT 系数上做教科书版 nsF5，CLI `--jpeg` / GUI 一键切换，输出标准 .jpg |
+| **实验档案与重跑 (v1.9.0)** | 每次嵌入可导出 JSON 档案（不含消息明文），`nsf5stego repro` 一键重跑校验：同版本下两域均逐字节复现，跨版本退回提取一致 |
+| **往返自检 (v1.9.0)** | GUI 一键做 嵌入→提取→比对 内存闭环，正确性当场可见，不只靠作者声称 |
 | **图像哈希键控** | 载入时计算 SHA-256；隐藏路径由"内容哈希+口令"唯一决定，解码端自同步并感知篡改 |
-| **盲隐写分析** | 卡方检验(Westfeld) + RS 分析(Fridrich)，输出 0–1 隐写倾向概率与判读 |
+| **盲隐写分析** | 卡方检验(Westfeld) + RS 分析(Fridrich)，输出 0–1 隐写倾向概率与判读；`--jpeg` 走 DCT 域 \|c\|=1 指纹 |
 | **ML 隐写分类器(双版本)** | 143d 稳健版(默认) + 53d 可解释版,详见下文"双版本部署策略" |
 | **绘图** | 绘制码族(嵌入率 α vs 载荷)理论曲线 与 实测嵌入效率对比 |
-| **GUI** | 载入图 → 嵌入/解码 → 分析 → 绘图 一体化界面 |
+| **GUI** | 载入图 → 选嵌入域 → 嵌入/解码 → 分析 → 自检/导出档案/绘图 一体化界面 |
 
 ## 学习手册
 
 项目提供**中英文双语学习手册**，从零基础开始，12 周快速入门；想深入可预留 6–12 个月（见手册附录 F 的完整路线）:
 
 - 🖥 网页版: [中文](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/intro.html) · [English](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/intro.html)
-- 🇨🇳 [`docs/学习手册-从零读懂nsF5隐写项目.pdf`](docs/学习手册-从零读懂nsF5隐写项目.pdf) — 中文版, 67 页
-- 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 76 pages
+- 🇨🇳 [`docs/学习手册-从零读懂nsF5隐写项目.pdf`](docs/学习手册-从零读懂nsF5隐写项目.pdf) — 中文版, 75 页
+- 🇬🇧 [`docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf`](docs/Learning-Handbook-From-Zero-to-nsF5-Steganography.pdf) — English, 84 pages
 - 📓 按章 Colab/Jupyter Notebook: 见 [`teaching/README.md`](teaching/README.md)
 - 🐳 Docker/JupyterLab 教学镜像: `docker compose up --build`
 
 **姊妹项目**：[`yccstego`](https://github.com/Yukinoshita-lin/yccstego)（`pip install yccstego`）——
 把 nsF5 搬到 JPEG 量化 DCT 系数（Y 通道）上的压缩域实现，含自写的 DCT/Huffman 编解码。
-它**不在本仓库内**（独立仓库与 PyPI 包），是第 11 章与附录 F 推荐的下一步方向；手册里
-提到它的地方都给出了地址。
+它仍是**独立仓库与独立发版的 PyPI 包**，但从 v1.9.0 起已接入本项目主线：
+`nsf5stego` 按 Python 版本自动声明对它的依赖（>=3.10），CLI 加 `--jpeg`、GUI 加"嵌入域"
+切换、分析加 DCT 指纹，桥接层在 [`src/jpegstego.py`](src/jpegstego.py)（依赖缺失时
+像素域功能完全不受影响）。手册第 11 章与附录 F 保留"进 yccstego 源码"的进阶路径。
 
-涵盖: 数字图像基础 → Python 入门 → LSB 隐写 → 卡方/RS 分析 → 汉明矩阵编码 → F5/nsF5 → 湿纸编码 → 哈希键控 → 机器学习基础 → v1/v2 特征工程 → SRM 滤波 → 143d/53d 双版本模型 → C++/GPU 加速 → 综合实验。每章配有"动手做"实验与"想一想"思考题, 适合本科毕设自学。
+涵盖: 数字图像基础 → Python 入门 → LSB 隐写 → 卡方/RS 分析 → 汉明矩阵编码 → F5/nsF5 → 湿纸编码 → 哈希键控 → 机器学习基础 → v1/v2 特征工程 → SRM 滤波 → 143d/53d 双版本模型 → C++/GPU 加速 → 综合实验。每章配有"动手做"实验与"想一想"思考题, 适合本科毕设自学。v1.9.0 起新增**第 1½ 章"JPEG 是什么, DCT 系数是什么"**——在进入 LSB 之前先看懂压缩域隐写的真正战场, 并直接调用已接入主线的 yccstego 动手做。
+
+## 同类工具与本项目定位
+
+这个领域**不是没有实践工具**, 而是资源分散、上手门槛高。诚实地列几个同类项目
+（非穷举; 链接只列长期稳定、我们核对过的, 其余请按名字检索, 以原仓库为准）:
+
+| 工具 | 语言 | 侧重 |
+|------|------|------|
+| [Aletheia](https://github.com/danielerch/aletheia) | Python | 图像隐写分析工具箱: 经典统计攻击 + 特征提取 + ML 检测, 命令行驱动 |
+| CONSEAL | C++ | 面向研究的隐写/隐写分析库, 高性能特征提取与嵌入模拟, 服务学术实验 |
+| DDE Lab tools | Java | 高校实验室公开的隐写/隐写分析研究工具集 |
+| [steghide](https://steghide.sourceforge.net/) / outguess | C/C++ | 经典通用隐写工具 (嵌入侧重, 自带压缩/加密), 与 nsF5 算法族不同支 |
+
+**本项目的定位不是替代它们**: 上述工具面向研究者做检测与攻击实验; 本项目做的是
+**interactive learning / visualization / reproducible experiments** —— 把 nsF5
+从像素到 DCT 系数端到端实现并配齐教学材料 (双语手册 / 按章 Notebook / 交互网站 /
+GUI 算法动画), 每一步实验可导出档案、一键重跑。想快速看清"算法正在发生什么",
+用本项目; 要做研究级的检测对比, 请用 Aletheia / CONSEAL 等成熟工具链。
 
 ### 模型双版本(2026-09-06)
 
@@ -344,7 +379,7 @@ pip install dist/nsf5stego-<版本>-py3-none-any.whl
 >
 > （2026-09-15 修正：此前 wheel 里没有模型文件，安装后 `available` 恒为 False。）
 
-### 命令行界面（1.8.0 起）
+### 命令行界面（1.8.0 起；1.9.0 增 JPEG 域与实验重跑）
 
 安装后除 GUI 外还有一条与 GUI 参数一一对应的命令行（服务器 / 脚本 / 批量
 场景不再需要自己拼 `ns5_core` 调用）：
@@ -352,9 +387,19 @@ pip install dist/nsf5stego-<版本>-py3-none-any.whl
 ```bash
 nsf5stego embed cover.png -m "秘密文本" -p 口令 -o stego.png
 cat msg.txt | nsf5stego embed cover.png            # 文本也可从 stdin 传入
-nsf5stego extract stego.png -p 口令                # 方法/p/口令 须与嵌入一致
+nsf5stego extract stego.png -p 口令                # 域/方法/p/口令 须与嵌入一致
 nsf5stego analyze stego.png --sensitivity 宽松 --json   # 盲分析, --json 供脚本解析
 nsf5stego analyze *.png                            # 批量: 逐图一行汇总
+
+# JPEG 压缩域 (v1.9.0): 在量化 DCT 系数上嵌入, 输出标准 .jpg
+nsf5stego embed cover.png --jpeg -m "秘密" --quality 85
+nsf5stego extract cover_stego.jpg --jpeg -p 口令   # 嵌入用了 --jpeg, 解码也必须加
+nsf5stego analyze cover_stego.jpg --jpeg           # DCT 域 |c|=1 指纹分析
+
+# 实验档案与一键重跑 (v1.9.0)
+nsf5stego embed cover.png -m "秘密" --json > experiment_20261003.json
+nsf5stego repro experiment_20261003.json -m "秘密" # 重跑并逐项校验, 通过/失败逐条打印
+
 nsf5stego gui                                      # 图形界面（与 python src/gui.py 相同）
 ```
 
@@ -366,7 +411,14 @@ nsf5stego gui                                      # 图形界面（与 python s
   `image` 键）；批量里某张图读不出来会记为 `error` 条目继续跑完，整体以
   非零码退出。通配符（如 `*.png`）由 CLI 自己展开 —— Windows 的 shell 不
   展开，这条示例在三大平台都能直接用。单图行为与 1.8.0 初版完全兼容。
-- 默认输出 `<原名>_stego.png`；目标文件已存在时会在 stderr 明示覆盖。
+- **JPEG 域语义（1.9.0）**：嵌入/解码/分析三个子命令都认 `--jpeg`。载荷住在
+  JPEG 位流的量化系数里，所以含密图必须原样保存/传输（重编码即毁）；`--quality`
+  只在嵌入时有效。依赖 `yccstego`（Python>=3.10 自动随装；缺失时报错并给安装提示）。
+- **实验档案（1.9.0）**：`embed --json` 输出的档案只含参数/哈希/统计，**不含消息
+  明文与口令**（只有"是否用了口令"）；`repro` 重跑时封面哈希、提取一致、改动数
+  逐项校验 —— 两域在 yccstego 版本一致时均逐字节复现（0.2.0 起湿纸求解种子由输入派生）；
+  版本不同自动退回"提取一致"，改动数降为参考值并如实标注。
+- 默认输出 `<原名>_stego.png`（`--jpeg` 时为 `.jpg`）；目标文件已存在时会在 stderr 明示覆盖。
 - 源码运行的等价形式：`python src/cli.py <子命令> ...`。
 - **GUI 产物目录**：源码运行写 `仓库/output/`；`pip install` 安装后 GUI/效率图
   自动改写**当前工作目录**的 `output/`（不会写进 site-packages 或解释器目录）。
@@ -389,13 +441,18 @@ make coverage              # 同上 + 覆盖率报告（门槛 65%，当前约 6
 
 1. 点击 **载入原始图 / 含密图** 选择 8bit 图像（或点 **演示图** 一键生成测试封面）。
 2. 在文本框输入待嵌入的 **文本**（UTF-8，支持中英文）。
-3. 在 **参数** 区选择 **算法**（`nsF5` 或 `matrix`）、**参数 p**（块比特数，越大效率越高）、可选 **口令**。
-4. 点击 **嵌入并保存**（Ctrl+E）→ 生成 `output/stego_*.png`，右侧预览含密图。
-5. 点击 **解码提取**（Ctrl+D）→ 从含密图还原字符串（须与嵌入使用相同 算法/p/口令）。
-6. 点击 **分析**（Ctrl+A）→ 「分析结果」页签显示 SHA256、卡方统计、RS 缺口、估计嵌入率、隐写概率与 ML 判定；过程细节在「运行日志」页签。
+3. 在 **参数** 区选择 **嵌入域**（v1.9.0：`像素域` 改像素 LSB，`JPEG 域` 改量化 DCT 系数并输出 .jpg）、
+   **算法**（仅像素域：`nsF5` 或 `matrix`）、**参数 p**（块比特数，越大效率越高）、可选 **口令**（JPEG 域还有**质量** 1–100）。
+4. 点击 **嵌入并保存**（Ctrl+E）→ 生成 `output/stego_*.png`（JPEG 域为 `.jpg`），右侧预览含密图。
+5. 点击 **解码提取**（Ctrl+D）→ 从含密图还原字符串（须与嵌入使用相同 域/算法/p/口令）。
+6. 点击 **分析**（Ctrl+A）→ 「分析结果」页签显示 SHA256、卡方统计、RS 缺口、估计嵌入率、隐写概率与 ML 判定（JPEG 域改显 |c|=1 指纹与 DCT 域判定）；过程细节在「运行日志」页签。
 7. 辅助工具：**生成效率图**（理论 vs 实测效率对比）、**编码演示**（伴随式校验动画）、**载荷扫描**（检测能力随载荷变化曲线）。
+8. 自证与可复现（v1.9.0）：**往返自检**对当前图+当前参数做 嵌入→提取→比对 的内存闭环，
+   正确性当场可见；**导出实验记录**把最近一次嵌入存为 JSON 档案（不含消息明文），
+   命令行 `nsf5stego repro <档案> -m 原文` 一键重跑校验。
 
-> 解码与嵌入参数（方法/p/口令）必须一致；口令或图像内容不匹配将无法正确解码。
+> 解码与嵌入参数（域/方法/p/口令）必须一致；口令或图像内容不匹配将无法正确解码。
+> JPEG 域的含密图请原样保存传输——用其它工具重新另存一次（重编码）会毁掉载荷。
 
 ---
 
@@ -416,6 +473,8 @@ nsf5-steganography/
 ├── scripts/                 # 数据集下载、网页资源生成等脚本
 ├── src/
 │   ├── ns5_core.py          # nsF5 核心：汉明码、湿纸、哈希键控、嵌入/解码
+│   ├── jpegstego.py         # JPEG 压缩域桥接 (v1.9.0): 统一包装 yccstego
+│   ├── experiment.py        # 实验档案 schema 与 repro 重跑校验 (v1.9.0)
 │   ├── cppembed.py          # C++ 嵌入封装（含纯 Python 回退）
 │   ├── py_features.py       # 纯 Python 11 维特征（跨平台）
 │   ├── featurize_v2.py      # v2 143 维特征
@@ -955,6 +1014,29 @@ py src/train_model.py                                     # 合并两源训练(�
 
 ---
 
+## 正确性验证体系（v1.9.0 起成文）
+
+"作者的 nsF5 实现是正确的"这句话不值得相信,**可检验的过程**才值得。本项目把
+正确性做成系统, 分四层, 全部进 CI (`ci.yml`), 任何人 push 一个提交都会重新跑一遍:
+
+1. **往返正确性** (unit 层): 嵌入→提取→比对 的闭环用例覆盖 UTF-8 往返、口令
+   错误、容量超限、GF(2) 求解、篡改感知等 (`src/test_core.py` 等); JPEG 压缩域
+   同样有往返 / 口令 / 容量 / 截断用例 (`src/test_jpeg.py`, 经桥接层真跑 yccstego)。
+2. **随机化与对抗**: 干净图不得误判 (`test_false_positive.py`)、退化图必须存活
+   (`test_pipeline.py`)、CLI 走**真实子进程**验证退出码与中文报错
+   (`test_cli.py` / `test_cli_jpeg.py`)。
+3. **产物可复现**: 冻结 exe 对源码结果**逐位一致** (`scripts/test_frozen.py`);
+   权威结果表与实验数据有溯源契约 (`docs/RESULTS.md` + `test_results_contract.py`);
+   每次嵌入可导出 JSON 实验档案, `nsf5stego repro` 按域选择校验强度 —— 像素域
+   同 yccstego 版本下逐字节复现, 跨版本退回"提取一致"(见 `src/experiment.py`)。
+4. **教学材料不腐烂**: 手册里的事实与数字由 `handbook_facts.py --check` 钉住,
+   手册代码片段由 `verify_handbook_experiments.py` **真的执行**, Notebook 由 CI
+   逐本运行。
+
+当前规模: **115+ 个 pytest 用例** (还在增长), 覆盖率门槛 65% (CI 强制),
+GUI 测试在 xvfb 下真实起窗, 浏览器端另有 Playwright + axe 无障碍审计。
+本地一键复验: `make pytest` 或 `python -m pytest -q`。
+
 ## 持续集成 & 发版
 
 - **CI**（`.github/workflows/ci.yml`）：任何对 `main` 的推送 / PR 都会自动运行
@@ -974,7 +1056,26 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.8.4 (当前) — GUI 操作台升级与品牌图标**
+- **v1.9.0 (当前) — yccstego 接入教学主线 + 可复现性与自证系统**
+  - **JPEG 压缩域全面接入**: 新增 `src/jpegstego.py` 桥接姊妹项目 yccstego
+    (按 Python>=3.10 自动声明的 PyPI 依赖), CLI embed/extract/analyze 全部支持
+    `--jpeg` / `--quality`, GUI 参数区新增"嵌入域"切换 (JPEG 域固定 nsF5 语义,
+    输出标准 .jpg, 含密图原样字节保存); 分析在 JPEG 域走 |c|=1 系数指纹。
+  - **实验档案与一键重跑**: 每次嵌入生成结构化 JSON 档案 (experiment.py,
+    schema `nsf5stego.experiment/1`; 只记参数/哈希/统计, 消息明文与口令不落盘);
+    CLI `embed --json` 直接输出, `nsf5stego repro <档案> -m 原文` 重跑并逐项
+    校验 —— 档案记录 yccstego 版本, 同版本两域均逐字节复现, 跨版本退回"提取一致";
+    GUI「导出实验记录」按钮。
+  - **往返自检按钮**: GUI 一键对当前图+当前参数做 嵌入→提取→比对 的内存闭环,
+    算法正确性当场可见; README 新增"正确性验证体系"与"同类工具与本项目定位"
+    (Aletheia / CONSEAL / DDE Lab tools 等, 写明本项目定位是交互教学与可复现
+    实验, 不替代研究工具链)。
+  - **手册新增第 1½ 章 "JPEG 是什么, DCT 系数是什么"**: 在进入 LSB 之前先建立
+    压缩域直觉, 代码片段走已接入主线的桥接层; webapp 新增 8×8 DCT 量化系数
+    实验室 (+3→+2 减幅高亮, 与汉明演示同风格的 canvas 交互)。
+  - 测试 96 → 115+ (新增 test_jpeg / test_experiment / test_cli_jpeg),
+    CI pytest 作业补装 yccstego, PyInstaller spec 补 hiddenimports。
+- **v1.8.4 — GUI 操作台升级与品牌图标**
   - 操作台按工作流重排(输入/参数/执行三段 + 通栏分隔线), 分析结果与运行日志
     收进右栏页签, 进度条仅忙时显示; 主流程三键加粗并带快捷键 tooltip;
     跨平台字型(Win=YaHei UI / macOS=PingFang SC / Linux=Noto CJK);

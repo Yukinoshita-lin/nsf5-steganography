@@ -42,7 +42,7 @@ def configure(lang: str, out_dir: str) -> None:
     BUILD = os.path.join(ROOT, "_pdf_build", LANG)
     PDF_OUT = os.path.join(os.path.abspath(out_dir), PDF_NAME[LANG])
 
-TOC_ORDER = ["intro", "ch01", "ch02", "ch03", "ch04", "ch05", "ch06",
+TOC_ORDER = ["intro", "ch01", "ch01b", "ch02", "ch03", "ch04", "ch05", "ch06",
              "ch07", "ch08", "ch09", "ch10", "ch11",
              "appA", "appB", "appC", "appD", "appE", "appF", "appG"]
 

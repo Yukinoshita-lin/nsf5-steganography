@@ -37,7 +37,12 @@ for _pat in ("cpp/nsf5embed.dll", "cpp/fsfeatures.dll",
     for _p in glob.glob(os.path.join(SPECPATH, _pat)):
         datas.append((os.path.relpath(_p, SPECPATH), "cpp"))
 
-hiddenimports = ["gui", "ml_predict", "joblib", "pandas", "sklearn"]
+hiddenimports = ["gui", "ml_predict", "joblib", "pandas", "sklearn",
+                 # jpegstego/experiment 与 yccstego.* 是函数内惰性导入, 静态分析看不见
+                 "jpegstego", "experiment",
+                 "yccstego", "yccstego.api", "yccstego.jpeg_codec",
+                 "yccstego.nsf5", "yccstego.dct", "yccstego.huffman",
+                 "yccstego.color", "yccstego.steganalysis"]
 binaries = []
 _lgb_datas, _lgb_binaries, _lgb_hidden = collect_all("lightgbm")
 datas += _lgb_datas

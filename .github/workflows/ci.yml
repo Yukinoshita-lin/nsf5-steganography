@@ -51,10 +51,12 @@ jobs:
       - name: 安装依赖
         run: |
           python -m pip install --upgrade pip
+          # yccstego: JPEG 压缩域桥接 (jpegstego.py) 的测试必须在 CI 真跑,
+          # 不允许"本地装了所以一直绿" —— 与 GUI 测试同一纪律。
           # lightgbm 是必需的: 随仓库分发的两个部署模型就是 LGBMClassifier,
           # 缺它 ml_predict 会静默退回 available=False。
           python -m pip install numpy pillow matplotlib joblib \
-            scikit-learn pandas lightgbm xgboost pytest pytest-cov
+            scikit-learn pandas lightgbm xgboost pytest pytest-cov yccstego
       - name: 安装虚拟显示 (xvfb)
         # 覆盖率必须和"有显示"的环境可比: gui.py 有 670 行, 没有显示时
         # test_gui_smoke 会跳过, 覆盖率会从 ~69% 掉到 ~51% —— 那样 65% 门槛
@@ -153,7 +155,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install python-docx pypdf numpy pillow matplotlib \
-            scikit-learn joblib pandas lightgbm
+            scikit-learn joblib pandas lightgbm yccstego
       - name: 手册不得含陈旧结论, 且必须含现口径
         run: python teaching/handbook_facts.py --check
       # 手册里的 python 片段必须真的能跑 (2026-09-14 首跑就抓到 3 处示例直接抛异常)
