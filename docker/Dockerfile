@@ -29,6 +29,11 @@ COPY models ./models
 
 ENV PYTHONPATH=/workspace/src
 
+# 可选: 网络受限环境用 --build-arg PIP_INDEX_URL=<镜像站> 切换 PyPI 源
+# (例: https://pypi.tuna.tsinghua.edu.cn/simple); 默认官方源, 无需改动。
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ENV PIP_INDEX_URL=${PIP_INDEX_URL}
+
 RUN pip install --no-cache-dir \
         numpy pillow matplotlib scikit-learn joblib pandas lightgbm \
         jupyterlab nbformat \

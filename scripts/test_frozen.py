@@ -52,8 +52,13 @@ def _version() -> str:
 
 
 def _run(args, timeout=180):
+    # 显式强制子进程 UTF-8 输出: runner 是 en-US, 冻结 exe 若没进 UTF-8 模式,
+    # 中文会以 cp1252 的 "?" 落进管道, 中文断言 (如 "重跑通过") 必假阴性
+    # (v1.9.0 tag 首跑实测)。与 test_cli.py 的做法一致。
+    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
     return subprocess.run(args, capture_output=True, text=True,
-                          encoding="utf-8", errors="replace", timeout=timeout)
+                          encoding="utf-8", errors="replace", timeout=timeout,
+                          env=env)
 
 
 def _test_image(path):
@@ -150,8 +155,11 @@ def test_jpeg_roundtrip_and_repro():
         print("[OK] 冻结 JPEG 域 embed -> extract 往返一致")
 
         r = _run([EXE_CLI, "repro", rec, "-m", msg])
-        assert r.returncode == 0, f"冻结 repro 失败: {(r.stderr or r.stdout)[:300]}"
-        assert "重跑通过" in (r.stdout or ""), "冻结 repro 未打印通过结论"
+        assert r.returncode == 0, ("冻结 repro 失败: "
+                                   f"{(r.stderr or r.stdout)[:300]}")
+        assert "重跑通过" in (r.stdout or ""), (
+            "冻结 repro 未打印通过结论; repro 输出:\n"
+            + (r.stdout or "")[:400] + "\nstderr: " + (r.stderr or "")[:300])
         print("[OK] 冻结实验档案 repro 通过 (往返契约)")
     finally:
         shutil.rmtree(d, ignore_errors=True)
