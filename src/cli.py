@@ -570,6 +570,27 @@ def build_parser() -> argparse.ArgumentParser:
     return ap
 
 
+def _force_utf8_stdio() -> None:
+    """把 stdout/stderr 的编码钉死为 UTF-8 (管道 / 重定向场景)。
+
+    2026-10-03 实测: 冻结 (PyInstaller) 出来的 `nsf5stego.exe` 在中文 Windows
+    上把中文按 **GBK** 写进管道 —— 不管父进程传 PYTHONUTF8 / PYTHONIOENCODING
+    都没有用 (C 层的 UTF-8 模式在冻结引导阶段就不是解释器说了算的): 同一个
+    exe 里 `重跑通过` 出来是 b'\\xd6\\xd8\\xc5\\xdc\\xcd\\xa8\\xb9\\xfd'。
+    后果不只是 CI 断言假阴性: 用户把输出重定向到文件, 或者被别的程序按 UTF-8
+    读取 (本工具 --json 的输出契约就是 UTF-8) 时, 中文直接变成乱码。
+
+    reconfigure 只改**非交互式** (管道/文件) 流; 真控制台上 Windows 的
+    WinConsoleIO 本来就是 Unicode 输出, 不会被这里影响。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+
 def main(argv=None) -> int:
     # 打印任意 UTF-8 解码结果时, cp936 等窄编码控制台不应崩溃
     for stream in (sys.stdout, sys.stderr):
@@ -578,6 +599,7 @@ def main(argv=None) -> int:
                 stream.reconfigure(errors="replace")
             except Exception:
                 pass
+    _force_utf8_stdio()
     args = build_parser().parse_args(argv)
     return args.func(args)
 

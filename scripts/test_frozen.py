@@ -51,14 +51,38 @@ def _version() -> str:
     return read_version()
 
 
-def _run(args, timeout=180):
-    # 显式强制子进程 UTF-8 输出: runner 是 en-US, 冻结 exe 若没进 UTF-8 模式,
-    # 中文会以 cp1252 的 "?" 落进管道, 中文断言 (如 "重跑通过") 必假阴性
-    # (v1.9.0 tag 首跑实测)。与 test_cli.py 的做法一致。
-    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+def _run(args, timeout=180, with_utf8_env=True):
+    """跑冻结 exe; with_utf8_env=False 时完全不动 PYTHON* 变量 (用户视角)。
+
+    2026-10-03 实测: 冻结 exe 在中文 Windows 上把中文按 **GBK** 写进管道,
+    父进程传 PYTHONUTF8 / PYTHONIOENCODING 都无效 (C 层 UTF-8 模式在冻结引导
+    阶段就定了)。所以 CLI 侧显式把 stdio 钉成 UTF-8 (cli._force_utf8_stdio),
+    这里默认仍给 UTF-8 环境变量做双保险。
+    """
+    env = dict(os.environ)
+    if with_utf8_env:
+        env.update(PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
     return subprocess.run(args, capture_output=True, text=True,
                           encoding="utf-8", errors="replace", timeout=timeout,
                           env=env)
+
+
+def _raw(args, timeout=180):
+    """按字节拿 stdio 的编码事实; 刻意**不加**任何 PYTHON* 环境变量 ——
+    要塞就是塞"父进程说了不算"这条: 用户双击/管道运行时没有这些变量。"""
+    return subprocess.run(args, capture_output=True, timeout=timeout,
+                          env=dict(os.environ))
+
+
+def _decode_host(raw: bytes) -> str:
+    """按**宿主首选编码**解出"用户实际看到的东西"。
+
+    这是证明"冻结 exe 真的写了 UTF-8"的唯一办法: 用 text=True 让 Python 自己
+    解码时, 不管 exe 写的是 UTF-8 还是 GBK 都可能"解出来" (errors='replace'
+    兜底), 中文断言会假绿。必须自己按宿主编码解: UTF-8 字节在 cp1252/GBK 下
+    会露馅成 '?' 或乱码。"""
+    import locale
+    return raw.decode(locale.getpreferredencoding(False), errors="replace")
 
 
 def _test_image(path):
@@ -165,6 +189,44 @@ def test_jpeg_roundtrip_and_repro():
         shutil.rmtree(d, ignore_errors=True)
 
 
+def test_frozen_stdout_is_really_utf8():
+    """冻结 exe 的中文 stdout 必须是**字节级 UTF-8** (不能靠父进程喂环境变量)。
+
+    为什么单列一条: v1.9.0 的 repro 断言在 tag 首跑失败的真实原因就是这个 ——
+    冻结 exe 在中文 Windows 上按 GBK 写管道, 于是
+    `"重跑通过" in stdout` 取决于断言侧怎么解码, 时绿时红。更严重的是用户把
+    输出重定向/管道给别的程序 (本工具 --json 的契约就是 UTF-8) 时中文直接乱码。
+
+    所以这里绕开 text=True 的自动解码, 直接看字节:
+      * b"\\xe9\\x87\\x8d..." (UTF-8) 必须在;
+      * 宿主首选编码 (cp1252 / GBK) 解出来的文本里 "重跑通过" 也必须在 ——
+        这一条正是"用户看到的东西"是否可读的判据。
+    """
+    d = tempfile.mkdtemp(prefix="nsf5_frozen_utf8_")
+    try:
+        cover = _test_image(os.path.join(d, "cover.png"))
+        msg = "冻结编码探针"
+        rec = os.path.join(d, "exp.json")
+        r = _run([EXE_CLI, "embed", cover, "--jpeg", "-m", msg, "--json"])
+        assert r.returncode == 0, f"冻结 --jpeg embed 失败: {(r.stderr or r.stdout)[:200]}"
+        with open(rec, "w", encoding="utf-8") as f:
+            f.write(r.stdout)
+
+        raw = _raw([EXE_CLI, "repro", rec, "-m", msg])
+        assert raw.returncode == 0, f"冻结 repro 失败: {raw.stderr[:300]!r}"
+        want = "重跑通过".encode("utf-8")
+        assert want in raw.stdout, (
+            "冻结 repro 的 stdout 不是 UTF-8 字节 (父进程 PYTHONUTF8 救不了它); "
+            "stdout 尾部字节: " + repr(raw.stdout[-80:]))
+        host_text = _decode_host(raw.stdout)
+        assert "重跑通过" in host_text, (
+            "宿主首选编码下读不出中文 (用户看到的会是乱码): "
+            + repr(host_text[-120:]))
+        print("[OK] 冻结 stdout 是字节级 UTF-8: " + repr(host_text.strip()[-40:]))
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
 def _find_window(u32, pid: int, title: str):
     """先按标题找窗口; 找不到再按进程 ID 兜底 (CI 上比标题匹配更稳)。"""
     hwnd = u32.FindWindowW(None, title)
@@ -250,6 +312,7 @@ def main() -> int:
     failures = 0
     for fn in (test_size_budget, test_version,
                test_roundtrip_and_analyze, test_jpeg_roundtrip_and_repro,
+               test_frozen_stdout_is_really_utf8,
                test_gui_launch_and_theme):
         try:
             fn()
