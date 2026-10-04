@@ -5,48 +5,54 @@
 
 
 
-> **Try it |** Section 0.3 in the intro is the **12-week "get started"** compressed route; this section is the **6-12 month "understand and produce results"** deep route. It is for people who want to truly absorb digital image processing, information hiding, and machine learning, and do research/engineering. **Both routes use the same content; only the time allocation differs.**
+> **Try it |** What Introduction 0.3 gives you is the compressed **12-week "get started"** route; this appendix gives the **6-12 month "truly understand it and produce results"** route. It is for readers who want to genuinely master the three pillars - digital image processing, information hiding, and machine learning - and go on to do real research or engineering work. **Both routes use exactly the same content; only the time allocation differs.**
 
-![Fig. F-1 roadmap](../assets/roadmap.png)
+![fig-16](../assets/img116.png)
 
-*Fig. F-1 (6-12 month Gantt: x-axis = month, y-axis = topic, color = field; dashed lines split it into Foundation (1-3) / Intermediate (4-6) / Advanced (7-9) / Project (10-12))*
+Figure F-1 (the 6-12 month Gantt chart: x-axis = month, y-axis = topic, color = field; dashed lines split the journey into four stages - Foundations (months 1-3) / Advancing (4-6) / Deepening (7-9) / Capstone (10-12))
 
-## F.1 Four Phases: Goals and Deliverables of Each
+## F.1 The four stages: goals and deliverables
 
-| Phase | Months | Goal | Main content | What you can do at the end |
+| Stage | Months | Goal | Main content | What you can do when the stage ends |
 | --- | --- | --- | --- | --- |
-| Foundation | 1-3 | Solidify the "groundwork" of all three fields | ch01 digital images & binary, ch02 Python toolchain, ch03 LSB hiding & blind analysis, ch04 matrix embedding & F5, ch05 nsF5 wet paper, ch06 hash keying | Independently "hide a sentence -> catch it with chi-square/RS"; hand-compute a p=3 Hamming embedding; explain wet-paper decoding |
-| Intermediate | 4-6 | Enter machine learning; build the "features->model->evaluation" frame | ch07 ML foundations, ch08 ML steganalysis (11-D -> 143-D -> dual models) | Explain overfitting/data leakage/GroupKFold/AUC; read and reproduce the v1 11-D training pipeline |
-| Advanced | 7-9 | Absorb the engineering and the "why designed this way" | ch08.8 SRM and 143d/53d strategy, ch09 engineering (C++ / GPU / GUI / multi-source data) | Read SRM filtering and 143-D features; understand same-source vs cross-source differences; run GPU batch features and self-checks |
-| Project | 10-12 | Do one complete work of "your own" | ch10 capstone, ch11 report; plus one research or engineering track | Complete a reproducible improvement experiment with an **honest** result analysis; present without notes |
+| Foundations | 1-3 | Solidify the foundations of all three fields | ch01 digital images and binary, ch02 the Python toolchain, ch03 LSB steganography and blind analysis, ch04 matrix embedding and F5, ch05 nsF5 wet-paper codes, ch06 hash keying | Hide a sentence independently and catch it with chi-square/RS; work out a p=3 Hamming embedding by hand; explain wet-paper decoding clearly |
+| Advancing | 4-6 | Enter machine learning; build the feature→model→evaluation framework | ch07 machine learning foundations, ch08 ML steganalysis (11-d → 143-d → dual versions) | Explain overfitting / data leakage / GroupKFold / AUC clearly; read and reproduce the v1 11-d training pipeline |
+| Deepening | 7-9 | Master the engineering and the "why behind every design choice" | ch08.8 SRM and the 143d/53d strategy, ch09 engineering (C++ / GPU / GUI / multi-source data) | Read SRM filtering and the 143-d features; understand why same-source and cross-source gains differ; run GPU batch featurization with self-checks |
+| Capstone | 10-12 | Produce a complete piece of work that is genuinely "your own" | ch10 capstone project, ch11 reporting; then pick one research or engineering thread to go deep on | Complete a reproducible improvement experiment with an **honest** analysis of the results; defend it without slides |
 
-> **Tip |** "Foundation" is almost identical to the 12-week route, just spending more time thinking through every **why** (especially Chapter 3's statistical detection and Chapter 5's wet paper). The real difference is in "Advanced" and "Project".
+> **Tip |** The "Foundations" stage is nearly identical to the 12-week route - you just spend more time each week thinking through every **why** (especially the statistical detection in ch03 and wet-paper codes in ch05). The real gap opens up in "Deepening" and "Capstone".
 
-## F.2 Four Tracks: Taking "Broad, Complete, Practical" through
+## F.2 Four main threads: how to cover breadth, completeness, and practice
 
-To produce results, do not spread evenly. Go deep on one track; keep the rest at "understands it" level:
+To produce results, do not spread your effort evenly. Pick one thread to dig into; for the others, "able to follow along" is enough:
 
-| Track | Focus | Deep-dive references |
+| Thread | Focus | Where to go deeper |
 | --- | --- | --- |
-| Algorithm | nsF5/F5, matrix embedding, wet paper, syndrome | ch04-05, project `ns5_core.py`; extend to JPEG domain & DCT coefficients |
-| Detection / ML | feature engineering, SRM, 143d/53d, OOD | ch08, `featurize_v2.py`, `train_model.py`; extend to modern high-dim features & deep steganalysis |
-| Engineering | C++ DLL, GPU batch, GUI, multi-source datasets, CI | ch09, `cppembed.py`, `gpu/*`, `.github/workflows`; extend to deployment & robustness |
-| Research | reproduce papers -> find a gap -> improve -> honest evaluation | literature (appE) and `docs/RESULTS.md`; emphasize the split/calibration/test discipline (ch07) |
+| Algorithm thread | nsF5/F5, matrix embedding, wet-paper codes, syndromes | ch04-05 and `ns5_core.py` in the project; outward to JPEG-domain and DCT-coefficient steganography |
+| Detection / ML thread | Feature engineering, SRM, 143d/53d, OOD | ch08, `featurize_v2.py`, `train_model.py`; outward to modern high-dimensional features and deep-learning steganalysis |
+| Engineering thread | C++ DLL, GPU batching, GUI, multi-source datasets, CI | ch09, `cppembed.py`, `gpu/*`, `.github/workflows`; outward to deployment and robustness |
+| Research thread | Reproduce a paper → find a gap → improve → evaluate honestly | The literature (Appendix E) and `docs/RESULTS.md`; emphasize split/calibration/test rigor (ch07) |
 
-## F.3 Optional "Go Further" Topics (pick 1-2 by track)
+## F.3 Optional stretch topics (pick 1-2 per thread)
 
-- **JPEG-domain hiding**: move ch04-05 to quantized DCT coefficients (the companion project [yccstego](https://github.com/Yukinoshita-lin/yccstego) is this direction); feel "spatial vs transform domain" difference;
-- **Deep steganalysis**: under small-sample constraints, use explainable features first to verify the signal, then cautiously introduce deep models (the ch08.1 lesson);
-- **Domain adaptation / cross-source robustness**: In the v1-era protocol SRM gains on same-source but loses on cross-source (ch08.8.1; not reproduced in the current revision); study how adaptation makes features stable across cameras/compression;
-- **Adversarial robustness and false-positive control**: study "loose vs strict" thresholds and Youden / low-FP trade-offs (ch07), and the physical ceiling of undetectable embedding;
-- **Explainability**: 143d robust vs 53d interpretable (ch08.8.4); study which features truly contribute the gain and how to explain per-dimension.
+- **JPEG-domain steganography**: port the ch04-05 ideas to quantized DCT coefficients (the sister project `yccstego` (https://github.com/Yukinoshita-lin/yccstego) is exactly this direction) and feel the difference between "spatial domain vs transform domain";
 
-> **Back to the code |** Land any of the above on code: first reproduce the baseline, then make a small change, and use `GroupKFold` for an honest comparison. **"Changed A, result got better" is not enough; prove it truly got better using the train/calibration/test three-layer structure + grouped split.** (ch07, ch08 stress this repeatedly.)
+- **Deep-learning steganalysis**: under small-sample constraints, how to validate a signal with interpretable features first and only then carefully introduce deep models (the lesson of ch08.1);
 
-## F.4 Relation to the 12-Week Route (0.3)
+- **Domain adaptation / cross-source robustness**: with the v1 protocol, SRM preprocessing helped within the same source but hurt across sources (ch08.8.1; that result was not reproduced in the current version) - study how domain adaptation can make features robust across cameras/compression sources;
 
-- **Want to get started quickly**: follow 0.3; in 12 weeks, tick off Appendix C;
-- **Want to go deep and produce results**: follow this section; over 6-12 months, **slow down, deepen, and connect** the 0.3 weekly tasks, and add the parts of the 0.5 project map that are only truly needed for research (SRM, multi-source, GPU, dual models, OOD validation) in the "Advanced/Project" phases.
-- **Common bottom line for both**: never skip the "hands-on experiments", and never skip "honest evaluation". The most important thing this handbook wants to teach is not a single algorithm but **"how to tell whether an experimental conclusion is trustworthy"**.
+- **Adversarial robustness and false-positive control**: study the trade-off between "loose vs strict" thresholds and Youden / low-FP operating points (ch07), plus the physical ceiling of undetectable embedding;
 
-> **Think about it |** Which track do you plan to take? How long is your cycle? (12 weeks vs 6-12 months means you spend time on "width" or "depth".) Write it down as your personal goal for this book.
+- **Interpretability**: 143d is robust while 53d is interpretable (ch08.8.4) - study which features truly contribute the gain and how to explain them dimension by dimension.
+
+> **Read the code |** Land any of the topics above in code: reproduce the baseline first, make a small change, and use `GroupKFold` to produce an honest comparison. **"I changed A and the number went up" convinces nobody - a train/calibration/test three-layer structure with grouped splits is what proves it really went up.** (ch07 and ch08 keep hammering this point.)
+
+## F.4 How this relates to Introduction 0.3 (the 12-week route)
+
+- **Want to get started fast**: follow 0.3, run the 12 weeks once, and work through the checklist in Appendix C;
+
+- **Want to go deep and produce results**: follow this appendix, 6-12 months, taking 0.3's weekly tasks **slower, deeper, and better connected**, and during "Deepening/Capstone" add the parts of the 0.5 project map that only matter for research (SRM, multi-source data, GPU, dual model versions, OOD validation);
+
+- The **shared bottom line** of both routes: never skip the hands-on experiments, and never skip honest evaluation. What this handbook most wants to teach you is not an algorithm but **"how to judge whether an experimental conclusion can be trusted"**.
+
+> **Think about it |** Which thread will you pick, and over what time frame? (12 weeks vs 6-12 months means spending your time on "breadth" or "depth".) Write it down - it is the personal goal for your journey through this book.

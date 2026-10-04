@@ -1,5 +1,10 @@
 # 附录 J · 章末练习提示与答案
 
+<!-- lang-switch -->
+> [🌐 English version](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/appJ.html)
+
+
+
 本附录只给“提示 + 关键数字”，完整推理请先自己做——对过答案才算练过。题号与各章章末练习对应。
 
 ## J.1 第 1 章

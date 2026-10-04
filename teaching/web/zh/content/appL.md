@@ -1,5 +1,10 @@
 # 附录 L · 配套工具 ImageMatrix 使用指南
 
+<!-- lang-switch -->
+> [🌐 English version](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/appL.html)
+
+
+
 本附录是第 1 章配套工具 ImageMatrix 的完整说明。它是同作者发布的独立开源项目（github.com/Yukinoshita-lin/ImageMatrix，Apache-2.0 许可），与本手册学习的 nsF5 项目**没有任何依赖关系，也不含隐写功能**；它唯一的用途，是把“图像 = 数字矩阵”这件事从抽象变成你屏幕上看得见、改得动的东西。
 
 ## L.1 它是什么，为什么配它
@@ -28,7 +33,7 @@
 
 ## L.3 界面与核心操作
 
-![fig-91](../assets/img091.png)
+![fig-92](../assets/img092.png)
 
 ImageMatrix 主界面。上方一排是“打开图片 / 导出为 TXT / 导入 TXT / 另存为图片”，以及“矩阵格式”下拉框与“写注释头”开关；中间画布支持滚轮缩放与拖动平移。第一次没有素材时，点“生成测试图案”即可得到一张彩条 + 灰阶 + 渐变的测试图。（截图来自 ImageMatrix 仓库）
 

@@ -110,9 +110,11 @@ FORBIDDEN = {
         # 同上: 原文是 "(log-log axes, thesis figure)", 只禁 "(thesis figure"
         # 拦不住。注意不能用裸 "thesis" —— 它会命中 "hypothesis"。
         "thesis figure", "project thesis", "thesis/thesis1.pdf", "thesis/data/",
-        "263",                 # 同上: 加速比算错了 (见 experiments/data/bench_permute.csv)
-        "0.9085", "0.9227", "0.9100", "0.8946",
-        "85.3%", "87.2%", "1/8 FP", "3/8 FP", "1/8 OOD FP",
+        "263x",                # 2026-10-05 起按 "263x" 禁: en 正式章节的满容量
+                               # 效率表带 "8 263"(千位空格), 裸 "263" 会误伤; 加速比
+                               # 断言的历史措辞是 "~263x"
+        "0.9085", "0.9227", "0.9100",
+        "87.2%", "1/8 FP", "3/8 FP", "1/8 OOD FP",
         "0.50-0.52", "~73% of the gain",
         "independent photo_ids (fully disjoint",
         "SRM helps only within the same source domain",
@@ -130,11 +132,16 @@ FORBIDDEN = {
 #      否则按陈旧结论报错。窗口匹配在去空白后的文本上做, 免得 PDF 抽取把
 #      "事故"拆成"事 故"绕过校验。
 # --------------------------------------------------------------------------
-INCIDENT_ALLOW_RADIUS = 60
+INCIDENT_ALLOW_RADIUS = {"zh": 60, "en": 90}   # en 句子更长, 窗口放宽
 INCIDENT_ALLOW = {
     "zh": [
         ("0.8946", ("0.7555", "虚高", "报出", "事故", "推翻")),
         ("85.3%", ("44.2", "虚高", "报出", "事故", "推翻")),
+    ],
+    # 2026-10-05: en 第 12 章 / 附录 K 同步翻译了源图泄漏事故的教学讲述
+    "en": [
+        ("0.8946", ("0.7555", "inflated", "reported", "incident", "overturned")),
+        ("85.3%", ("44.2", "inflated", "reported", "incident", "overturned")),
     ],
 }
 
@@ -790,6 +797,7 @@ def check(include_web: bool) -> int:
             if not text:
                 continue
             squash = re.sub(r"\s+", "", text)
+            radius = INCIDENT_ALLOW_RADIUS[lang]
             for s in FORBIDDEN[lang]:
                 if s in text:
                     print(f"  [陈旧结论] {lang}/{label}: 仍含 {s!r}")
@@ -800,8 +808,8 @@ def check(include_web: bool) -> int:
                     i = squash.find(num, pos)
                     if i < 0:
                         break
-                    window = squash[max(0, i - INCIDENT_ALLOW_RADIUS):
-                                    i + len(num) + INCIDENT_ALLOW_RADIUS]
+                    window = squash[max(0, i - radius):
+                                    i + len(num) + radius]
                     if not any(m in window for m in markers):
                         naked += 1
                     pos = i + 1

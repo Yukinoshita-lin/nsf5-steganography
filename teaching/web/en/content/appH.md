@@ -1,4 +1,4 @@
-# Appendix H · Command-Line Tool and Installed Build (v1.9.0)
+# Appendix H - Command-Line Tool and Installed Build (v1.9.0)
 
 <!-- lang-switch -->
 > [🌐 中文版](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/appH.html)
@@ -13,21 +13,24 @@ The main handbook teaches the algorithms "from the Python code outwards". Since 
 
 | Form | Who it is for | How to install | Where output lands |
 | --- | --- | --- | --- |
-| **Windows installer** (recommended for end users) | No Python, just want the app | Download `nsf5stego-setup-<version>.exe` from [Releases](https://github.com/Yukinoshita-lin/nsf5-steganography/releases/latest) and double-click (Simplified-Chinese wizard, per-user, no admin rights) | `%APPDATA%\nsf5stego\output` |
+| **Windows installer** (recommended for end users) | No Python, just want the app | Download `nsf5stego-setup-<version>.exe` from `Releases` (https://github.com/Yukinoshita-lin/nsf5-steganography/releases/latest) and double-click (Simplified-Chinese wizard, per-user, no admin rights) | `%APPDATA%\nsf5stego\output` |
 | **Portable zip** | No installation, carry it around | `nsf5stego-portable-<version>-win64.zip` from the same Release; unzip and run | The unzipped folder |
 | **Source / PyPI** | Reading the code, scripting, CI | Source: `pip install -e .`; PyPI: `pip install nsf5stego` (1.9.0 published) | The current working directory |
 
 Installer highlights:
 
 - Start menu (desktop shortcut optional) → **nsF5 隐写工具**; double-clicking opens the GUI, and **no Python is required**;
+
 - Ticking "add to user PATH" in the wizard makes the `nsf5stego` command available (reopen the terminal); uninstalling removes it from PATH again;
+
 - If SmartScreen warns on first launch, choose "Run anyway" — the project is not code-signed.
 
 > **Watch out |** The project supports Python 3.9, but the **JPEG compressed domain depends on the companion project [`yccstego`](https://github.com/Yukinoshita-lin/yccstego), which requires Python >= 3.10**. That dependency is installed automatically via an environment marker; when it is missing, `jpegstego.available()` is `False` and `--jpeg` reports a readable install hint, while **the pixel-domain features are completely unaffected** (the same degradation pattern as a missing `lightgbm` for ML judgment).
 
 ## H.2 Subcommand quick reference
 
-```bash
+```text
+v = 200
 nsf5stego --help                    # overview; --version prints the version
 nsf5stego embed   cover.png -m "secret text" -p passphrase -o stego.png
 nsf5stego extract stego.png -p passphrase
@@ -47,20 +50,23 @@ nsf5stego gui                       # GUI (identical to python src/gui.py)
 Three semantics worth knowing:
 
 - **`--method` and `--hamming-p` apply to the pixel domain only**; the JPEG compressed domain is always nsF5 and does not accept them;
+
 - **`analyze` expands wildcards itself** (the Windows shell does not), so `nsf5stego analyze *.png` works on all three platforms; an unreadable image in a batch is recorded as an `error` item and the rest still run, with an overall non-zero exit;
+
 - **The shape of `--json` under `analyze`**: a single image prints an object, several images print an array of objects (each carrying an `image` key), so scripts can parse it reliably.
 
 ## H.3 Pixel domain vs JPEG compressed domain: the domain must match
 
-```bash
+```text
+v = 200
 # Pixel domain (default): flips LSBs of gray pixels, writes PNG
 nsf5stego embed cover.png -m "secret" -o stego.png
 nsf5stego extract stego.png
-
+ 
 # JPEG compressed domain (v1.9.0): embeds in quantized DCT coefficients, writes a standard .jpg
 nsf5stego embed cover.png --jpeg -m "secret" --quality 85
 nsf5stego extract cover_stego.jpg --jpeg     # your embed used --jpeg, so decode needs it too
-
+ 
 # Blind analysis: with --jpeg the main signal is the |c|=1 coefficient fingerprint (ML is unavailable there)
 nsf5stego analyze stego.png
 nsf5stego analyze cover_stego.jpg --jpeg
@@ -74,7 +80,8 @@ Decoding must match embedding in **four respects**: **domain (whether `--jpeg` w
 
 Every embed can export an **experiment record**: `embed --json` (or "export experiment record" in the GUI) prints parameters, image hashes and modification statistics as JSON with schema `nsf5stego.experiment/1`. The record **contains no plaintext**, so a re-run needs the original text again.
 
-```bash
+```text
+v = 200
 nsf5stego embed cover.png -m "secret" --json > experiment_20261003.json
 nsf5stego repro experiment_20261003.json -m "secret"   # re-run and verify item by item
 ```
@@ -82,6 +89,7 @@ nsf5stego repro experiment_20261003.json -m "secret"   # re-run and verify item 
 The verification strength of `repro` depends on the domain:
 
 - the **pixel domain** is always **byte-deterministic**;
+
 - the **JPEG domain** is byte-deterministic too when the `yccstego` version matches, and automatically falls back to **round-trip verification** (extraction must agree) when the version recorded in the record differs — older records stay compatible.
 
 The passphrase is recorded **only as present/absent, never its content**, so `repro` needs you to pass it again (`-p`).
@@ -97,7 +105,9 @@ The passphrase is recorded **only as present/absent, never its content**, so `re
 Scripts can judge success straight from the exit code. The three mistakes newcomers hit most:
 
 1. **Decoding with `--jpeg` after embedding without it** (or the reverse) — the domains disagree, so nothing decodes;
+
 2. **A mismatched p or passphrase** — the output is invalid text; the CLI exits non-zero with a hint;
+
 3. **Using `--jpeg` on Python 3.9** — `yccstego` is missing; the error carries an install hint, and installing it or switching to the pixel domain fixes it.
 
 ## H.6 The GUI: the whole loop in one minute

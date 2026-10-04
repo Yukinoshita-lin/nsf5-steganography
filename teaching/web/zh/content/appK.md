@@ -1,5 +1,10 @@
 # 附录 K · 真实数据速查（供实验对账）
 
+<!-- lang-switch -->
+> [🌐 English version](https://yukinoshita-lin.github.io/nsf5-steganography/en/content/appK.html)
+
+
+
 本附录汇总全手册引用的真实数字，全部可由项目脚本复现（出处括注）。权威来源：docs/RESULTS.md（由 experiments/build_results_table.py 生成，勿手改）与各脚本实测输出。
 
 ## K.1 嵌入实测（256×256 演示图，2026-10-04）

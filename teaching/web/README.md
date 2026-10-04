@@ -23,23 +23,22 @@ python teaching/web/docx2md.py \
 
 ## content/ 的再生成口径 (2026-10-05 更新)
 
-2026-09-14 审计时的情形是"入库 content/ 比 DOCX 丰富", 但 2026-10-05 起关系
-已经反转: 学习手册**正式版** (6.1 万字 / 171 页 / 91 图, 第 1½ 章、第 12 章、
-附录 J/K/L 均为新增) 以 `docs/src/学习手册-从零读懂nsF5隐写项目.docx` 为唯一
-母本, 网页版与入库 PDF 都由它生成。因此现在的规则是:
+学习手册正式版 (zh 6.1 万字 / 176 页, en 129 页) 以 `docs/src/*.docx` 为唯一
+母本, 网页版与入库 PDF 都由它们生成。中英两本 DOCX 的章节集已对齐
+(第 12 章 + 附录 A–F/H/J/K/L; 附录 G 已被附录 J 取代)。因此现在的规则是:
 
-- `make web-convert` (DOCX → markdown) 是网页版 zh 的**常规再生成方式**;
+- `make web-convert` (DOCX → markdown) 是两本书的**常规再生成方式**;
   重生成后重跑 `python teaching/web/add_lang_switch.py`;
-- 网页独有内容只剩一页: `zh/content/appF.md` (6–12 个月深入自学路线图,
-  导读 0.3 引用它, DOCX 里没有对应章节)。**重生成会把它删掉**, 需要手工
-  放回 (连同它引用的 `assets/roadmap.png`); 旧附录 G 已被正式版附录 J
-  (章末练习提示与答案) 取代, 不再保留;
+- en 的新章 (ch12/appF/H/J/K/L) 是 2026-10-05 用
+  `F:\宣传片\handbook_build\inject_chapters.py` 从翻译稿注入 DOCX 的
+  (克隆目标文档样式; en 网页图片命名 img109-117, 避开旧页面引用的
+  img009-011), 之后 en 与 zh 一样整体重生成即可;
 - 事实修正仍然走 `teaching/handbook_facts.py`: `--fix` 改 DOCX 源稿,
   `--fix --web` 连网页版 markdown 一起改, 改完 DOCX 后记得重导 PDF
   (`python teaching/export_handbook_pdf_word.py`) 并重新 web-convert;
 - 两边的口径都由 CI 的 `handbook` job 守着: 陈旧结论必须消失、现口径必须出现
-  (正式版把 0.8946/85.3% 源图泄漏事故当教学案例引用, 事实校验器为此引入了
-  "事故语境豁免" —— 裸宣称仍然报红, 见 handbook_facts.py 的 INCIDENT_ALLOW)。
+  (源图泄漏事故的 0.8946/85.3% 属于"事故语境豁免", 裸宣称仍然报红,
+  见 handbook_facts.py 的 INCIDENT_ALLOW)。
 
 ## 手动执行 notebook
 

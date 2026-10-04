@@ -51,6 +51,11 @@ def run_is_code(r) -> bool:
     return (rf.get(qn("w:ascii")) or "").lower().startswith("consolas")
 
 
+def bullet_fix(t: str) -> str:
+    # inject_chapters.py 在 DOCX 里用 "• " 字面前缀渲染项目符号; markdown 里转回 "-"
+    return "- " + t[2:] if t.startswith("• ") else t
+
+
 def para_md(p: Paragraph) -> str:
     # Word 会把同格式的连续文本拆成多个 run (拼写检查、 revisions 都会切),
     # 直接逐 run 包 ** 会产出 "**a****b**" 伪影 —— 先按 (加粗/斜体/代码) 合并。
@@ -171,7 +176,7 @@ def cell_one_md(cell, doc=None, counters=None) -> str:
             code_lines.append("".join(r.text for r in runs))
         else:
             marker = list_marker(p, doc, counters) if doc is not None else None
-            text_lines.append((marker or "") + para_md(p))
+            text_lines.append((marker or "") + bullet_fix(para_md(p)))
     if code:
         code_text = "\n".join(code_lines).rstrip()
         return f"```{fence_label(code_text)}\n" + code_text + "\n```"
@@ -271,7 +276,7 @@ def convert(docx_path: str, out_dir: str, lang: str) -> list:
                 if marker is not None:
                     current[1].append(marker + text)
                 else:
-                    current[1].append(text)
+                    current[1].append(bullet_fix(text))
             # embedded images (inline paragraph run)
             if current is not None and p.runs:
                 for run in p.runs:
