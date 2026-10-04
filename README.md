@@ -1,7 +1,7 @@
 # nsF5 图像隐写工具 (Steganography)
 
 ![CI](https://github.com/Yukinoshita-lin/nsf5-steganography/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.9.0-blue)
+![version](https://img.shields.io/badge/version-1.9.1-blue)
 ![license](https://img.shields.io/badge/license-Apache_2.0-blue)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22543628.svg)](https://doi.org/10.5281/zenodo.22543628)
@@ -1056,7 +1056,13 @@ git tag v1.1 && git push origin main --tags
 
 ## 版本历史
 
-- **v1.9.0 (当前) — yccstego 接入教学主线 + 可复现性与自证系统**
+- **v1.9.1 (当前) — JPEG 域修复版 (随 yccstego 0.2.1)**
+  - 依赖下限升至 `yccstego>=0.2.1`: 0.2.0 编解码器四处叠加缺陷 (8x8 块布局
+    被打乱 / 用 A·x·A 而非标准 2D DCT-II / 缺 JPEG 标准 -128 电平偏移 /
+    BT.601 红.蓝权重写反) 导致 JPEG 域输出画面损坏 (品红条纹, 消息仍可提取),
+    0.2.1 全部修正并新增像素保真回归测试, 详见 [yccstego#1](https://github.com/Yukinoshita-lin/yccstego/issues/1);
+  - `test_truncate` 封面 32x32 -> 128x128, 适配 0.2.1 的正确载体语义。
+- **v1.9.0 — yccstego 接入教学主线 + 可复现性与自证系统**
   - **JPEG 压缩域全面接入**: 新增 `src/jpegstego.py` 桥接姊妹项目 yccstego
     (按 Python>=3.10 自动声明的 PyPI 依赖), CLI embed/extract/analyze 全部支持
     `--jpeg` / `--quality`, GUI 参数区新增"嵌入域"切换 (JPEG 域固定 nsF5 语义,

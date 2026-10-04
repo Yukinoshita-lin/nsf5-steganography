@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.1] - 2026-10-04
+
+**JPEG 域修复版: 随 yccstego 0.2.1 修正编码器四处缺陷 —— 此前 JPEG 域输出画面损坏 (标准解码器看到品红条纹), 消息虽可提取但产物不可用。**
+
+### Fixed
+
+- **依赖下限 `yccstego>=0.2.0` -> `>=0.2.1`**: 0.2.0 的编解码器有四处叠加缺陷
+  (`split_blocks` 8x8 块布局被打乱 / `dct_blocks` 用 A·x·A 而非标准 2D DCT-II /
+  `_forward` 缺 JPEG 标准 -128 电平偏移 / BT.601 红.蓝权重写反), 详见
+  [yccstego#1](https://github.com/Yukinoshita-lin/yccstego/issues/1); 0.2.1 全部
+  修正并通过新增的 8 个像素保真回归测试, 彩图 q85 重建 PSNR 48.9 dB
+  (libjpeg 参照 48.6);
+- `test_truncate` 封面 32x32 -> 128x128: 正确 DCT 下 32x32 的非零 AC 载体不足
+  p=3 头部所需, 旧断言依赖 0.2.0 虚增的载体数才通过。
+
+### Notes
+
+- repro 契约: 档案按版本分档, 与 yccstego 0.2.0 的旧档案自动退回"提取一致"
+  校验 (experiment.py 既有机制, 旧档案无需迁移);
+- 建议对 PyPI 上的 yccstego 0.2.0 执行 yank (坏画面版本)。
+
 ## [1.9.0] - 2026-10-03
 
 **yccstego 接入教学主线 + 可复现性与自证系统: 教科书里的 nsF5 (JPEG DCT 域) 从此是主线功能, 每次实验可存档重跑, 正确性一键当场可见。**
