@@ -85,14 +85,18 @@ def _decode_host(raw: bytes) -> str:
     return raw.decode(locale.getpreferredencoding(False), errors="replace")
 
 
-def _test_image(path):
-    """平滑自然感封面 (与 run_e2e 同款配方), 供嵌入/分析。"""
+def _test_image(path, n=64):
+    """平滑自然感封面 (与 run_e2e 同款配方), 供嵌入/分析。
+
+    n=64 仅够像素域冒烟; JPEG 域 (yccstego 0.2.1 起载体语义正确) 下 64x64
+    平滑渐变只有 ~57 个非零 AC 载体, 连 p=3 的头部 (~301) 都不够,
+    --jpeg 用例必须用 n=256 (与 GUI 演示图同尺寸, 载体 ~5150)。"""
     import numpy as np
     from PIL import Image
     rng = np.random.default_rng(7)
-    y = np.linspace(0, 220, 64)[None, :]
-    x = np.linspace(0, 90, 64)[:, None]
-    img = np.clip(110 + y + x + rng.integers(-6, 7, (64, 64)), 12, 255)
+    y = np.linspace(0, 220, n)[None, :]
+    x = np.linspace(0, 90, n)[:, None]
+    img = np.clip(110 + y + x + rng.integers(-6, 7, (n, n)), 12, 255)
     Image.fromarray(img.astype(np.uint8)).save(path)
     return path
 
@@ -160,7 +164,7 @@ def test_jpeg_roundtrip_and_repro():
     """冻结环境的 JPEG 压缩域冒烟: --jpeg 往返 + 实验档案 repro。"""
     d = tempfile.mkdtemp(prefix="nsf5_frozen_jpeg_")
     try:
-        cover = _test_image(os.path.join(d, "cover.png"))
+        cover = _test_image(os.path.join(d, "cover.png"), n=256)
         msg = "frozen jpeg 42"
         rec = os.path.join(d, "exp.json")
         r = _run([EXE_CLI, "embed", cover, "--jpeg", "-m", msg, "--json"])
@@ -204,7 +208,7 @@ def test_frozen_stdout_is_really_utf8():
     """
     d = tempfile.mkdtemp(prefix="nsf5_frozen_utf8_")
     try:
-        cover = _test_image(os.path.join(d, "cover.png"))
+        cover = _test_image(os.path.join(d, "cover.png"), n=256)
         msg = "冻结编码探针"
         rec = os.path.join(d, "exp.json")
         r = _run([EXE_CLI, "embed", cover, "--jpeg", "-m", msg, "--json"])
