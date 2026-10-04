@@ -66,7 +66,10 @@ def test_capacity_error():
 
 
 def test_truncate():
-    small = _cover(h=32, w=32)
+    # 封面不能太小: 正确 DCT 下 32x32 平滑渐变的非零 AC 载体连 p=3 头部
+    # (~301 个) 都不够, CapacityError 发生在截断逻辑之前 (yccstego#1);
+    # 128x128 有真实正文容量, truncate 语义才能被真正测到。
+    small = _cover(h=128, w=128)
     long_msg = "藏" * 120          # 360 字节, 远超小图正文容量
     jpg, rep = jpegstego.embed_jpeg(small, long_msg, p=3, truncate=True)
     assert rep["truncated"] is True
