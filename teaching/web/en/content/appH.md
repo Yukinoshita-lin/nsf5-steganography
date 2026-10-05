@@ -3,6 +3,8 @@
 <!-- lang-switch -->
 > [🌐 中文版](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/appH.html)
 
+
+
 The main handbook teaches the algorithms "from the Python code outwards". Since v1.8 the project also ships two ways to complete the whole workflow **without writing a single line of code**: the graphical interface (see Ch. 2 and Ch. 10) and the command-line tool `nsf5stego`. This appendix is a quick reference for installing and using both; the commands work in Windows PowerShell and in Linux/macOS terminals alike.
 
 > **Version note |** This appendix is updated for **v1.9.0** (2026-10). On top of the v1.8 commands `embed / extract / analyze / gui`, v1.9.0 adds the **JPEG compressed domain (`--jpeg`)** and **one-command re-runs of an experiment record (`repro`)**. Existing pixel-domain usage is unaffected.

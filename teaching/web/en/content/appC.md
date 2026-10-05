@@ -5,7 +5,6 @@
 
 
 
-
 | **Week** | **Topic** | **Required action** | **Date** |
 | --- | --- | --- | --- |
 | 1 | Images & binary | Run the bit operations; state what LSB means |  |

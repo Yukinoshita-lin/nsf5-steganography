@@ -42,9 +42,13 @@ def configure(lang: str, out_dir: str) -> None:
     BUILD = os.path.join(ROOT, "_pdf_build", LANG)
     PDF_OUT = os.path.join(os.path.abspath(out_dir), PDF_NAME[LANG])
 
+# 2026-10-05: 与 zh/_toc.yml 对齐 —— 正式版扩写稿新增第 12 章与附录 J/K/L,
+# 网页独有附录 F 保留 (导读 0.3 引用它), 附录 G 被附录 J (章末练习提示与答案)
+# 取代后移除。
 TOC_ORDER = ["intro", "ch01", "ch01b", "ch02", "ch03", "ch04", "ch05", "ch06",
-             "ch07", "ch08", "ch09", "ch10", "ch11",
-             "appA", "appB", "appC", "appD", "appE", "appF", "appG"]
+             "ch07", "ch08", "ch09", "ch10", "ch11", "ch12",
+             "appA", "appB", "appC", "appD", "appE", "appF",
+             "appH", "appJ", "appK", "appL"]
 
 
 def esc(t: str) -> str:

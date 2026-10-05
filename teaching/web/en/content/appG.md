@@ -1,8 +1,5 @@
 # Appendix G · Exercises and Self-Test (with Answer Keys)
 
-<!-- lang-switch -->
-> [🌐 中文版](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/appG.html)
-
 This appendix gathers the most important takeaways into a set of self-test questions,
 covering "steganography vs encryption / LSB & statistical fingerprints / matrix embedding /
 nsF5 & wet paper / hash keying / ML evaluation". Answer them yourself first, then compare

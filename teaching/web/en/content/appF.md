@@ -5,7 +5,6 @@
 
 
 
-
 > **Try it |** Section 0.3 in the intro is the **12-week "get started"** compressed route; this section is the **6-12 month "understand and produce results"** deep route. It is for people who want to truly absorb digital image processing, information hiding, and machine learning, and do research/engineering. **Both routes use the same content; only the time allocation differs.**
 
 ![Fig. F-1 roadmap](../assets/roadmap.png)

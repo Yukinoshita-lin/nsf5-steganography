@@ -5,7 +5,6 @@
 
 
 
-
 以下命令均在项目根目录 F:\Steganography 下执行。
 
 | **目的** | **命令** |
@@ -28,7 +27,7 @@
 | GPU 训练 | python gpu\train_ml_gpu.py |
 | GPU 单图检测 | python gpu\predict_gpu.py img\cover.png |
 | 构建发布包 | python -m build |
-| 安装 | pip install nsf5stego（PyPI 已上架 1.9.0）或下载 Windows 安装版/便携包 |
+| 安装 wheel | pip install dist\nsf5stego-1.9.0-py3-none-any.whl（或直接 pip install nsf5stego） |
 | 生成 v2 数据集（12 档 / 143 维） | python src\make_dataset.py --out campus_v2 --feature-set v2 --variants all |
 | 生成 SRM 增强数据集（同源） | python src\make_dataset.py data\campus_jpg --out campus_srm --preprocess srm -j 16 |
 | 指定 v2+JPEG 数据集训练 | $env:DS_FILES = "dataset_campus_v2_jpeg.csv"; python src\train_model.py |

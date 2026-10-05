@@ -5,7 +5,6 @@
 
 
 
-
 | **Concept** | **File** | **Read first** |
 | --- | --- | --- |
 | Message encoding / length header | src/ns5_core.py | encode_string / decode_string |

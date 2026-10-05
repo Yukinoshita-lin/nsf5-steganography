@@ -5,7 +5,6 @@
 
 
 
-
 ## Books
 
 - Zhou Zhihua, Machine Learning (in Chinese) - especially Chapter 2 on model evaluation and selection;

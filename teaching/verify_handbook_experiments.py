@@ -62,6 +62,11 @@ ILLUSTRATIVE = {
         "MLPredictor._threshold() 的方法体摘录 (含 return)",
     ("ch08.md", "def lr(seed=0)"):
         "分类器工厂摘录: 依赖上文导入",
+    # 2026-10-05 (正式版扩写稿): 这段是"错误口令应当失败"的实验演示 ——
+    # extract_string(password="B") 按设计抛 ValueError(有效载荷不足), 讲解点
+    # 恰恰是这个异常; 照抄会中断, 需要读者自行包 try/except 观察两种口令的差别。
+    ("ch06.md", 'import sys; sys.path.insert(0, "src")'):
+        "口令错误实验: password='B' 的 extract 按设计抛 ValueError, 演示点即异常本身",
 }
 
 

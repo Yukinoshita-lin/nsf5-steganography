@@ -90,10 +90,17 @@ FORBIDDEN = {
         # 2026-09-17: 置换加速比 263 是把"4096² 的耗时"与"小 N 的加速比"混在
         # 一起算出来的 —— 4096² 实测 15.6 s / 0.24 s ≈ 65x, 同一份 CSV 里小 N 处
         # 最高约 240x。数字见 experiments/data/bench_permute.csv。
-        "263",
+        # 2026-10-05: 正式版扩写稿 (6.1 万字) 的满容量效率表里有"改动像素 8 263"
+        # (千位空格写法, 第 4 章 / 附录 K.2), 裸 "263" 会把它误伤; 且加速比断言
+        # 的历史措辞只有"263 倍 / 263x"两种, 所以按断言形态禁。
+        "263 倍", "263倍", "263x",
         "thesis/thesis1.pdf", "thesis/data/",
-        "0.9085", "0.9227", "0.9100", "0.8946",
-        "85.3%", "87.2%", "1/8 fp", "3/8 fp",
+        # 0.8946 / 85.3% 2026-10-05 起移入 INCIDENT_ALLOW: 正式版把源图泄漏事故
+        # 当教学案例正面讲解 (第 7/12 章、附录 K, 与 RESULTS.md 第 1 节的权威记录
+        # 一致), "报出 AUC 0.8946 … 修正后 0.7555"是诚实的历史引用; 只有把它们
+        # 当**现役结果**宣称才禁 —— 见 check() 的事故语境窗口校验。
+        "0.9085", "0.9227", "0.9100",
+        "87.2%", "1/8 fp", "3/8 fp",
         "0.50–0.52", "约 73% 的增益",
         "独立 photo_id（与原训练集完全 disjoint）",
         "SRM 90 维只在同源", "论文与代码对照",
@@ -110,6 +117,24 @@ FORBIDDEN = {
         "independent photo_ids (fully disjoint",
         "SRM helps only within the same source domain",
         "the paper draft", "the README/thesis",
+    ],
+}
+
+# --------------------------------------------------------------------------
+#  2b) 事故语境豁免 (2026-10-05)
+#      正式版扩写稿把 2026-09-14 源图泄漏事故当教学案例正面讲解 (第 7/12 章、
+#      附录 K), 数字与 docs/RESULTS.md 第 1 节的权威记录一致: 旧口径
+#      0.8946 / 85.3%, 修正后 0.7555 / 44.2%。历史引用是诚实的, 不能按
+#      "现役结论"一刀切 —— 但**裸宣称**仍然要红: 该数字的每一处出现, 前后
+#      窗口内必须带有事故语境标记 (修正后数字 / 虚高 / 报出 / 事故 / 推翻),
+#      否则按陈旧结论报错。窗口匹配在去空白后的文本上做, 免得 PDF 抽取把
+#      "事故"拆成"事 故"绕过校验。
+# --------------------------------------------------------------------------
+INCIDENT_ALLOW_RADIUS = 60
+INCIDENT_ALLOW = {
+    "zh": [
+        ("0.8946", ("0.7555", "虚高", "报出", "事故", "推翻")),
+        ("85.3%", ("44.2", "虚高", "报出", "事故", "推翻")),
     ],
 }
 
@@ -764,9 +789,26 @@ def check(include_web: bool) -> int:
         for label, text in sources:
             if not text:
                 continue
+            squash = re.sub(r"\s+", "", text)
             for s in FORBIDDEN[lang]:
                 if s in text:
                     print(f"  [陈旧结论] {lang}/{label}: 仍含 {s!r}")
+                    bad += 1
+            for num, markers in INCIDENT_ALLOW.get(lang, []):
+                pos, naked = 0, 0
+                while True:
+                    i = squash.find(num, pos)
+                    if i < 0:
+                        break
+                    window = squash[max(0, i - INCIDENT_ALLOW_RADIUS):
+                                    i + len(num) + INCIDENT_ALLOW_RADIUS]
+                    if not any(m in window for m in markers):
+                        naked += 1
+                    pos = i + 1
+                if naked:
+                    print(f"  [陈旧结论] {lang}/{label}: {num!r} 有 {naked} 处"
+                          f"脱离事故语境地裸出现 (窗口内需有修正后数字/"
+                          f"虚高/报出/事故/推翻之一)")
                     bad += 1
             for s in REQUIRED:
                 if s not in text:

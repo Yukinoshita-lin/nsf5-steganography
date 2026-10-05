@@ -21,20 +21,25 @@ python teaching/web/docx2md.py \
 > `assets/*` 是入库产物。2026-09-14 之前源稿放在 `thesis/` 下，该目录与
 > 全部论文稿已从项目中删除。
 
-## ⚠ 不要用 `make web-convert` 覆盖已入库的 content/
+## content/ 的再生成口径 (2026-10-05 更新)
 
-2026-09-14 审计实测：**入库的 `content/*.md` 比 `docs/src/*.docx` 内容丰富得多**
-（例如 `zh/content/ch07.md` 有 190 行，而当前 DOCX 只能生成 78 行）。也就是说
-网页手册在某个时间点被扩充过，而 DOCX 没有同步。
+2026-09-14 审计时的情形是"入库 content/ 比 DOCX 丰富", 但 2026-10-05 起关系
+已经反转: 学习手册**正式版** (6.1 万字 / 171 页 / 91 图, 第 1½ 章、第 12 章、
+附录 J/K/L 均为新增) 以 `docs/src/学习手册-从零读懂nsF5隐写项目.docx` 为唯一
+母本, 网页版与入库 PDF 都由它生成。因此现在的规则是:
 
-因此：
-
-- 网页手册的**事实修正**请改 `teaching/handbook_facts.py` 的 `WEB` 表，然后跑
-  `python teaching/handbook_facts.py --fix --web`（它直接在 markdown 上做替换，
-  不会重新生成、不会删内容）；
-- `make web-convert`（DOCX → markdown）**只用于**从 DOCX 初始化一个全新的
-  content 目录，或在你确认要放弃网页版增量时使用；
-- 两边的口径都由 CI 的 `handbook` job 守着：陈旧结论必须消失、现口径必须出现。
+- `make web-convert` (DOCX → markdown) 是网页版 zh 的**常规再生成方式**;
+  重生成后重跑 `python teaching/web/add_lang_switch.py`;
+- 网页独有内容只剩一页: `zh/content/appF.md` (6–12 个月深入自学路线图,
+  导读 0.3 引用它, DOCX 里没有对应章节)。**重生成会把它删掉**, 需要手工
+  放回 (连同它引用的 `assets/roadmap.png`); 旧附录 G 已被正式版附录 J
+  (章末练习提示与答案) 取代, 不再保留;
+- 事实修正仍然走 `teaching/handbook_facts.py`: `--fix` 改 DOCX 源稿,
+  `--fix --web` 连网页版 markdown 一起改, 改完 DOCX 后记得重导 PDF
+  (`python teaching/export_handbook_pdf_word.py`) 并重新 web-convert;
+- 两边的口径都由 CI 的 `handbook` job 守着: 陈旧结论必须消失、现口径必须出现
+  (正式版把 0.8946/85.3% 源图泄漏事故当教学案例引用, 事实校验器为此引入了
+  "事故语境豁免" —— 裸宣称仍然报红, 见 handbook_facts.py 的 INCIDENT_ALLOW)。
 
 ## 手动执行 notebook
 

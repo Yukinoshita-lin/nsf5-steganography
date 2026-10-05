@@ -5,7 +5,6 @@
 
 
 
-
 Run from the project root F:\Steganography.
 
 | **Purpose** | **Command** |

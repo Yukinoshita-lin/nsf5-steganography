@@ -5,7 +5,6 @@
 
 
 
-
 Arranged roughly in reading order. Mastering the bold-faced terms covers almost everything in this handbook.
 
 | **Term** | **Also known as** | **One-line meaning** |

@@ -52,18 +52,27 @@ def run_is_code(r) -> bool:
 
 
 def para_md(p: Paragraph) -> str:
-    parts = []
+    # Word 会把同格式的连续文本拆成多个 run (拼写检查、 revisions 都会切),
+    # 直接逐 run 包 ** 会产出 "**a****b**" 伪影 —— 先按 (加粗/斜体/代码) 合并。
+    merged = []
     for r in p.runs:
         text = r.text
         if not text:
             continue
-        if run_is_code(r):
+        key = (bool(r.bold), bool(r.italic), run_is_code(r))
+        if merged and merged[-1][1] == key:
+            merged[-1][0] += text
+        else:
+            merged.append([text, key])
+    parts = []
+    for text, (bold, italic, code) in merged:
+        if code:
             parts.append("`" + text + "`")
-        elif r.bold and r.italic:
+        elif bold and italic:
             parts.append("***" + text + "***")
-        elif r.bold:
+        elif bold:
             parts.append("**" + text + "**")
-        elif r.italic:
+        elif italic:
             parts.append("*" + text + "*")
         else:
             parts.append(text)
@@ -133,7 +142,23 @@ def _cell_para(cell):
     return [p for p in cell.paragraphs]
 
 
-def cell_one_md(cell) -> str:
+def fence_label(code_text: str) -> str:
+    """给代码框选 fence 语言: DOCX 里所有 Consolas 框长得一样, 但内容有
+    shell 命令 / 伪代码 / 输出转储 / 实验记录骨架 —— 一律 ```python 会让
+    verify_handbook_experiments 把 shell 命令当代码跑。先认 shell, 再试
+    compile: 编得过的才是 python, 编不过按 text 出 (浏览器里照样等宽)。"""
+    first = next((ln for ln in code_text.splitlines() if ln.strip()), "")
+    if re.match(r"\s*\$ ", first) or re.match(
+            r"\s*(nsf5stego|python|pip|jupyter|make|git|cd|yank|ls|dir)\b", first):
+        return "bash"
+    try:
+        compile(code_text, "<handbook>", "exec")
+        return "python"
+    except SyntaxError:
+        return "text"
+
+
+def cell_one_md(cell, doc=None, counters=None) -> str:
     """Convert a one-cell table: code fence, callout, or plain text."""
     ps = _cell_para(cell)
     code_lines = []
@@ -145,9 +170,11 @@ def cell_one_md(cell) -> str:
             code = True
             code_lines.append("".join(r.text for r in runs))
         else:
-            text_lines.append(para_md(p))
+            marker = list_marker(p, doc, counters) if doc is not None else None
+            text_lines.append((marker or "") + para_md(p))
     if code:
-        return "```python\n" + "\n".join(code_lines).rstrip() + "\n```"
+        code_text = "\n".join(code_lines).rstrip()
+        return f"```{fence_label(code_text)}\n" + code_text + "\n```"
     if not text_lines:
         return ""
     # callout: leading bold label, e.g. **动手做｜** or **Try it |**
@@ -183,7 +210,14 @@ def slugify(text: str, idx: int, lang: str, is_appendix=False):
                       text.replace("*", ""))  # Word 碎 run 会在 md 里留下 ** 片段
         return f"app{m.group(1)}" if m else f"app{idx}"
     m = re.search(r"(?:第\s*)?(?:Chapter\s*)?(\d+)", text)
-    return f"ch{int(m.group(1)):02d}" if m else f"part{idx:02d}"
+    if not m:
+        return f"part{idx:02d}"
+    n = int(m.group(1))
+    # "第 1½ 章" 是第 1 章的 JPEG 域加页 (v1.9.0 起成册) —— 纯数字 slug 会与
+    # 第 1 章撞名, 固定落到 ch01b (与 2026-10-03 之前网页版的手工命名一致)。
+    if "½" in text:
+        return f"ch{n:02d}b"
+    return f"ch{n:02d}"
 
 
 def convert(docx_path: str, out_dir: str, lang: str) -> list:
@@ -215,6 +249,11 @@ def convert(docx_path: str, out_dir: str, lang: str) -> list:
             text = para_md(p)
             if level == 1:
                 flush()
+                # Word 自带的"目 录"页 (域代码 + 页码) 在网页书里有侧边栏目录
+                # 顶着, 整段跳过, 让"导读"成为第一页 (intro.md)。
+                if re.fullmatch(r"目\s*录", text.replace("*", "")):
+                    current = None
+                    continue
                 h1_count += 1
                 appendix = bool(re.search(r"(附录|Appendix)", text))
                 if first_h1:
@@ -241,14 +280,16 @@ def convert(docx_path: str, out_dir: str, lang: str) -> list:
                         rel = extract_image(doc.part, run, asset_dir, img_idx)
                         if rel:
                             rel_name = os.path.basename(rel)
-                            current[1].append(f"![fig-{img_idx}](assets/{rel_name})")
+                            # content/*.md 与 assets/ 平级, 引用必须带 ../
+                            current[1].append(
+                                f"![fig-{img_idx}](../assets/{rel_name})")
         elif tag == "tbl" and current is not None:
             from docx.table import Table
             t = Table(child, doc)
             ncol = len(t.columns)
             nrow = len(t.rows)
             if ncol == 1 and nrow == 1:
-                current[1].append(cell_one_md(t.rows[0].cells[0]))
+                current[1].append(cell_one_md(t.rows[0].cells[0], doc, list_counters))
             elif ncol > 1 and nrow > 1:
                 current[1].append(table_md(t))
             else:

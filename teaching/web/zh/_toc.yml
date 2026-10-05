@@ -13,11 +13,14 @@ chapters:
   - file: content/ch09
   - file: content/ch10
   - file: content/ch11
+  - file: content/ch12
   - file: content/appA
   - file: content/appB
   - file: content/appC
   - file: content/appD
   - file: content/appE
   - file: content/appF
-  - file: content/appG
   - file: content/appH
+  - file: content/appJ
+  - file: content/appK
+  - file: content/appL

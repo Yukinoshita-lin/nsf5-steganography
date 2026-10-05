@@ -1,8 +1,7 @@
 # Chapter 1½ · What is JPEG? What is a DCT coefficient? (The compressed-domain battlefield)
 
 <!-- lang-switch -->
-> [🌐 中文版本](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/ch01b.html)
-
+> [🌐 中文版](https://yukinoshita-lin.github.io/nsf5-steganography/zh/content/ch01b.html)
 
 
 

@@ -8,6 +8,7 @@ Jupyter Book reliably emits as real anchors.
 from __future__ import annotations
 
 import pathlib
+import re
 
 ROOT = pathlib.Path(__file__).resolve().parent
 PAIRS = [("zh", "en"), ("en", "zh")]
@@ -15,24 +16,25 @@ LABELS = {"zh": "🌐 English version", "en": "🌐 中文版"}
 MARK = "<!-- lang-switch -->"
 BASE = "https://yukinoshita-lin.github.io/nsf5-steganography"
 
+# 旧标记块 (含前后空行) 整块匹配, 替换后与正文之间恰好一个空行 —— 幂等。
+BLOCK_RE = re.compile(r"\n*<!-- lang-switch -->\n> \[🌐[^\]]*\]\([^)]*\)\n*")
+
 
 def inject(content_dir: pathlib.Path, other: str, label: str) -> int:
     changed = 0
     for p in sorted(content_dir.glob("*.md")):
-        lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
-        # drop any previous injected switch block
-        lines = [ln for ln in lines
-                 if MARK not in ln and not ln.lstrip().startswith("> [🌐")]
-        for i, line in enumerate(lines):
-            if line.startswith("# "):
-                target = f"{other}/content/{p.name[:-3]}.html"
-                block = (
-                    f"\n{MARK}\n> [{label}]({BASE}/{target})\n\n"
-                )
-                lines.insert(i + 1, block)
-                p.write_text("".join(lines), encoding="utf-8")
-                changed += 1
-                break
+        text = p.read_text(encoding="utf-8")
+        text = BLOCK_RE.sub("\n\n", text)
+        # 对面书还没有这一页时 (例如 zh 2026-10 新增的第 12 章 / 附录 J-L 尚未
+        # 翻成英文) 只清旧标记、不注入 —— 绝对链接指过去就是 404。
+        target_page = ROOT / other / "content" / (p.stem + ".md")
+        m = re.search(r"^# .*$", text, re.M)
+        if m and target_page.exists():
+            target = f"{other}/content/{p.stem}.html"
+            ins = f"\n\n{MARK}\n> [{label}]({BASE}/{target})\n\n"
+            text = text[:m.end()] + ins + text[m.end():]
+            changed += 1
+        p.write_text(text, encoding="utf-8")
     return changed
 
 
