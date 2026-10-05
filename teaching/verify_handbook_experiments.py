@@ -176,6 +176,10 @@ def main() -> int:
     os.environ.setdefault("MPLBACKEND", "Agg")
     sys.path.insert(0, SRC)
     os.chdir(PROJ)                      # 片段用相对路径 img/cover.png 之类
+    # 手册片段把运行产物写到 output/ (项目惯例), CI 全新检出没有这个目录 ——
+    # 2026-10-05 正式版 ch02/ch03 片段因此在 CI 上 FileNotFoundError。目录由
+    # 执行环境兜底, 片段保持原样。
+    os.makedirs(os.path.join(PROJ, "output"), exist_ok=True)
 
     langs = ("zh", "en") if args.lang == "both" else (args.lang,)
     total = run = skipped = failed = asserted = 0
